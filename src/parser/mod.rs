@@ -1,4 +1,6 @@
+mod bool;
 mod chars;
+mod nil;
 mod numbers;
 
 #[derive(Debug, PartialEq, Eq)]
@@ -46,6 +48,8 @@ impl<'a> Parser<'a> {
         self.repeat(|_| false);
         self.integer();
         self.float();
+        self.boolean();
+        self.nil();
         self.is_eoi();
 
         Ok(())
@@ -58,5 +62,11 @@ mod tests {
 
     pub(crate) fn i(v: isize) -> Value {
         Value::Integer(v)
+    }
+    pub(crate) fn b(v: bool) -> Value {
+        Value::Bool(v)
+    }
+    pub(crate) fn nil() -> Value {
+        Value::Nil
     }
 }

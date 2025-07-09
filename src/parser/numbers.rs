@@ -6,7 +6,8 @@ impl<'a> Parser<'a> {
     /// Otherwise consume nothing and return `None`
     pub(super) fn integer(&mut self) -> Option<Value> {
         let start = self.pos;
-        self.char(b'-'); // optional -> ignore error
+
+        self.char(b'-'); // optional
         if self.repeat(is_digit) < 1 {
             self.pos = start;
             return None;
@@ -14,7 +15,7 @@ impl<'a> Parser<'a> {
 
         let v = String::from_utf8_lossy(&self.input[start..self.pos]);
 
-        let v = v.parse().expect("str to int");
+        let v = v.parse().expect("parsed str to int should never fail");
 
         Some(Value::Integer(v))
     }
@@ -23,6 +24,7 @@ impl<'a> Parser<'a> {
     /// Otherwise consume nothing and return `None`
     pub(super) fn float(&mut self) -> Option<Value> {
         let start = self.pos;
+
         self.char(b'-'); // optional -> ignore error
         if self.repeat(is_digit) < 1 {
             self.pos = start;
