@@ -2,6 +2,7 @@ mod bool;
 mod chars;
 mod nil;
 mod numbers;
+mod string;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct ParseError<'a> {
@@ -23,6 +24,12 @@ pub fn parse(input: &str) -> Result<(), ParseError> {
 pub(crate) struct SyntaxError {
     pos: usize,
     msg: &'static str,
+}
+
+impl SyntaxError {
+    fn new(pos: usize, msg: &'static str) -> Self {
+        Self { pos, msg }
+    }
 }
 
 type ParseResult<T> = Result<T, SyntaxError>;
@@ -50,6 +57,7 @@ impl<'a> Parser<'a> {
         self.float();
         self.boolean();
         self.nil();
+        self.string().unwrap();
         self.is_eoi();
 
         Ok(())
@@ -60,6 +68,9 @@ impl<'a> Parser<'a> {
 mod tests {
     use crate::lang::Value;
 
+    pub(crate) fn s(v: &str) -> Value {
+        Value::Str(v.to_string())
+    }
     pub(crate) fn i(v: isize) -> Value {
         Value::Integer(v)
     }
