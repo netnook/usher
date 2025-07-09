@@ -60,6 +60,11 @@ impl<'a> Parser<'a> {
     }
 }
 
+#[inline]
+pub(super) fn is_digit(c: u8) -> bool {
+    c.is_ascii_digit()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

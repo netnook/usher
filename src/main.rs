@@ -1,3 +1,4 @@
+mod lang;
 mod parser;
 
 fn main() {

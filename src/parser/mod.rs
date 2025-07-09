@@ -1,4 +1,5 @@
 mod chars;
+mod numbers;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct ParseError<'a> {
@@ -43,8 +44,19 @@ impl<'a> Parser<'a> {
         self.char(b'a');
         self.tag(b"aaa");
         self.repeat(|_| false);
+        self.integer();
+        self.float();
         self.is_eoi();
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::lang::Value;
+
+    pub(crate) fn i(v: isize) -> Value {
+        Value::Integer(v)
     }
 }
