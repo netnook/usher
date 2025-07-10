@@ -55,6 +55,38 @@ impl<'a> Parser<'a> {
         pos - start
     }
 
+    /// Same as `repeat` but returns a tupple containing the number of characters consumed and the first non-consumed character which ended the input matching.
+    /// If the end of input is reached consuming all remaining bytes, a `0` is returned as next byte.
+    /// Return the number of charcters consumed.
+    pub(super) fn repeat_and_peek(&mut self, test: CharTest) -> (usize, u8) {
+        let start = self.pos;
+        let mut pos = start;
+        let len = self.input.len();
+        let mut peek;
+
+        loop {
+            if pos < len {
+                peek = self.input[pos];
+                if !test(peek) {
+                    break;
+                };
+                pos += 1;
+            } else {
+                peek = 0;
+                break;
+            }
+        }
+        self.pos = pos;
+
+        (pos - start, peek)
+    }
+
+    /// Peek at the next byte in the input without consuming it.
+    /// Return '0' if the end of the input has been reached.
+    pub(super) fn peek(&mut self) -> u8 {
+        *self.input.get(self.pos).unwrap_or(&0)
+    }
+
     pub(super) fn is_eoi(&self) -> bool {
         self.pos >= self.input.len()
     }
@@ -123,6 +155,40 @@ mod tests {
         do_test_repeat("-abcabcabc-", |c| c.is_ascii_alphanumeric(), 9);
         do_test_repeat("-abcabcabc-", |c| c == b'a', 1);
         do_test_repeat("-abcabcabc-", |c| c == b'x', 0);
+    }
+
+    #[track_caller]
+    fn do_test_repeat_and_peek(input: &str, test: CharTest, expect_count: usize, expect_peek: u8) {
+        let mut p = Parser::new(input);
+        p.pos = 1;
+
+        assert_eq!(p.repeat_and_peek(test), (expect_count, expect_peek));
+        assert_eq!(p.pos, 1 + expect_count);
+    }
+
+    #[test]
+    fn test_repeat_and_peek() {
+        do_test_repeat_and_peek("-abcabcabc--", |c| c.is_ascii_alphanumeric(), 9, b'-');
+        do_test_repeat_and_peek("-abcabcabc", |c| c.is_ascii_alphanumeric(), 9, 0);
+        do_test_repeat_and_peek("-abcabcabc--", |c| c == b'a', 1, b'b');
+        do_test_repeat_and_peek("-abcabcabc--", |c| c == b'x', 0, b'a');
+    }
+
+    #[track_caller]
+    fn do_test_peek(input: &str, start: usize, expect: u8) {
+        let mut p = Parser::new(input);
+        p.pos = start;
+
+        assert_eq!(p.peek(), expect);
+        assert_eq!(p.pos, start);
+    }
+
+    #[test]
+    fn test_peek() {
+        do_test_peek("abc", 0, b'a');
+        do_test_peek("abc", 2, b'c');
+        do_test_peek("abc", 3, 0);
+        do_test_peek("abc", 8, 0);
     }
 
     #[track_caller]
