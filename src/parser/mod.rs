@@ -2,11 +2,16 @@ mod bool;
 mod chars;
 mod comment;
 mod expression;
+mod identifier;
 mod list;
 mod nil;
 mod numbers;
+mod object;
 mod string;
 mod utils;
+
+// FIXME: add all necessary keywords
+pub(crate) const RESERVED_KEYWORDS: [&str; 6] = ["print", "if", "else", "for", "in", "var"];
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct ParseError<'a> {
@@ -69,7 +74,9 @@ impl<'a> Parser<'a> {
         self.linespace();
         self.comment();
         self.req(Self::string, "foo").unwrap();
+        self.identifier().unwrap();
         self.whitespace_comments();
+        self.object_or_list().unwrap();
         let _ = self.req_whitespace_comments();
 
         Ok(())
@@ -78,11 +85,10 @@ impl<'a> Parser<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::lang::{AstNode, Value};
+    mod nested_types;
 
-    pub(crate) fn val(v: Value) -> AstNode {
-        AstNode::Value(v)
-    }
+    use crate::lang::{Identifier, Value};
+
     pub(crate) fn s(v: &str) -> Value {
         Value::Str(v.to_string())
     }
@@ -94,5 +100,8 @@ mod tests {
     }
     pub(crate) fn nil() -> Value {
         Value::Nil
+    }
+    pub(crate) fn ident(s: &str) -> Identifier {
+        Identifier::new(s)
     }
 }

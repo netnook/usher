@@ -1,5 +1,5 @@
 use super::{ParseResult, Parser, SyntaxError};
-use crate::lang::List;
+use crate::lang::ListBuilder;
 
 const MISSING_END_BRACKET: &str = "Missing closing ']'.";
 const EXPECTED_EXPRESSION_OR_CLOSE: &str = "Expected expression or ']'.";
@@ -8,14 +8,15 @@ impl<'a> Parser<'a> {
     /// Consume a list if next on input and return it.
     /// Otherwise consume nothing and return `None`
     // list = { "[" expr* "]"}
-    pub(super) fn list(&mut self) -> ParseResult<Option<List>> {
+    // FIXME: require comma separator, but make it optional after last entry
+    pub(super) fn list(&mut self) -> ParseResult<Option<ListBuilder>> {
         let start = self.pos;
         if !self.char(b'[') {
             return Ok(None);
         };
         self.whitespace_comments();
 
-        let mut list = Vec::new();
+        let mut entries = Vec::new();
         loop {
             if self.char(b']') {
                 break;
@@ -29,35 +30,32 @@ impl<'a> Parser<'a> {
                     });
                 } else {
                     return Err(SyntaxError {
-                        pos: start,
+                        pos: self.pos,
                         msg: EXPECTED_EXPRESSION_OR_CLOSE,
                     });
                 }
             };
 
-            list.push(expr);
-            self.whitespace_comments(); // FIXME: allow comments
+            entries.push(expr);
+            self.whitespace_comments();
 
             if self.char(b',') {
-                self.whitespace_comments(); // FIXME: allow comments
+                self.whitespace_comments();
             }
         }
 
-        Ok(Some(List::new(list)))
+        Ok(Some(ListBuilder::new(entries)))
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        lang::AstNode,
-        parser::{SyntaxError, string::MISSING_END_QUOTE, tests::*},
-    };
+    use crate::parser::{SyntaxError, string::MISSING_END_QUOTE, tests::*};
     use pretty_assertions::assert_eq;
 
     #[track_caller]
-    fn do_test_list_ok(input: &str, expected: List, remaining: usize) {
+    fn do_test_list_ok(input: &str, expected: ListBuilder, remaining: usize) {
         let mut p = Parser::new(input);
         p.pos = 1;
         assert_eq!(expected, p.list().expect("parse ok").expect("some result"));
@@ -66,7 +64,7 @@ mod tests {
 
     #[test]
     fn test_list_ok() {
-        let expect = List::new(vec![val(i(1)), val(i(2)), val(i(3)), val(i(4))]);
+        let expect = ListBuilder::new(vec![i(1).into(), i(2).into(), i(3).into(), i(4).into()]);
         do_test_list_ok("-[1 2 3 4]-", expect.clone(), 1);
         do_test_list_ok("-[1,2,3,4]-", expect.clone(), 1);
         do_test_list_ok("-[ 1 , 2 , 3 , 4 ]-", expect.clone(), 1);
@@ -81,19 +79,24 @@ mod tests {
             1,
         );
 
-        let expect = List::new(vec![val(i(1)), val(nil()), val(b(false)), val(s("foo"))]);
+        let expect = ListBuilder::new(vec![
+            i(1).into(),
+            nil().into(),
+            b(false).into(),
+            s("foo").into(),
+        ]);
         do_test_list_ok(r#"-[1 nil false "foo"]-"#, expect.clone(), 1);
         do_test_list_ok(r#"-[1, nil, false, "foo"]-"#, expect.clone(), 1);
         do_test_list_ok(r#"-[1 nil, false "foo",]-"#, expect.clone(), 1);
-        do_test_list_ok(r#"-[]-"#, List::new(Vec::new()), 1);
+        do_test_list_ok(r#"-[]-"#, ListBuilder::new(Vec::new()), 1);
 
         do_test_list_ok(
             "-[[1 1] 2 [3 3 3] 4]-",
-            List::new(vec![
-                AstNode::List(List::new(vec![val(i(1)), val(i(1))])),
-                val(i(2)),
-                AstNode::List(List::new(vec![val(i(3)), val(i(3)), val(i(3))])),
-                val(i(4)),
+            ListBuilder::new(vec![
+                ListBuilder::new(vec![i(1).into(), i(1).into()]).into(),
+                i(2).into(),
+                ListBuilder::new(vec![i(3).into(), i(3).into(), i(3).into()]).into(),
+                i(4).into(),
             ]),
             1,
         );
@@ -123,7 +126,7 @@ mod tests {
     #[test]
     fn test_list_err() {
         do_test_list_err(r#"-[1 2 3 4"#, 1, MISSING_END_BRACKET);
-        do_test_list_err(r#"-[1 2 3 4 var "#, 1, EXPECTED_EXPRESSION_OR_CLOSE);
+        do_test_list_err(r#"-[1 2 3 4 } "#, 10, EXPECTED_EXPRESSION_OR_CLOSE);
         do_test_list_err(r#"-[1 2 3 4 "bad-string"#, 10, MISSING_END_QUOTE);
     }
 }

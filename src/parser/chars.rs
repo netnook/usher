@@ -109,6 +109,15 @@ pub(super) fn is_digit(c: u8) -> bool {
     c.is_ascii_digit()
 }
 
+#[inline]
+pub(super) fn is_alpha(c: u8) -> bool {
+    c.is_ascii_alphabetic()
+}
+
+pub(super) fn is_alphanumeric(c: u8) -> bool {
+    c.is_ascii_alphabetic() || c.is_ascii_digit()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

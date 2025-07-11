@@ -2,18 +2,68 @@ use std::fmt::Display;
 
 #[derive(PartialEq, Debug, Clone)]
 pub enum AstNode {
+    Identifier(Identifier),
     Value(Value),
-    List(List),
+    ListBuilder(ListBuilder),
+    ObjectBuilder(ObjectBuilder),
+}
+
+impl From<Identifier> for AstNode {
+    fn from(value: Identifier) -> Self {
+        Self::Identifier(value)
+    }
+}
+
+impl From<Value> for AstNode {
+    fn from(value: Value) -> Self {
+        Self::Value(value)
+    }
+}
+
+impl From<ListBuilder> for AstNode {
+    fn from(value: ListBuilder) -> Self {
+        Self::ListBuilder(value)
+    }
+}
+
+impl From<ObjectBuilder> for AstNode {
+    fn from(value: ObjectBuilder) -> Self {
+        Self::ObjectBuilder(value)
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct Identifier {
+    name: String,
+}
+
+impl Identifier {
+    pub(crate) fn new(name: &str) -> Self {
+        Self {
+            name: name.to_string(),
+        }
+    }
 }
 
 #[derive(PartialEq, Debug, Clone)]
-pub struct List {
-    expressions: Vec<AstNode>,
+pub struct ListBuilder {
+    entries: Vec<AstNode>,
 }
 
-impl List {
-    pub(crate) fn new(expressions: Vec<AstNode>) -> Self {
-        Self { expressions }
+impl ListBuilder {
+    pub(crate) fn new(entries: Vec<AstNode>) -> Self {
+        Self { entries }
+    }
+}
+
+#[derive(PartialEq, Debug, Clone)]
+pub struct ObjectBuilder {
+    entries: Vec<(AstNode, AstNode)>,
+}
+
+impl ObjectBuilder {
+    pub(crate) fn new(entries: Vec<(AstNode, AstNode)>) -> Self {
+        Self { entries }
     }
 }
 
