@@ -1,9 +1,12 @@
 mod bool;
 mod chars;
 mod comment;
+mod expression;
+mod list;
 mod nil;
 mod numbers;
 mod string;
+mod utils;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct ParseError<'a> {
@@ -59,11 +62,13 @@ impl<'a> Parser<'a> {
         self.boolean();
         self.nil();
         self.string().unwrap();
+        self.list().unwrap();
         self.is_eoi();
         self.is_eoi();
         self.whitespace();
         self.linespace();
         self.comment();
+        self.req(Self::string, "foo").unwrap();
         self.whitespace_comments();
         let _ = self.req_whitespace_comments();
 
@@ -73,8 +78,11 @@ impl<'a> Parser<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::lang::Value;
+    use crate::lang::{AstNode, Value};
 
+    pub(crate) fn val(v: Value) -> AstNode {
+        AstNode::Value(v)
+    }
     pub(crate) fn s(v: &str) -> Value {
         Value::Str(v.to_string())
     }

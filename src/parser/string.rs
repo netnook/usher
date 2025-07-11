@@ -1,9 +1,9 @@
 use super::{ParseResult, Parser, SyntaxError};
 use crate::lang::Value;
 
-const MISSING_END_QUOTE: &str = "Missing closing double quote to end string.";
-const CRLF_IN_STRING_NOT_ALLOWED: &str = "Invalid characters CR or LF in string.";
-const INVALID_ESCAPE: &str = "Invalid escape sequence.";
+pub(super) const MISSING_END_QUOTE: &str = "Missing closing double quote to end string.";
+pub(super) const CRLF_IN_STRING_NOT_ALLOWED: &str = "Invalid characters CR or LF in string.";
+pub(super) const INVALID_ESCAPE: &str = "Invalid escape sequence.";
 
 impl<'a> Parser<'a> {
     /// Consume a string if next on input and return it.

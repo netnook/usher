@@ -1,6 +1,23 @@
 use std::fmt::Display;
 
 #[derive(PartialEq, Debug, Clone)]
+pub enum AstNode {
+    Value(Value),
+    List(List),
+}
+
+#[derive(PartialEq, Debug, Clone)]
+pub struct List {
+    expressions: Vec<AstNode>,
+}
+
+impl List {
+    pub(crate) fn new(expressions: Vec<AstNode>) -> Self {
+        Self { expressions }
+    }
+}
+
+#[derive(PartialEq, Debug, Clone)]
 pub enum Value {
     Str(String),
     Integer(isize),
