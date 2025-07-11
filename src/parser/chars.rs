@@ -4,7 +4,7 @@ type CharTest = fn(u8) -> bool;
 
 impl<'a> Parser<'a> {
     /// Consume the specified tag if it appears next in the input,
-    /// othewise consume nothing.
+    /// otherwise consumes nothing.
     /// Return `true` if the tag was found and consumed.
     pub(super) fn tag(&mut self, tag: &[u8]) -> bool {
         if self.input.len() < self.pos + tag.len() {
@@ -79,6 +79,18 @@ impl<'a> Parser<'a> {
         self.pos = pos;
 
         (pos - start, peek)
+    }
+
+    /// Consume as many space and tab chacters as possible.
+    /// Return the number of characters consumed.
+    pub(super) fn linespace(&mut self) -> usize {
+        self.repeat(|c| c == b' ' || c == b'\t')
+    }
+
+    /// Consume as many space, tab, CR and LF chacters as possible.
+    /// Return the number of characters consumed.
+    pub(super) fn whitespace(&mut self) -> usize {
+        self.repeat(|c| c == b' ' || c == b'\t' || c == b'\r' || c == b'\n')
     }
 
     /// Peek at the next byte in the input without consuming it.
@@ -172,6 +184,52 @@ mod tests {
         do_test_repeat_and_peek("-abcabcabc", |c| c.is_ascii_alphanumeric(), 9, 0);
         do_test_repeat_and_peek("-abcabcabc--", |c| c == b'a', 1, b'b');
         do_test_repeat_and_peek("-abcabcabc--", |c| c == b'x', 0, b'a');
+    }
+
+    #[track_caller]
+    fn do_test_linespace(input: &str, expect_count: usize) {
+        let mut p = Parser::new(input);
+        p.pos = 1;
+
+        assert_eq!(p.linespace(), expect_count);
+        assert_eq!(p.pos, 1 + expect_count);
+    }
+
+    #[test]
+    fn test_linespace() {
+        do_test_linespace("-  -", 2);
+        do_test_linespace("-\t\t-", 2);
+        do_test_linespace("-\r\r-", 0);
+        do_test_linespace("-\n\n-", 0);
+        do_test_linespace("-\t\t\n  -", 2);
+        do_test_linespace("-\t\t\r  -", 2);
+        do_test_linespace("-  \t \t abc--", 6);
+        do_test_linespace("-  \t \t", 5);
+        do_test_linespace("-xxx", 0);
+        do_test_linespace("-", 0);
+    }
+
+    #[track_caller]
+    fn do_test_whitespace(input: &str, expect_count: usize) {
+        let mut p = Parser::new(input);
+        p.pos = 1;
+
+        assert_eq!(p.whitespace(), expect_count);
+        assert_eq!(p.pos, 1 + expect_count);
+    }
+
+    #[test]
+    fn test_whitespace() {
+        do_test_whitespace("-  -", 2);
+        do_test_whitespace("-\t\t-", 2);
+        do_test_whitespace("-\r\r-", 2);
+        do_test_whitespace("-\n\n-", 2);
+        do_test_whitespace("-\t\t\n  -", 5);
+        do_test_whitespace("-\t\t\r  -", 5);
+        do_test_whitespace("-  \t \t abc--", 6);
+        do_test_whitespace("-  \n \n", 5);
+        do_test_whitespace("-xxx", 0);
+        do_test_whitespace("-", 0);
     }
 
     #[track_caller]

@@ -1,5 +1,6 @@
 mod bool;
 mod chars;
+mod comment;
 mod nil;
 mod numbers;
 mod string;
@@ -59,6 +60,12 @@ impl<'a> Parser<'a> {
         self.nil();
         self.string().unwrap();
         self.is_eoi();
+        self.is_eoi();
+        self.whitespace();
+        self.linespace();
+        self.comment();
+        self.whitespace_comments();
+        let _ = self.req_whitespace_comments();
 
         Ok(())
     }
