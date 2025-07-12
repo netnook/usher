@@ -8,6 +8,7 @@ mod nil;
 mod numbers;
 mod object;
 mod string;
+mod this;
 mod utils;
 
 // FIXME: add all necessary keywords
@@ -76,7 +77,6 @@ impl<'a> Parser<'a> {
         self.req(Self::string, "foo").unwrap();
         self.identifier().unwrap();
         self.whitespace_comments();
-        self.object_or_list().unwrap();
         let _ = self.req_whitespace_comments();
 
         Ok(())
@@ -87,7 +87,7 @@ impl<'a> Parser<'a> {
 mod tests {
     mod nested_types;
 
-    use crate::lang::{Identifier, Value};
+    use crate::lang::{AstNode, Identifier, Value};
 
     pub(crate) fn s(v: &str) -> Value {
         Value::Str(v.to_string())
@@ -100,6 +100,9 @@ mod tests {
     }
     pub(crate) fn nil() -> Value {
         Value::Nil
+    }
+    pub(crate) fn this() -> AstNode {
+        AstNode::This
     }
     pub(crate) fn ident(s: &str) -> Identifier {
         Identifier::new(s)

@@ -2,6 +2,7 @@ use std::fmt::Display;
 
 #[derive(PartialEq, Debug, Clone)]
 pub enum AstNode {
+    This,
     Identifier(Identifier),
     Value(Value),
     ListBuilder(ListBuilder),

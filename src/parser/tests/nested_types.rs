@@ -9,7 +9,7 @@ use pretty_assertions::assert_eq;
 fn do_test_nested_ok(input: &str, expected: AstNode, len_remaining: usize) {
     let mut p = Parser::new(input);
     p.pos = 1;
-    let actual = p.object_or_list().expect("parse ok").expect("result found");
+    let actual = p.expression().expect("parse ok").expect("result found");
     assert_eq!(expected, actual);
     assert_eq!(p.pos, input.len() - len_remaining);
 }
