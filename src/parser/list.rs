@@ -51,29 +51,22 @@ impl<'a> Parser<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::{SyntaxError, string::MISSING_END_QUOTE, tests::*};
-    use pretty_assertions::assert_eq;
-
-    #[track_caller]
-    fn do_test_list_ok(input: &str, expected: ListBuilder, remaining: usize) {
-        let mut p = Parser::new(input);
-        p.pos = 1;
-        assert_eq!(expected, p.list().expect("parse ok").expect("some result"));
-        assert_eq!(input.len() - remaining, p.pos);
-    }
+    use crate::parser::{string::MISSING_END_QUOTE, tests::*};
 
     #[test]
     fn test_list_ok() {
         let expect = ListBuilder::new(vec![i(1).into(), i(2).into(), i(3).into(), i(4).into()]);
-        do_test_list_ok("-[1 2 3 4]-", expect.clone(), 1);
-        do_test_list_ok("-[1,2,3,4]-", expect.clone(), 1);
-        do_test_list_ok("-[ 1 , 2 , 3 , 4 ]-", expect.clone(), 1);
-        do_test_list_ok(
+        do_test_parser_some(Parser::list, "-[1 2 3 4]-", expect.clone(), 1);
+        do_test_parser_some(Parser::list, "-[1,2,3,4]-", expect.clone(), 1);
+        do_test_parser_some(Parser::list, "-[ 1 , 2 , 3 , 4 ]-", expect.clone(), 1);
+        do_test_parser_some(
+            Parser::list,
             "-[ # comment \n 1 # comment \n 2 # comment \n # comment \n\n 3 # comment \n , # comment \n 4 ]-",
             expect.clone(),
             1,
         );
-        do_test_list_ok(
+        do_test_parser_some(
+            Parser::list,
             "-[# comment \n1# comment \n2# comment \n# comment \n\n3# comment \n,# comment \n4]-",
             expect,
             1,
@@ -85,12 +78,23 @@ mod tests {
             b(false).into(),
             s("foo").into(),
         ]);
-        do_test_list_ok(r#"-[1 nil false "foo"]-"#, expect.clone(), 1);
-        do_test_list_ok(r#"-[1, nil, false, "foo"]-"#, expect.clone(), 1);
-        do_test_list_ok(r#"-[1 nil, false "foo",]-"#, expect.clone(), 1);
-        do_test_list_ok(r#"-[]-"#, ListBuilder::new(Vec::new()), 1);
+        do_test_parser_some(Parser::list, r#"-[1 nil false "foo"]-"#, expect.clone(), 1);
+        do_test_parser_some(
+            Parser::list,
+            r#"-[1, nil, false, "foo"]-"#,
+            expect.clone(),
+            1,
+        );
+        do_test_parser_some(
+            Parser::list,
+            r#"-[1 nil, false "foo",]-"#,
+            expect.clone(),
+            1,
+        );
+        do_test_parser_some(Parser::list, r#"-[]-"#, ListBuilder::new(Vec::new()), 1);
 
-        do_test_list_ok(
+        do_test_parser_some(
+            Parser::list,
             "-[[1 1] 2 [3 3 3] 4]-",
             ListBuilder::new(vec![
                 ListBuilder::new(vec![i(1).into(), i(1).into()]).into(),
@@ -104,29 +108,23 @@ mod tests {
 
     #[test]
     fn test_list_none() {
-        let mut p = Parser::new("--");
-        p.pos = 1;
-        assert_eq!(p.list(), Ok(None));
-        assert_eq!(p.pos, 1);
-    }
-
-    #[track_caller]
-    fn do_test_list_err(input: &str, err_pos: usize, err_msg: &'static str) {
-        let mut p = Parser::new(input);
-        p.pos = 1;
-        assert_eq!(
-            SyntaxError {
-                pos: err_pos,
-                msg: err_msg
-            },
-            p.list().expect_err("expected error")
-        );
+        do_test_parser_none(Parser::list, "--");
     }
 
     #[test]
     fn test_list_err() {
-        do_test_list_err(r#"-[1 2 3 4"#, 1, MISSING_END_BRACKET);
-        do_test_list_err(r#"-[1 2 3 4 } "#, 10, EXPECTED_EXPRESSION_OR_CLOSE);
-        do_test_list_err(r#"-[1 2 3 4 "bad-string"#, 10, MISSING_END_QUOTE);
+        do_test_parser_err(Parser::list, r#"-[1 2 3 4"#, 1, MISSING_END_BRACKET);
+        do_test_parser_err(
+            Parser::list,
+            r#"-[1 2 3 4 } "#,
+            10,
+            EXPECTED_EXPRESSION_OR_CLOSE,
+        );
+        do_test_parser_err(
+            Parser::list,
+            r#"-[1 2 3 4 "bad-string"#,
+            10,
+            MISSING_END_QUOTE,
+        );
     }
 }

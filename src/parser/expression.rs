@@ -83,47 +83,35 @@ impl<'a> Parser<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::{SyntaxError, string::MISSING_END_QUOTE, tests::*};
-    use pretty_assertions::assert_eq;
+    use crate::parser::{string::MISSING_END_QUOTE, tests::*};
 
-    #[track_caller]
-    fn do_test_parens_expr_ok(input: &str, expected: AstNode, remaining_len: usize) {
-        let mut p = Parser::new(input);
-        p.pos = 1;
-        assert_eq!(
-            expected,
-            p.parens_expression()
-                .expect("parse ok")
-                .expect("some result")
-        );
-        assert_eq!(input.len() - remaining_len, p.pos);
+    #[test]
+    fn test_parens_expr_ok() {
+        do_test_parser_some(Parser::parens_expression, "-(1)-", i(1).into(), 1);
+        do_test_parser_some(Parser::parens_expression, "-(((1)))-", i(1).into(), 1);
+        do_test_parser_some(Parser::parens_expression, "-(((1)))", i(1).into(), 0);
     }
 
     #[test]
-    fn test_list_ok() {
-        do_test_parens_expr_ok("-(1)-", i(1).into(), 1);
-        do_test_parens_expr_ok("-(((1)))-", i(1).into(), 1);
-        do_test_parens_expr_ok("-(((1)))", i(1).into(), 0);
-    }
-
-    #[track_caller]
-    fn do_test_parens_expr_err(input: &str, err_pos: usize, err_msg: &'static str) {
-        let mut p = Parser::new(input);
-        p.pos = 1;
-        assert_eq!(
-            p.parens_expression().expect_err("parse err"),
-            SyntaxError {
-                pos: err_pos,
-                msg: err_msg,
-            }
-        );
+    fn test_parens_expr_none() {
+        do_test_parser_none(Parser::parens_expression, "--");
     }
 
     #[test]
     fn test_parens_expr_err() {
-        do_test_parens_expr_err("-(((1)]-", 6, EXPECTED_COSING_PARENS);
-        do_test_parens_expr_err("-(((1", 5, EXPECTED_COSING_PARENS);
-        do_test_parens_expr_err("-(;", 2, EXPECTED_EXPRESSION);
-        do_test_parens_expr_err("-(((\"..", 4, MISSING_END_QUOTE);
+        do_test_parser_err(
+            Parser::parens_expression,
+            "-(((1)]-",
+            6,
+            EXPECTED_COSING_PARENS,
+        );
+        do_test_parser_err(
+            Parser::parens_expression,
+            "-(((1",
+            5,
+            EXPECTED_COSING_PARENS,
+        );
+        do_test_parser_err(Parser::parens_expression, "-(;", 2, EXPECTED_EXPRESSION);
+        do_test_parser_err(Parser::parens_expression, "-(((\"..", 4, MISSING_END_QUOTE);
     }
 }

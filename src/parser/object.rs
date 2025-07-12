@@ -71,18 +71,6 @@ impl<'a> Parser<'a> {
 mod tests {
     use super::*;
     use crate::parser::{string::MISSING_END_QUOTE, tests::*};
-    use pretty_assertions::assert_eq;
-
-    #[track_caller]
-    fn do_test_object_ok(input: &str, expected: ObjectBuilder, remaining: usize) {
-        let mut p = Parser::new(input);
-        p.pos = 1;
-        assert_eq!(
-            expected,
-            p.object().expect("parse ok").expect("some result")
-        );
-        assert_eq!(input.len() - remaining, p.pos);
-    }
 
     #[test]
     fn test_object_ok() {
@@ -92,12 +80,28 @@ mod tests {
             (ident("c").into(), b(true).into()),
             (ident("the_d").into(), s("bar").into()),
         ]);
-        do_test_object_ok(r#"-{a:1 b:nil c:true the_d:"bar"}-"#, expect.clone(), 1);
-        do_test_object_ok(r#"-{a:1, b:nil, c:true, the_d:"bar"}-"#, expect.clone(), 1);
-        do_test_object_ok(r#"-{ a:1 b:nil, c:true the_d:"bar", }-"#, expect.clone(), 1);
-        do_test_object_ok(r#"-{}-"#, ObjectBuilder::new(Vec::new()), 1);
+        do_test_parser_some(
+            Parser::object,
+            r#"-{a:1 b:nil c:true the_d:"bar"}-"#,
+            expect.clone(),
+            1,
+        );
+        do_test_parser_some(
+            Parser::object,
+            r#"-{a:1, b:nil, c:true, the_d:"bar"}-"#,
+            expect.clone(),
+            1,
+        );
+        do_test_parser_some(
+            Parser::object,
+            r#"-{ a:1 b:nil, c:true the_d:"bar", }-"#,
+            expect.clone(),
+            1,
+        );
+        do_test_parser_some(Parser::object, r#"-{}-"#, ObjectBuilder::new(Vec::new()), 1);
 
-        do_test_object_ok(
+        do_test_parser_some(
+            Parser::object,
             r#"-{ a: { aa:1, ab:2, ac: {}}, b:3}-"#,
             ObjectBuilder::new(vec![
                 (
@@ -117,43 +121,62 @@ mod tests {
 
     #[test]
     fn test_object_none() {
-        let mut p = Parser::new("--");
-        p.pos = 1;
-        assert_eq!(p.object(), Ok(None));
-        assert_eq!(p.pos, 1);
-    }
-
-    #[track_caller]
-    fn do_test_object_err(input: &str, err_pos: usize, err_msg: &'static str) {
-        let mut p = Parser::new(input);
-        p.pos = 1;
-        assert_eq!(
-            SyntaxError {
-                pos: err_pos,
-                msg: err_msg
-            },
-            p.object().expect_err("expected error")
-        );
+        do_test_parser_none(Parser::object, "--");
     }
 
     #[test]
     fn test_object_err() {
-        do_test_object_err(r#"-{"#, 1, MISSING_END_BRACKET);
-        do_test_object_err(r#"-{a:1, b:1"#, 1, MISSING_END_BRACKET);
-        do_test_object_err(r#"-{a:1, b:1, "#, 1, MISSING_END_BRACKET);
+        do_test_parser_err(Parser::object, r#"-{"#, 1, MISSING_END_BRACKET);
+        do_test_parser_err(Parser::object, r#"-{a:1, b:1"#, 1, MISSING_END_BRACKET);
+        do_test_parser_err(Parser::object, r#"-{a:1, b:1, "#, 1, MISSING_END_BRACKET);
 
-        do_test_object_err(r#"-{ ; }-"#, 3, EXPECTED_EXPRESSION_OR_CLOSE);
-        do_test_object_err(r#"-{ , }-"#, 3, EXPECTED_EXPRESSION_OR_CLOSE);
-        do_test_object_err(r#"-{ a:1 , , }-"#, 9, EXPECTED_EXPRESSION_OR_CLOSE);
-        do_test_object_err(r#"-{ a:1 ; }-"#, 7, EXPECTED_EXPRESSION_OR_CLOSE);
-        do_test_object_err(r#"-{a:1, b:1, - "#, 12, EXPECTED_EXPRESSION_OR_CLOSE);
-        do_test_object_err(r#"-{ a:1 ; }-"#, 7, EXPECTED_EXPRESSION_OR_CLOSE);
-        // do_test_object_err(r#"-{ a:1 [ }-"#, 7, EXPECTED_EXPRESSION_OR_CLOSE); // FIXME: don't allow list expressions as keys
+        do_test_parser_err(
+            Parser::object,
+            r#"-{ ; }-"#,
+            3,
+            EXPECTED_EXPRESSION_OR_CLOSE,
+        );
+        do_test_parser_err(
+            Parser::object,
+            r#"-{ , }-"#,
+            3,
+            EXPECTED_EXPRESSION_OR_CLOSE,
+        );
+        do_test_parser_err(
+            Parser::object,
+            r#"-{ a:1 , , }-"#,
+            9,
+            EXPECTED_EXPRESSION_OR_CLOSE,
+        );
+        do_test_parser_err(
+            Parser::object,
+            r#"-{ a:1 ; }-"#,
+            7,
+            EXPECTED_EXPRESSION_OR_CLOSE,
+        );
+        do_test_parser_err(
+            Parser::object,
+            r#"-{a:1, b:1, - "#,
+            12,
+            EXPECTED_EXPRESSION_OR_CLOSE,
+        );
+        do_test_parser_err(
+            Parser::object,
+            r#"-{ a:1 ; }-"#,
+            7,
+            EXPECTED_EXPRESSION_OR_CLOSE,
+        );
+        // do_test_parser_err(Parser::object,r#"-{ a:1 [ }-"#, 7, EXPECTED_EXPRESSION_OR_CLOSE); // FIXME: don't allow list expressions as keys
 
-        do_test_object_err(r#"-{ a:1 , b 2, }-"#, 11, EXPECTED_COLON);
+        do_test_parser_err(Parser::object, r#"-{ a:1 , b 2, }-"#, 11, EXPECTED_COLON);
 
-        do_test_object_err(r#"-{ a:1 , b: ;, }-"#, 12, EXPECTED_VALUE_EXPRESSION);
+        do_test_parser_err(
+            Parser::object,
+            r#"-{ a:1 , b: ;, }-"#,
+            12,
+            EXPECTED_VALUE_EXPRESSION,
+        );
 
-        do_test_object_err(r#"-{a:1, b:"aaa }-"#, 9, MISSING_END_QUOTE);
+        do_test_parser_err(Parser::object, r#"-{a:1, b:"aaa }-"#, 9, MISSING_END_QUOTE);
     }
 }

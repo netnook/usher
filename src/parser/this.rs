@@ -15,23 +15,14 @@ impl<'a> Parser<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::tests::this;
-    use pretty_assertions::assert_eq;
-
-    #[track_caller]
-    fn do_test_this(input: &str, expected: Option<AstNode>, len: usize) {
-        let mut p = Parser::new(input);
-        p.pos = 1;
-        assert_eq!(expected, p.this());
-        assert_eq!(len + 1, p.pos);
-    }
+    use crate::parser::tests::{do_test_opt_parser_none, do_test_opt_parser_some, this};
 
     #[test]
     fn test_this() {
-        do_test_this("_this_", Some(this()), 4);
-        do_test_this("_this", Some(this()), 4);
+        do_test_opt_parser_some(Parser::this, "_this_", this(), 1);
+        do_test_opt_parser_some(Parser::this, "_this", this(), 0);
 
-        do_test_this("_thi_", None, 0);
-        do_test_this("_", None, 0);
+        do_test_opt_parser_none(Parser::this, "_thi_");
+        do_test_opt_parser_none(Parser::this, "_");
     }
 }

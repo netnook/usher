@@ -15,23 +15,14 @@ impl<'a> Parser<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::tests::nil;
-    use pretty_assertions::assert_eq;
-
-    #[track_caller]
-    fn do_test_nil(input: &str, expected: Option<Value>, len: usize) {
-        let mut p = Parser::new(input);
-        p.pos = 1;
-        assert_eq!(expected, p.nil());
-        assert_eq!(len + 1, p.pos);
-    }
+    use crate::parser::tests::{do_test_opt_parser_none, do_test_opt_parser_some, nil};
 
     #[test]
     fn test_nil() {
-        do_test_nil("_nil_", Some(nil()), 3);
-        do_test_nil("_nil", Some(nil()), 3);
+        do_test_opt_parser_some(Parser::nil, "_nil_", nil(), 1);
+        do_test_opt_parser_some(Parser::nil, "_nil", nil(), 0);
 
-        do_test_nil("_ni_", None, 0);
-        do_test_nil("_", None, 0);
+        do_test_opt_parser_none(Parser::nil, "_ni_");
+        do_test_opt_parser_none(Parser::nil, "_");
     }
 }

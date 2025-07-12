@@ -33,39 +33,20 @@ impl<'a> Parser<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::tests::ident;
-    use pretty_assertions::assert_eq;
-
-    #[track_caller]
-    fn do_test_ident_ok(input: &str, expected: Option<Identifier>, len: usize) {
-        let mut p = Parser::new(input);
-        p.pos = 1;
-        assert_eq!(expected, p.identifier().expect("parse ok"));
-        assert_eq!(len + 1, p.pos);
-    }
-
-    #[track_caller]
-    fn do_test_ident_err(input: &str, err_pos: usize, err_msg: &'static str) {
-        let mut p = Parser::new(input);
-        p.pos = 1;
-        assert_eq!(
-            SyntaxError {
-                pos: err_pos,
-                msg: err_msg
-            },
-            p.identifier().expect_err("expected error")
-        );
-    }
+    use crate::parser::tests::{
+        do_test_parser_err, do_test_parser_none, do_test_parser_some, ident,
+    };
 
     #[test]
     fn test_identifiers() {
-        do_test_ident_ok("-one_TwO33_-", Some(ident("one_TwO33_")), 10);
-        do_test_ident_ok("-one_TwO33_ ", Some(ident("one_TwO33_")), 10);
-        do_test_ident_ok("-one_TwO33_", Some(ident("one_TwO33_")), 10);
-        do_test_ident_ok("-o-", Some(ident("o")), 1);
-        do_test_ident_ok("-1-", None, 0);
-        do_test_ident_ok("-_-", None, 0);
+        do_test_parser_some(Parser::identifier, "-one_TwO33_-", ident("one_TwO33_"), 1);
+        do_test_parser_some(Parser::identifier, "-one_TwO33_ ", ident("one_TwO33_"), 1);
+        do_test_parser_some(Parser::identifier, "-one_TwO33_", ident("one_TwO33_"), 0);
+        do_test_parser_some(Parser::identifier, "-o-", ident("o"), 1);
 
-        do_test_ident_err("-print-", 1, KEYWORD_RESERVED);
+        do_test_parser_none(Parser::identifier, "-1-");
+        do_test_parser_none(Parser::identifier, "-_-");
+
+        do_test_parser_err(Parser::identifier, "-print-", 1, KEYWORD_RESERVED);
     }
 }

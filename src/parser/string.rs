@@ -64,43 +64,26 @@ impl<'a> Parser<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::tests::s;
-    use pretty_assertions::assert_eq;
-
-    #[track_caller]
-    fn do_test_string_ok(input: &str, expected: Option<Value>, len: usize) {
-        let mut p = Parser::new(input);
-        p.pos = 1;
-        assert_eq!(expected, p.string().expect("parse ok"));
-        assert_eq!(len + 1, p.pos);
-    }
-
-    #[track_caller]
-    fn do_test_string_err(input: &str, err_pos: usize, err_msg: &'static str) {
-        let mut p = Parser::new(input);
-        p.pos = 1;
-        assert_eq!(
-            SyntaxError {
-                pos: err_pos,
-                msg: err_msg
-            },
-            p.string().expect_err("expected error")
-        );
-    }
+    use crate::parser::tests::{do_test_parser_err, do_test_parser_none, do_test_parser_some, s};
 
     #[test]
     fn test_strings() {
-        do_test_string_ok(r#"_"one"_"#, Some(s("one")), 5);
-        do_test_string_ok(r#"_"one two"_"#, Some(s("one two")), 9);
-        do_test_string_ok(r#"_"\"aa\"\\\r\nbb\""_"#, Some(s("\"aa\"\\\r\nbb\"")), 18);
+        do_test_parser_some(Parser::string, r#"_"one"_"#, s("one"), 1);
+        do_test_parser_some(Parser::string, r#"_"one two"_"#, s("one two"), 1);
+        do_test_parser_some(
+            Parser::string,
+            r#"_"\"aa\"\\\r\nbb\""_"#,
+            s("\"aa\"\\\r\nbb\""),
+            1,
+        );
 
-        do_test_string_ok(r#"_"true"_"#, Some(s("true")), 6);
-        do_test_string_ok(r#"_"true"_"#, Some(s("true")), 6);
+        do_test_parser_some(Parser::string, r#"_"true"_"#, s("true"), 1);
+        do_test_parser_some(Parser::string, r#"_"true"_"#, s("true"), 1);
 
-        do_test_string_ok(r#"_one"_"#, None, 0);
+        do_test_parser_none(Parser::string, r#"_one"_"#);
 
-        do_test_string_err(r#"_"one"#, 1, MISSING_END_QUOTE);
-        do_test_string_err("_\"on\re", 4, CRLF_IN_STRING_NOT_ALLOWED);
-        do_test_string_err(r#"_"aa\xaa""#, 4, INVALID_ESCAPE);
+        do_test_parser_err(Parser::string, r#"_"one"#, 1, MISSING_END_QUOTE);
+        do_test_parser_err(Parser::string, "_\"on\re", 4, CRLF_IN_STRING_NOT_ALLOWED);
+        do_test_parser_err(Parser::string, r#"_"aa\xaa""#, 4, INVALID_ESCAPE);
     }
 }

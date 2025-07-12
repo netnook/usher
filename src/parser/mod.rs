@@ -87,7 +87,12 @@ impl<'a> Parser<'a> {
 mod tests {
     mod nested_types;
 
-    use crate::lang::{AstNode, Identifier, Value};
+    use super::SyntaxError;
+    use crate::{
+        lang::{AstNode, Identifier, Value},
+        parser::Parser,
+    };
+    use pretty_assertions::assert_eq;
 
     pub(crate) fn s(v: &str) -> Value {
         Value::Str(v.to_string())
@@ -106,5 +111,122 @@ mod tests {
     }
     pub(crate) fn ident(s: &str) -> Identifier {
         Identifier::new(s)
+    }
+
+    #[track_caller]
+    pub(crate) fn do_test_parser_ok<'a, F, T>(
+        func: F,
+        input: &'static str,
+        expected: Option<T>,
+        expected_remain: usize,
+    ) where
+        F: FnOnce(&mut Parser<'a>) -> Result<Option<T>, SyntaxError>,
+        T: PartialEq<T> + std::fmt::Debug,
+    {
+        let mut parser = Parser::new(input);
+        parser.pos = 1;
+
+        let actual = func(&mut parser).expect("parser should succeed");
+
+        assert_eq!(actual, expected, "assert actual (left) == expected (right)");
+
+        let actual_remain = input.len() - parser.pos;
+        assert_eq!(
+            actual_remain, expected_remain,
+            "assert actual_remain ({actual_remain}) == expected_remaining ({expected_remain})"
+        );
+    }
+
+    #[track_caller]
+    pub(crate) fn do_test_parser_some<'a, F, T>(
+        func: F,
+        input: &'static str,
+        expected: T,
+        expected_remain: usize,
+    ) where
+        F: FnOnce(&mut Parser<'a>) -> Result<Option<T>, SyntaxError>,
+        T: PartialEq<T> + std::fmt::Debug,
+    {
+        do_test_parser_ok(func, input, Some(expected), expected_remain);
+    }
+
+    #[track_caller]
+    pub(crate) fn do_test_parser_none<'a, F, T>(func: F, input: &'static str)
+    where
+        F: FnOnce(&mut Parser<'a>) -> Result<Option<T>, SyntaxError>,
+        T: PartialEq<T> + std::fmt::Debug,
+    {
+        do_test_parser_ok(func, input, None, input.len() - 1);
+    }
+
+    #[track_caller]
+    pub(crate) fn do_test_parser_err<'a, F, T>(
+        func: F,
+        input: &'static str,
+        expected_err_pos: usize,
+        expected_err_msg: &'static str,
+    ) where
+        F: FnOnce(&mut Parser<'a>) -> Result<Option<T>, SyntaxError>,
+        T: PartialEq<T> + std::fmt::Debug,
+    {
+        let mut parser = Parser::new(input);
+        parser.pos = 1;
+
+        let actual = func(&mut parser).expect_err("parser should error");
+
+        assert_eq!(
+            actual,
+            SyntaxError {
+                pos: expected_err_pos,
+                msg: expected_err_msg
+            },
+            "assert actual (left) == expected (right)"
+        );
+    }
+
+    #[track_caller]
+    pub(crate) fn do_test_opt_parser<'a, F, T>(
+        func: F,
+        input: &'static str,
+        expected: Option<T>,
+        expected_remain: usize,
+    ) where
+        F: FnOnce(&mut Parser<'a>) -> Option<T>,
+        T: PartialEq<T> + std::fmt::Debug,
+    {
+        let mut parser = Parser::new(input);
+        parser.pos = 1;
+
+        let actual = func(&mut parser);
+
+        assert_eq!(actual, expected, "assert actual (left) == expected (right)");
+
+        let actual_remain = input.len() - parser.pos;
+        assert_eq!(
+            actual_remain, expected_remain,
+            "assert actual_remain ({actual_remain}) == expected_remaining ({expected_remain})"
+        );
+    }
+
+    #[track_caller]
+    pub(crate) fn do_test_opt_parser_some<'a, F, T>(
+        func: F,
+        input: &'static str,
+        expected: T,
+        expected_remain: usize,
+    ) where
+        F: FnOnce(&mut Parser<'a>) -> Option<T>,
+        T: PartialEq<T> + std::fmt::Debug,
+    {
+        do_test_opt_parser(func, input, Some(expected), expected_remain);
+    }
+
+    #[track_caller]
+    pub(crate) fn do_test_opt_parser_none<'a, F, T>(func: F, input: &'static str)
+    where
+        F: FnOnce(&mut Parser<'a>) -> Option<T>,
+        T: PartialEq<T> + std::fmt::Debug,
+    {
+        do_test_opt_parser(func, input, None, input.len() - 1);
     }
 }

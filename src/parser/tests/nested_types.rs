@@ -1,21 +1,13 @@
-use super::{b, i, ident, nil, s};
+use super::{b, do_test_parser_some, i, ident, nil, s};
 use crate::{
-    lang::{AstNode, ListBuilder, ObjectBuilder},
+    lang::{ListBuilder, ObjectBuilder},
     parser::Parser,
 };
-use pretty_assertions::assert_eq;
 
-#[track_caller]
-fn do_test_nested_ok(input: &str, expected: AstNode, len_remaining: usize) {
-    let mut p = Parser::new(input);
-    p.pos = 1;
-    let actual = p.expression().expect("parse ok").expect("result found");
-    assert_eq!(expected, actual);
-    assert_eq!(p.pos, input.len() - len_remaining);
-}
 #[test]
 fn test_nested() {
-    do_test_nested_ok(
+    do_test_parser_some(
+        Parser::expression,
         r#"-{a:{a:false b:"xxx"} b:nil c:[1 2 3] the_d:"bar"}-"#,
         ObjectBuilder::new(vec![
             (
@@ -36,7 +28,8 @@ fn test_nested() {
         .into(),
         1,
     );
-    do_test_nested_ok(
+    do_test_parser_some(
+        Parser::expression,
         r#"-[{a:"one"}]-"#,
         ListBuilder::new(vec![
             ObjectBuilder::new(vec![(ident("a").into(), s("one").into())]).into(),
