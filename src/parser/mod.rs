@@ -112,6 +112,21 @@ mod tests {
     pub(crate) fn ident(s: &str) -> Identifier {
         Identifier::new(s)
     }
+    pub(crate) fn prop_of(from: AstNode, prop: &str) -> AstNode {
+        AstNode::PropertyOf {
+            from: from.into(),
+            property: ident(prop),
+        }
+    }
+    pub(crate) fn index_of(from: AstNode, index: AstNode) -> AstNode {
+        AstNode::IndexOf {
+            from: from.into(),
+            index: index.into(),
+        }
+    }
+    pub(crate) fn chain_catch(from: AstNode) -> AstNode {
+        AstNode::ChainCatch(from.into())
+    }
 
     #[track_caller]
     pub(crate) fn do_test_parser_ok<'a, F, T>(

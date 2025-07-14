@@ -1,23 +1,69 @@
-use super::{ParseResult, Parser};
-use crate::lang::AstNode;
+use super::{ParseResult, Parser, SyntaxError};
+use crate::lang::{AstNode, Identifier};
 
 const EXPECTED_EXPRESSION: &str = "Expected expression.";
 const EXPECTED_COSING_PARENS: &str = "Expected closing parenthesis ')'";
+const EXPECTED_COSING_BRACKET: &str = "Expected closing bracket ']'";
+const EXPECTED_IDENTIFIER: &str = "Expected identifier.";
 
 impl<'a> Parser<'a> {
     /// Consume an expression or nothing.
     pub(super) fn expression(&mut self) -> ParseResult<Option<AstNode>> {
         // FIXME: this is a dummy implementation to enable other parsers
 
-        if let Some(v) = self.primary_expression()? {
+        if let Some(v) = self.expression_chain()? {
             return Ok(Some(v));
         }
 
         Ok(None)
     }
 
-    // Primary expression - literals, list, object or parenthesised expression
+    // Primary expression with chained operations:
+    // - property access (dot operator),
+    // - index op or
+    // - function call
     // Consumes and returns node or consumes nothing.
+    pub(super) fn expression_chain(&mut self) -> ParseResult<Option<AstNode>> {
+        let Some(mut node) = self.primary_expression()? else {
+            return Ok(None);
+        };
+
+        loop {
+            let savepoint = self.pos;
+            self.linespace();
+
+            if let Some(property) = self.property_of()? {
+                node = AstNode::PropertyOf {
+                    from: node.into(),
+                    property,
+                };
+                continue;
+            }
+
+            if let Some(index) = self.index_of()? {
+                node = AstNode::IndexOf {
+                    from: node.into(),
+                    index: index.into(),
+                };
+                continue;
+            }
+
+            if self.chain_catch() {
+                node = AstNode::ChainCatch(node.into());
+                continue;
+            }
+
+            self.pos = savepoint;
+            break;
+        }
+
+        Ok(Some(node))
+    }
+
+    // First element in an expression chain:
+    //   - literals,
+    //   - list or object
+    //   - parenthesised expression
     pub(super) fn primary_expression(&mut self) -> ParseResult<Option<AstNode>> {
         if let Some(v) = self.this() {
             return Ok(Some(v));
@@ -47,6 +93,7 @@ impl<'a> Parser<'a> {
             return Ok(Some(AstNode::ObjectBuilder(v)));
         }
         if let Some(v) = self.parens_expression()? {
+            // FIXME: this in the wrong place for this!
             return Ok(Some(v));
         }
         Ok(None)
@@ -78,12 +125,109 @@ impl<'a> Parser<'a> {
 
         Ok(Some(expr))
     }
+
+    fn property_of(&mut self) -> ParseResult<Option<Identifier>> {
+        if !self.char(b'.') {
+            return Ok(None);
+        }
+
+        self.linespace();
+
+        let Some(ident) = self.identifier()? else {
+            return Err(SyntaxError::new(self.pos, EXPECTED_IDENTIFIER));
+        };
+
+        Ok(Some(ident))
+    }
+
+    fn index_of(&mut self) -> ParseResult<Option<AstNode>> {
+        if !self.char(b'[') {
+            return Ok(None);
+        }
+
+        self.linespace();
+
+        let Some(index) = self.expression()? else {
+            return Err(SyntaxError::new(self.pos, EXPECTED_EXPRESSION));
+        };
+
+        self.linespace();
+
+        if !self.char(b']') {
+            return Err(SyntaxError::new(self.pos, EXPECTED_COSING_BRACKET));
+        }
+
+        Ok(Some(index))
+    }
+
+    fn chain_catch(&mut self) -> bool {
+        self.char(b'?')
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::parser::{string::MISSING_END_QUOTE, tests::*};
+
+    #[test]
+    fn test_expr_ok() {
+        do_test_parser_some(Parser::expression, "-foo-", ident("foo").into(), 1);
+        do_test_parser_some(
+            Parser::expression,
+            "-foo.bar-",
+            prop_of(ident("foo").into(), "bar"),
+            1,
+        );
+        do_test_parser_some(
+            Parser::expression,
+            "-foo[\"bar\"]-",
+            index_of(ident("foo").into(), s("bar").into()),
+            1,
+        );
+        do_test_parser_some(
+            Parser::expression,
+            "-foo[bar]-",
+            index_of(ident("foo").into(), ident("bar").into()),
+            1,
+        );
+        do_test_parser_some(
+            Parser::expression,
+            "-foo?-",
+            chain_catch(ident("foo").into()),
+            1,
+        );
+        do_test_parser_some(
+            Parser::expression,
+            "-aa.bb[cc].dd[\"ee\"]?[66]-",
+            index_of(
+                chain_catch(index_of(
+                    prop_of(
+                        index_of(prop_of(ident("aa").into(), "bb"), ident("cc").into()),
+                        "dd",
+                    ),
+                    s("ee").into(),
+                )),
+                i(66).into(),
+            ),
+            1,
+        );
+        do_test_parser_some(
+            Parser::expression,
+            "-aa . bb [ cc ] . dd [ \"ee\" ] ? [ 66 ] -",
+            index_of(
+                chain_catch(index_of(
+                    prop_of(
+                        index_of(prop_of(ident("aa").into(), "bb"), ident("cc").into()),
+                        "dd",
+                    ),
+                    s("ee").into(),
+                )),
+                i(66).into(),
+            ),
+            2,
+        );
+    }
 
     #[test]
     fn test_parens_expr_ok() {

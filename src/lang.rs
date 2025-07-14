@@ -7,6 +7,15 @@ pub enum AstNode {
     Value(Value),
     ListBuilder(ListBuilder),
     ObjectBuilder(ObjectBuilder),
+    PropertyOf {
+        from: Box<AstNode>,
+        property: Identifier,
+    },
+    IndexOf {
+        from: Box<AstNode>,
+        index: Box<AstNode>,
+    },
+    ChainCatch(Box<AstNode>),
 }
 
 impl From<Identifier> for AstNode {
