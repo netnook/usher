@@ -26,7 +26,7 @@ fn test_nested() {
             (ident("the_d").into(), s("bar").into()),
         ])
         .into(),
-        1,
+        -1,
     );
     do_test_parser_some(
         Parser::expression,
@@ -35,6 +35,6 @@ fn test_nested() {
             ObjectBuilder::new(vec![(ident("a").into(), s("one").into())]).into(),
         ])
         .into(),
-        1,
+        -1,
     );
 }

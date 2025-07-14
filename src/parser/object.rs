@@ -102,20 +102,25 @@ mod tests {
             Parser::object,
             r#"-{a:1,b:nil,c:true,the_d:"bar"}-"#,
             expect.clone(),
-            1,
+            -1,
         );
         do_test_parser_some(
             Parser::object,
             r#"-{ a : 1 , b : nil , c : true , the_d : "bar" , }-"#,
             expect.clone(),
-            1,
+            -1,
         );
-        do_test_parser_some(Parser::object, r#"-{}-"#, ObjectBuilder::new(Vec::new()), 1);
+        do_test_parser_some(
+            Parser::object,
+            r#"-{}-"#,
+            ObjectBuilder::new(Vec::new()),
+            -1,
+        );
         do_test_parser_some(
             Parser::object,
             r#"-{   }-"#,
             ObjectBuilder::new(Vec::new()),
-            1,
+            -1,
         );
 
         do_test_parser_some(
@@ -133,7 +138,7 @@ mod tests {
                 ),
                 (ident("b").into(), i(3).into()),
             ]),
-            1,
+            -1,
         );
     }
 

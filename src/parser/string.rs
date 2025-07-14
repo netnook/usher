@@ -68,17 +68,17 @@ mod tests {
 
     #[test]
     fn test_strings() {
-        do_test_parser_some(Parser::string, r#"_"one"_"#, s("one"), 1);
-        do_test_parser_some(Parser::string, r#"_"one two"_"#, s("one two"), 1);
+        do_test_parser_some(Parser::string, r#"_"one"_"#, s("one"), -1);
+        do_test_parser_some(Parser::string, r#"_"one two"_"#, s("one two"), -1);
         do_test_parser_some(
             Parser::string,
             r#"_"\"aa\"\\\r\nbb\""_"#,
             s("\"aa\"\\\r\nbb\""),
-            1,
+            -1,
         );
 
-        do_test_parser_some(Parser::string, r#"_"true"_"#, s("true"), 1);
-        do_test_parser_some(Parser::string, r#"_"true"_"#, s("true"), 1);
+        do_test_parser_some(Parser::string, r#"_"true"_"#, s("true"), -1);
+        do_test_parser_some(Parser::string, r#"_"true"_"#, s("true"), -1);
 
         do_test_parser_none(Parser::string, r#"_one"_"#);
 

@@ -131,7 +131,7 @@ impl<'a> Parser<'a> {
             return Ok(None);
         }
 
-        self.linespace();
+        self.whitespace_comments();
 
         let Some(ident) = self.identifier()? else {
             return Err(SyntaxError::new(self.pos, EXPECTED_IDENTIFIER));
@@ -145,13 +145,13 @@ impl<'a> Parser<'a> {
             return Ok(None);
         }
 
-        self.linespace();
+        self.whitespace_comments();
 
         let Some(index) = self.expression()? else {
             return Err(SyntaxError::new(self.pos, EXPECTED_EXPRESSION));
         };
 
-        self.linespace();
+        self.whitespace_comments();
 
         if !self.char(b']') {
             return Err(SyntaxError::new(self.pos, EXPECTED_COSING_BRACKET));
@@ -172,30 +172,30 @@ mod tests {
 
     #[test]
     fn test_expr_ok() {
-        do_test_parser_some(Parser::expression, "-foo-", ident("foo").into(), 1);
+        do_test_parser_some(Parser::expression, "-foo-", ident("foo").into(), -1);
         do_test_parser_some(
             Parser::expression,
             "-foo.bar-",
             prop_of(ident("foo").into(), "bar"),
-            1,
+            -1,
         );
         do_test_parser_some(
             Parser::expression,
             "-foo[\"bar\"]-",
             index_of(ident("foo").into(), s("bar").into()),
-            1,
+            -1,
         );
         do_test_parser_some(
             Parser::expression,
             "-foo[bar]-",
             index_of(ident("foo").into(), ident("bar").into()),
-            1,
+            -1,
         );
         do_test_parser_some(
             Parser::expression,
             "-foo?-",
             chain_catch(ident("foo").into()),
-            1,
+            -1,
         );
         do_test_parser_some(
             Parser::expression,
@@ -210,7 +210,7 @@ mod tests {
                 )),
                 i(66).into(),
             ),
-            1,
+            -1,
         );
         do_test_parser_some(
             Parser::expression,
@@ -225,14 +225,47 @@ mod tests {
                 )),
                 i(66).into(),
             ),
-            2,
+            -2,
+        );
+        do_test_parser_some(
+            Parser::expression,
+            "-aa . #comment\n bb [ #comment\n cc #comment\n ] . #comment\n dd [ \"ee\" ] ? [ 66 ] -",
+            index_of(
+                chain_catch(index_of(
+                    prop_of(
+                        index_of(prop_of(ident("aa").into(), "bb"), ident("cc").into()),
+                        "dd",
+                    ),
+                    s("ee").into(),
+                )),
+                i(66).into(),
+            ),
+            -2,
+        );
+        do_test_parser_some(
+            Parser::expression,
+            "-aa #comment\n . foo -",
+            ident("aa").into(),
+            3,
+        );
+        do_test_parser_some(
+            Parser::expression,
+            "-aa #comment\n [1] -",
+            ident("aa").into(),
+            3,
+        );
+        do_test_parser_some(
+            Parser::expression,
+            "-aa #comment\n ? -",
+            ident("aa").into(),
+            3,
         );
     }
 
     #[test]
     fn test_parens_expr_ok() {
-        do_test_parser_some(Parser::parens_expression, "-(1)-", i(1).into(), 1);
-        do_test_parser_some(Parser::parens_expression, "-(((1)))-", i(1).into(), 1);
+        do_test_parser_some(Parser::parens_expression, "-(1)-", i(1).into(), -1);
+        do_test_parser_some(Parser::parens_expression, "-(((1)))-", i(1).into(), -1);
         do_test_parser_some(Parser::parens_expression, "-(((1)))", i(1).into(), 0);
     }
 

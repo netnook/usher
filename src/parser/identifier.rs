@@ -39,10 +39,10 @@ mod tests {
 
     #[test]
     fn test_identifiers() {
-        do_test_parser_some(Parser::identifier, "-one_TwO33_-", ident("one_TwO33_"), 1);
-        do_test_parser_some(Parser::identifier, "-one_TwO33_ ", ident("one_TwO33_"), 1);
+        do_test_parser_some(Parser::identifier, "-one_TwO33_-", ident("one_TwO33_"), -1);
+        do_test_parser_some(Parser::identifier, "-one_TwO33_ ", ident("one_TwO33_"), -1);
         do_test_parser_some(Parser::identifier, "-one_TwO33_", ident("one_TwO33_"), 0);
-        do_test_parser_some(Parser::identifier, "-o-", ident("o"), 1);
+        do_test_parser_some(Parser::identifier, "-o-", ident("o"), -1);
 
         do_test_parser_none(Parser::identifier, "-1-");
         do_test_parser_none(Parser::identifier, "-_-");

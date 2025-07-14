@@ -133,7 +133,7 @@ mod tests {
         func: F,
         input: &'static str,
         expected: Option<T>,
-        expected_remain: usize,
+        expected_end: isize,
     ) where
         F: FnOnce(&mut Parser<'a>) -> Result<Option<T>, SyntaxError>,
         T: PartialEq<T> + std::fmt::Debug,
@@ -145,11 +145,20 @@ mod tests {
 
         assert_eq!(actual, expected, "assert actual (left) == expected (right)");
 
-        let actual_remain = input.len() - parser.pos;
-        assert_eq!(
-            actual_remain, expected_remain,
-            "assert actual_remain ({actual_remain}) == expected_remaining ({expected_remain})"
-        );
+        if expected_end > 0 {
+            assert_eq!(
+                parser.pos, expected_end as usize,
+                "assert actual_end ({}) == expected_end ({expected_end})",
+                parser.pos
+            );
+        } else {
+            let actual_remain = input.len() - parser.pos;
+            let expected_remain = -expected_end as usize;
+            assert_eq!(
+                actual_remain, expected_remain,
+                "assert actual_remain ({actual_remain}) == expected_remaining ({expected_remain})"
+            );
+        }
     }
 
     #[track_caller]
@@ -157,12 +166,12 @@ mod tests {
         func: F,
         input: &'static str,
         expected: T,
-        expected_remain: usize,
+        expected_end: isize,
     ) where
         F: FnOnce(&mut Parser<'a>) -> Result<Option<T>, SyntaxError>,
         T: PartialEq<T> + std::fmt::Debug,
     {
-        do_test_parser_ok(func, input, Some(expected), expected_remain);
+        do_test_parser_ok(func, input, Some(expected), expected_end);
     }
 
     #[track_caller]
@@ -171,7 +180,7 @@ mod tests {
         F: FnOnce(&mut Parser<'a>) -> Result<Option<T>, SyntaxError>,
         T: PartialEq<T> + std::fmt::Debug,
     {
-        do_test_parser_ok(func, input, None, input.len() - 1);
+        do_test_parser_ok(func, input, None, 1);
     }
 
     #[track_caller]
