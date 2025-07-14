@@ -8,7 +8,7 @@ use crate::{
 fn test_nested() {
     do_test_parser_some(
         Parser::expression,
-        r#"-{a:{a:false b:"xxx"} b:nil c:[1 2 3] the_d:"bar"}-"#,
+        r#"-{a:{a:false, b:"xxx",} , b:nil, c:[1, 2, 3,], the_d:"bar"}-"#,
         ObjectBuilder::new(vec![
             (
                 ident("a").into(),

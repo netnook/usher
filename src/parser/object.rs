@@ -3,6 +3,7 @@ use crate::lang::ObjectBuilder;
 
 const MISSING_END_BRACKET: &str = "Missing closing '}'.";
 const EXPECTED_EXPRESSION_OR_CLOSE: &str = "Expected expression or '}'.";
+const EXPECTED_COMMA_OR_CLOSE: &str = "Expected ',' or '}'.";
 const EXPECTED_COLON: &str = "Expected ':' after key and before value.";
 const EXPECTED_VALUE_EXPRESSION: &str = "Expected expression for value.";
 
@@ -60,7 +61,24 @@ impl<'a> Parser<'a> {
 
             if self.char(b',') {
                 self.whitespace_comments();
+                continue;
             }
+
+            if self.char(b'}') {
+                break;
+            }
+
+            if self.is_eoi() {
+                return Err(SyntaxError {
+                    pos: start,
+                    msg: MISSING_END_BRACKET,
+                });
+            }
+
+            return Err(SyntaxError {
+                pos: self.pos,
+                msg: EXPECTED_COMMA_OR_CLOSE,
+            });
         }
 
         Ok(Some(ObjectBuilder::new(entries)))
@@ -82,23 +100,23 @@ mod tests {
         ]);
         do_test_parser_some(
             Parser::object,
-            r#"-{a:1 b:nil c:true the_d:"bar"}-"#,
+            r#"-{a:1,b:nil,c:true,the_d:"bar"}-"#,
             expect.clone(),
             1,
         );
         do_test_parser_some(
             Parser::object,
-            r#"-{a:1, b:nil, c:true, the_d:"bar"}-"#,
-            expect.clone(),
-            1,
-        );
-        do_test_parser_some(
-            Parser::object,
-            r#"-{ a:1 b:nil, c:true the_d:"bar", }-"#,
+            r#"-{ a : 1 , b : nil , c : true , the_d : "bar" , }-"#,
             expect.clone(),
             1,
         );
         do_test_parser_some(Parser::object, r#"-{}-"#, ObjectBuilder::new(Vec::new()), 1);
+        do_test_parser_some(
+            Parser::object,
+            r#"-{   }-"#,
+            ObjectBuilder::new(Vec::new()),
+            1,
+        );
 
         do_test_parser_some(
             Parser::object,
@@ -148,24 +166,14 @@ mod tests {
             9,
             EXPECTED_EXPRESSION_OR_CLOSE,
         );
-        do_test_parser_err(
-            Parser::object,
-            r#"-{ a:1 ; }-"#,
-            7,
-            EXPECTED_EXPRESSION_OR_CLOSE,
-        );
+        do_test_parser_err(Parser::object, r#"-{ a:1 ; }-"#, 7, EXPECTED_COMMA_OR_CLOSE);
         do_test_parser_err(
             Parser::object,
             r#"-{a:1, b:1, - "#,
             12,
             EXPECTED_EXPRESSION_OR_CLOSE,
         );
-        do_test_parser_err(
-            Parser::object,
-            r#"-{ a:1 ; }-"#,
-            7,
-            EXPECTED_EXPRESSION_OR_CLOSE,
-        );
+        do_test_parser_err(Parser::object, r#"-{ a:1 ; }-"#, 7, EXPECTED_COMMA_OR_CLOSE);
         // do_test_parser_err(Parser::object,r#"-{ a:1 [ }-"#, 7, EXPECTED_EXPRESSION_OR_CLOSE); // FIXME: don't allow list expressions as keys
 
         do_test_parser_err(Parser::object, r#"-{ a:1 , b 2, }-"#, 11, EXPECTED_COLON);
