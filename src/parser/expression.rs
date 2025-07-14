@@ -1,5 +1,5 @@
 use super::{ParseResult, Parser, SyntaxError};
-use crate::lang::{AstNode, Identifier};
+use crate::lang::{AstNode, Identifier, PrefixOp};
 
 const EXPECTED_EXPRESSION: &str = "Expected expression.";
 const EXPECTED_COSING_PARENS: &str = "Expected closing parenthesis ')'";
@@ -11,11 +11,44 @@ impl<'a> Parser<'a> {
     pub(super) fn expression(&mut self) -> ParseResult<Option<AstNode>> {
         // FIXME: this is a dummy implementation to enable other parsers
 
-        if let Some(v) = self.expression_chain()? {
+        if let Some(v) = self.prefix_expression()? {
             return Ok(Some(v));
         }
 
         Ok(None)
+    }
+
+    // Prefix expression
+    fn prefix_expression(&mut self) -> ParseResult<Option<AstNode>> {
+        let start = self.pos;
+
+        let mut prefixes = Vec::new();
+
+        loop {
+            if self.char(b'!') {
+                prefixes.push(PrefixOp::Not);
+                continue;
+            };
+            if self.char(b'-') {
+                prefixes.push(PrefixOp::Negative);
+                continue;
+            };
+            break;
+        }
+
+        let Some(mut node) = self.expression_chain()? else {
+            self.pos = start;
+            return Ok(None);
+        };
+
+        while let Some(op) = prefixes.pop() {
+            node = AstNode::PrefixOp {
+                of: node.into(),
+                op,
+            };
+        }
+
+        Ok(Some(node))
     }
 
     // Primary expression with chained operations:
@@ -23,7 +56,7 @@ impl<'a> Parser<'a> {
     // - index op or
     // - function call
     // Consumes and returns node or consumes nothing.
-    pub(super) fn expression_chain(&mut self) -> ParseResult<Option<AstNode>> {
+    fn expression_chain(&mut self) -> ParseResult<Option<AstNode>> {
         let Some(mut node) = self.primary_expression()? else {
             return Ok(None);
         };
@@ -64,7 +97,7 @@ impl<'a> Parser<'a> {
     //   - literals,
     //   - list or object
     //   - parenthesised expression
-    pub(super) fn primary_expression(&mut self) -> ParseResult<Option<AstNode>> {
+    fn primary_expression(&mut self) -> ParseResult<Option<AstNode>> {
         if let Some(v) = self.this() {
             return Ok(Some(v));
         }
@@ -101,7 +134,7 @@ impl<'a> Parser<'a> {
 
     // Parenthesised expression
     // "(" expr ")"
-    pub(super) fn parens_expression(&mut self) -> ParseResult<Option<AstNode>> {
+    fn parens_expression(&mut self) -> ParseResult<Option<AstNode>> {
         if !self.char(b'(') {
             return Ok(None);
         };
@@ -259,6 +292,17 @@ mod tests {
             "-aa #comment\n ? -",
             ident("aa").into(),
             3,
+        );
+        do_test_parser_some(Parser::expression, "--foo-", neg(ident("foo").into()), -1);
+        do_test_parser_some(Parser::expression, "-!foo-", not(ident("foo").into()), -1);
+        do_test_parser_some(
+            Parser::expression,
+            "--!-!!--foo.bar-",
+            neg(not(neg(not(not(neg(neg(prop_of(
+                ident("foo").into(),
+                "bar",
+            )))))))),
+            -1,
         );
     }
 

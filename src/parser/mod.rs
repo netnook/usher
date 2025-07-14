@@ -127,6 +127,18 @@ mod tests {
     pub(crate) fn chain_catch(from: AstNode) -> AstNode {
         AstNode::ChainCatch(from.into())
     }
+    pub(crate) fn neg(of: AstNode) -> AstNode {
+        AstNode::PrefixOp {
+            of: of.into(),
+            op: crate::lang::PrefixOp::Negative,
+        }
+    }
+    pub(crate) fn not(of: AstNode) -> AstNode {
+        AstNode::PrefixOp {
+            of: of.into(),
+            op: crate::lang::PrefixOp::Not,
+        }
+    }
 
     #[track_caller]
     pub(crate) fn do_test_parser_ok<'a, F, T>(

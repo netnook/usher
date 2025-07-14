@@ -15,6 +15,10 @@ pub enum AstNode {
         from: Box<AstNode>,
         index: Box<AstNode>,
     },
+    PrefixOp {
+        of: Box<AstNode>,
+        op: PrefixOp,
+    },
     ChainCatch(Box<AstNode>),
 }
 
@@ -99,6 +103,12 @@ impl Display for Value {
             Value::Nil => write!(f, "nil"),
         }
     }
+}
+
+#[derive(PartialEq, Debug, Clone)]
+pub enum PrefixOp {
+    Not,
+    Negative,
 }
 
 #[cfg(test)]
