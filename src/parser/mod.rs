@@ -61,24 +61,9 @@ impl<'a> Parser<'a> {
     }
 
     fn program(&mut self) -> ParseResult<()> {
-        // FIXME dummy code
-        self.char(b'a');
-        self.tag(b"aaa");
-        self.repeat(|_| false);
-        self.integer();
-        self.float();
-        self.boolean();
-        self.nil();
-        self.string().unwrap();
-        self.list().unwrap();
-        self.is_eoi();
-        self.is_eoi();
-        self.whitespace();
-        self.linespace();
-        self.comment();
+        // // FIXME dummy code
+        self.expression().unwrap();
         self.req(Self::string, "foo").unwrap();
-        self.identifier().unwrap();
-        self.whitespace_comments();
         let _ = self.req_whitespace_comments();
 
         Ok(())
