@@ -1,8 +1,8 @@
 use super::{ParseResult, Parser, SyntaxError};
-use crate::lang::ObjectBuilder;
+use crate::lang::{AstNode, ObjectBuilder};
 
 const MISSING_END_BRACKET: &str = "Missing closing '}'.";
-const EXPECTED_EXPRESSION_OR_CLOSE: &str = "Expected expression or '}'.";
+const EXPECTED_KEY_EXPRESSION_OR_CLOSE: &str = "Expected expression or '}'.";
 const EXPECTED_COMMA_OR_CLOSE: &str = "Expected ',' or '}'.";
 const EXPECTED_COLON: &str = "Expected ':' after key and before value.";
 const EXPECTED_VALUE_EXPRESSION: &str = "Expected expression for value.";
@@ -26,7 +26,7 @@ impl<'a> Parser<'a> {
                 break;
             }
 
-            let Some(key_expr) = self.expression()? else {
+            let Some(key_expr) = self.key()? else {
                 if self.is_eoi() {
                     return Err(SyntaxError {
                         pos: start,
@@ -35,7 +35,7 @@ impl<'a> Parser<'a> {
                 } else {
                     return Err(SyntaxError {
                         pos: self.pos,
-                        msg: EXPECTED_EXPRESSION_OR_CLOSE,
+                        msg: EXPECTED_KEY_EXPRESSION_OR_CLOSE,
                     });
                 }
             };
@@ -82,6 +82,35 @@ impl<'a> Parser<'a> {
         }
 
         Ok(Some(ObjectBuilder::new(entries)))
+    }
+
+    fn key(&mut self) -> ParseResult<Option<AstNode>> {
+        let start = self.pos;
+        let r = {
+            #[allow(clippy::if_same_then_else)]
+            #[allow(clippy::manual_map)]
+            if self.nil().is_some() {
+                None
+            } else if self.boolean().is_some() {
+                None
+            } else if let Some(id) = self.identifier()? {
+                Some(id.into())
+            } else if let Some(s) = self.string()? {
+                Some(s.into())
+            } else if let Some(i) = self.integer() {
+                Some(i.into())
+            } else {
+                None
+            }
+        };
+
+        match r {
+            Some(r) => Ok(Some(r)),
+            None => {
+                self.pos = start;
+                Ok(None)
+            }
+        }
     }
 }
 
@@ -157,29 +186,41 @@ mod tests {
             Parser::object,
             r#"-{ ; }-"#,
             3,
-            EXPECTED_EXPRESSION_OR_CLOSE,
+            EXPECTED_KEY_EXPRESSION_OR_CLOSE,
         );
         do_test_parser_err(
             Parser::object,
             r#"-{ , }-"#,
             3,
-            EXPECTED_EXPRESSION_OR_CLOSE,
+            EXPECTED_KEY_EXPRESSION_OR_CLOSE,
         );
         do_test_parser_err(
             Parser::object,
             r#"-{ a:1 , , }-"#,
             9,
-            EXPECTED_EXPRESSION_OR_CLOSE,
+            EXPECTED_KEY_EXPRESSION_OR_CLOSE,
         );
         do_test_parser_err(Parser::object, r#"-{ a:1 ; }-"#, 7, EXPECTED_COMMA_OR_CLOSE);
         do_test_parser_err(
             Parser::object,
             r#"-{a:1, b:1, - "#,
             12,
-            EXPECTED_EXPRESSION_OR_CLOSE,
+            EXPECTED_KEY_EXPRESSION_OR_CLOSE,
         );
         do_test_parser_err(Parser::object, r#"-{ a:1 ; }-"#, 7, EXPECTED_COMMA_OR_CLOSE);
-        // do_test_parser_err(Parser::object,r#"-{ a:1 [ }-"#, 7, EXPECTED_EXPRESSION_OR_CLOSE); // FIXME: don't allow list expressions as keys
+        do_test_parser_err(Parser::object, r#"-{ 1.1:1 ; }-"#, 4, EXPECTED_COLON);
+        do_test_parser_err(
+            Parser::object,
+            r#"-{ nil:1 ; }-"#,
+            3,
+            EXPECTED_KEY_EXPRESSION_OR_CLOSE,
+        );
+        do_test_parser_err(
+            Parser::object,
+            r#"-{ a:1, [ }-"#,
+            8,
+            EXPECTED_KEY_EXPRESSION_OR_CLOSE,
+        );
 
         do_test_parser_err(Parser::object, r#"-{ a:1 , b 2, }-"#, 11, EXPECTED_COLON);
 

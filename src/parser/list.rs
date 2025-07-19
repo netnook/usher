@@ -9,7 +9,6 @@ impl<'a> Parser<'a> {
     /// Consume a list if next on input and return it.
     /// Otherwise consume nothing and return `None`
     // list = { "[" expr* "]"}
-    // FIXME: require comma separator, but make it optional after last entry
     pub(super) fn list(&mut self) -> ParseResult<Option<ListBuilder>> {
         let start = self.pos;
         if !self.char(b'[') {

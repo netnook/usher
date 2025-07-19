@@ -12,7 +12,9 @@ mod this;
 mod utils;
 
 // FIXME: add all necessary keywords
-pub(crate) const RESERVED_KEYWORDS: [&str; 6] = ["print", "if", "else", "for", "in", "var"];
+pub(crate) const RESERVED_KEYWORDS: [&str; 9] = [
+    "print", "if", "else", "for", "in", "var", "true", "false", "nil",
+];
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct ParseError<'a> {
