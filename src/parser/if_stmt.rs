@@ -44,12 +44,10 @@ impl<'a> Parser<'a> {
             };
         };
 
-        let res = AstNode::IfElseStmt(IfElseStmt {
+        Ok(Some(AstNode::IfElseStmt(IfElseStmt {
             conditional_blocks,
             else_block,
-        });
-
-        Ok(Some(res))
+        })))
     }
 
     // if_condition_block

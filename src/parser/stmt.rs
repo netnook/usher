@@ -30,6 +30,9 @@ impl<'a> Parser<'a> {
         if let Some(res) = self.if_stmt()? {
             return Ok(Some(res));
         }
+        if let Some(res) = self.var_stmt()? {
+            return Ok(Some(res));
+        }
         if let Some(res) = self.expression()? {
             return Ok(Some(res));
         }

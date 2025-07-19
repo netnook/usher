@@ -1,0 +1,86 @@
+use super::{ParseResult, Parser, SyntaxError};
+use crate::lang::{AstNode, DeclarationStmt};
+
+const EXPECTED_IDENTIFIER: &str = "Expected identifier after 'var'.";
+const EXPECTED_EQUAL: &str = "Expected equals sign after identifier.";
+const EXPECTED_EXPRESSION: &str = "Expected expression.";
+
+impl<'a> Parser<'a> {
+    // "var" identifier = expr
+    pub(super) fn var_stmt(&mut self) -> ParseResult<Option<AstNode>> {
+        if !self.tag(b"var") {
+            return Ok(None);
+        };
+
+        self.req_whitespace_comments()?;
+
+        let Some(ident) = self.identifier()? else {
+            return Err(SyntaxError {
+                pos: self.pos,
+                msg: EXPECTED_IDENTIFIER,
+            });
+        };
+
+        self.linespace();
+
+        if !self.char(b'=') {
+            return Err(SyntaxError {
+                pos: self.pos,
+                msg: EXPECTED_EQUAL,
+            });
+        }
+
+        self.whitespace_comments();
+
+        let Some(value) = self.expression()? else {
+            return Err(SyntaxError {
+                pos: self.pos,
+                msg: EXPECTED_EXPRESSION,
+            });
+        };
+
+        Ok(Some(AstNode::DeclarationStmt(DeclarationStmt {
+            ident,
+            value: value.into(),
+        })))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::parser::comment::EXPECTED_WS_OR_COMMENT;
+    use crate::parser::tests::*;
+
+    #[track_caller]
+    fn do_test_var_ok(input: &'static str, expected: DeclarationStmt, expected_end: isize) {
+        do_test_parser_ok(Parser::var_stmt, input, Some(expected.into()), expected_end);
+    }
+    #[track_caller]
+    fn do_test_var_err(
+        input: &'static str,
+        expected_err_pos: usize,
+        expected_err_msg: &'static str,
+    ) {
+        do_test_parser_err(Parser::var_stmt, input, expected_err_pos, expected_err_msg);
+    }
+
+    #[test]
+    fn test_var() {
+        do_test_var_ok(" var a=x+2 ", var(id("a"), add(id("x"), i(2))), -1);
+        do_test_var_ok(" var a = x + 2 ", var(id("a"), add(id("x"), i(2))), -1);
+        do_test_var_ok(" var a = x + 2 ", var(id("a"), add(id("x"), i(2))), -1);
+        do_test_var_ok(
+            " var # comment \n a = # comment \n x + 2 ",
+            var(id("a"), add(id("x"), i(2))),
+            -1,
+        );
+
+        do_test_var_err(" vara=x+2 ", 4, EXPECTED_WS_OR_COMMENT);
+        do_test_var_err(" var a # comment \n = 1 ", 7, EXPECTED_EQUAL);
+        do_test_var_err(" var a +  = 1 ", 7, EXPECTED_EQUAL);
+        do_test_var_err(" var a = ; 1 ", 9, EXPECTED_EXPRESSION);
+
+        do_test_parser_none(Parser::var_stmt, " vir a = ; 1 ");
+    }
+}

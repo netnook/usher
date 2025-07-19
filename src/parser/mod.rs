@@ -1,6 +1,7 @@
 mod bool;
 mod chars;
 mod comment;
+mod declaration_stmt;
 mod expression;
 mod identifier;
 mod if_stmt;
@@ -76,7 +77,7 @@ mod tests {
 
     use super::SyntaxError;
     use crate::{
-        lang::{AstNode, BinaryOp, Identifier, UnaryOp, Value},
+        lang::{AstNode, BinaryOp, DeclarationStmt, Identifier, UnaryOp, Value},
         parser::Parser,
     };
     use pretty_assertions::assert_eq;
@@ -177,6 +178,12 @@ mod tests {
         }
     }
 
+    pub(crate) fn var(ident: Identifier, value: impl Into<AstNode>) -> DeclarationStmt {
+        DeclarationStmt {
+            ident,
+            value: value.into().into(),
+        }
+    }
     macro_rules! _if {
         ($(_cond($cond:expr, $block:expr)),+) => {{
             let conditional_blocks = vec![
