@@ -15,9 +15,14 @@ pub enum AstNode {
         from: Box<AstNode>,
         index: Box<AstNode>,
     },
-    PrefixOp {
-        of: Box<AstNode>,
-        op: PrefixOp,
+    UnaryOp {
+        op: UnaryOp,
+        on: Box<AstNode>,
+    },
+    BinaryOp {
+        op: BinaryOp,
+        lhs: Box<AstNode>,
+        rhs: Box<AstNode>,
     },
     ChainCatch(Box<AstNode>),
 }
@@ -106,9 +111,26 @@ impl Display for Value {
 }
 
 #[derive(PartialEq, Debug, Clone)]
-pub enum PrefixOp {
+pub enum UnaryOp {
     Not,
     Negative,
+}
+
+#[derive(PartialEq, Debug, Clone)]
+pub enum BinaryOp {
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Mod,
+    Equal,
+    NotEqual,
+    Greater,
+    GreaterOrEqual,
+    LessOrEqual,
+    Less,
+    And,
+    Or,
 }
 
 #[cfg(test)]

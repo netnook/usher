@@ -1,5 +1,5 @@
 use super::{ParseResult, Parser, SyntaxError};
-use crate::lang::{AstNode, Identifier, PrefixOp};
+use crate::lang::{AstNode, BinaryOp, Identifier, UnaryOp};
 
 const EXPECTED_EXPRESSION: &str = "Expected expression.";
 const EXPECTED_COSING_PARENS: &str = "Expected closing parenthesis ')'";
@@ -9,13 +9,144 @@ const EXPECTED_IDENTIFIER: &str = "Expected identifier.";
 impl<'a> Parser<'a> {
     /// Consume an expression or nothing.
     pub(super) fn expression(&mut self) -> ParseResult<Option<AstNode>> {
-        // FIXME: this is a dummy implementation to enable other parsers
-
-        if let Some(v) = self.prefix_expression()? {
+        if let Some(v) = self.logical_expression()? {
             return Ok(Some(v));
         }
 
         Ok(None)
+    }
+
+    // Logical and (&&), or (||) expression
+    fn logical_expression(&mut self) -> ParseResult<Option<AstNode>> {
+        self.infix_expression(Self::logical_op, Self::comparison_expression)
+    }
+
+    fn logical_op(&mut self) -> Option<BinaryOp> {
+        if self.tag(b"&&") {
+            Some(BinaryOp::And)
+        } else if self.tag(b"||") {
+            Some(BinaryOp::Or)
+        } else {
+            None
+        }
+    }
+
+    // Addition/subtraction expression
+    fn comparison_expression(&mut self) -> ParseResult<Option<AstNode>> {
+        let Some(mut lhs) = self.addsub_expression()? else {
+            return Ok(None);
+        };
+
+        let savepoint = self.pos;
+
+        self.linespace();
+
+        let op = if self.tag(b"==") {
+            BinaryOp::Equal
+        } else if self.tag(b"!=") {
+            BinaryOp::NotEqual
+        } else if self.tag(b">=") {
+            BinaryOp::GreaterOrEqual
+        } else if self.tag(b"<=") {
+            BinaryOp::LessOrEqual
+        } else if self.char(b'>') {
+            BinaryOp::Greater
+        } else if self.char(b'<') {
+            BinaryOp::Less
+        } else {
+            self.pos = savepoint;
+            return Ok(Some(lhs));
+        };
+
+        self.whitespace_comments();
+
+        let Some(rhs) = self.addsub_expression()? else {
+            return Err(SyntaxError {
+                pos: self.pos,
+                msg: EXPECTED_EXPRESSION,
+            });
+        };
+
+        lhs = AstNode::BinaryOp {
+            op,
+            lhs: lhs.into(),
+            rhs: rhs.into(),
+        };
+
+        Ok(Some(lhs))
+    }
+
+    // Addition/subtraction expression
+    fn addsub_expression(&mut self) -> ParseResult<Option<AstNode>> {
+        self.infix_expression(Self::addsub_op, Self::muldiv_expression)
+    }
+
+    fn addsub_op(&mut self) -> Option<BinaryOp> {
+        if self.char(b'+') {
+            Some(BinaryOp::Add)
+        } else if self.char(b'-') {
+            Some(BinaryOp::Sub)
+        } else {
+            None
+        }
+    }
+
+    // Multiplication/division/modulo expression
+    fn muldiv_expression(&mut self) -> ParseResult<Option<AstNode>> {
+        self.infix_expression(Self::muldiv_op, Self::prefix_expression)
+    }
+
+    fn muldiv_op(&mut self) -> Option<BinaryOp> {
+        if self.char(b'*') {
+            Some(BinaryOp::Mul)
+        } else if self.char(b'/') {
+            Some(BinaryOp::Div)
+        } else if self.char(b'%') {
+            Some(BinaryOp::Mod)
+        } else {
+            None
+        }
+    }
+
+    fn infix_expression<O, N>(
+        &mut self,
+        mut operator_fn: O,
+        mut next_fn: N,
+    ) -> ParseResult<Option<AstNode>>
+    where
+        O: FnMut(&mut Self) -> Option<BinaryOp>,
+        N: FnMut(&mut Self) -> ParseResult<Option<AstNode>>,
+    {
+        let Some(mut lhs) = next_fn(self)? else {
+            return Ok(None);
+        };
+
+        self.pos = loop {
+            let savepoint = self.pos;
+
+            self.linespace();
+
+            let Some(op) = operator_fn(self) else {
+                break savepoint;
+            };
+
+            self.whitespace_comments();
+
+            let Some(rhs) = next_fn(self)? else {
+                return Err(SyntaxError {
+                    pos: self.pos,
+                    msg: EXPECTED_EXPRESSION,
+                });
+            };
+
+            lhs = AstNode::BinaryOp {
+                op,
+                lhs: lhs.into(),
+                rhs: rhs.into(),
+            }
+        };
+
+        Ok(Some(lhs))
     }
 
     // Prefix expression
@@ -26,11 +157,11 @@ impl<'a> Parser<'a> {
 
         loop {
             if self.char(b'!') {
-                prefixes.push(PrefixOp::Not);
+                prefixes.push(UnaryOp::Not);
                 continue;
             };
             if self.char(b'-') {
-                prefixes.push(PrefixOp::Negative);
+                prefixes.push(UnaryOp::Negative);
                 continue;
             };
             break;
@@ -42,9 +173,9 @@ impl<'a> Parser<'a> {
         };
 
         while let Some(op) = prefixes.pop() {
-            node = AstNode::PrefixOp {
-                of: node.into(),
+            node = AstNode::UnaryOp {
                 op,
+                on: node.into(),
             };
         }
 
@@ -126,7 +257,6 @@ impl<'a> Parser<'a> {
             return Ok(Some(AstNode::ObjectBuilder(v)));
         }
         if let Some(v) = self.parens_expression()? {
-            // FIXME: this in the wrong place for this!
             return Ok(Some(v));
         }
         Ok(None)
@@ -203,136 +333,194 @@ mod tests {
     use super::*;
     use crate::parser::{string::MISSING_END_QUOTE, tests::*};
 
+    #[track_caller]
+    pub(crate) fn do_test_expr_ok(
+        input: &'static str,
+        expected: impl Into<AstNode>,
+        expected_end: isize,
+    ) {
+        do_test_parser_ok(
+            Parser::expression,
+            input,
+            Some(expected.into()),
+            expected_end,
+        );
+    }
+
     #[test]
     fn test_expr_ok() {
-        do_test_parser_some(Parser::expression, "-foo-", ident("foo").into(), -1);
-        do_test_parser_some(
-            Parser::expression,
-            "-foo.bar-",
-            prop_of(ident("foo").into(), "bar"),
-            -1,
-        );
-        do_test_parser_some(
-            Parser::expression,
-            "-foo[\"bar\"]-",
-            index_of(ident("foo").into(), s("bar").into()),
-            -1,
-        );
-        do_test_parser_some(
-            Parser::expression,
-            "-foo[bar]-",
-            index_of(ident("foo").into(), ident("bar").into()),
-            -1,
-        );
-        do_test_parser_some(
-            Parser::expression,
-            "-foo?-",
-            chain_catch(ident("foo").into()),
-            -1,
-        );
-        do_test_parser_some(
-            Parser::expression,
-            "-aa.bb[cc].dd[\"ee\"]?[66]-",
+        do_test_expr_ok(" foo ", id("foo"), -1);
+        do_test_expr_ok(" foo.bar ", prop_of(id("foo"), "bar"), -1);
+        do_test_expr_ok(" foo[\"bar\"] ", index_of(id("foo"), s("bar")), -1);
+        do_test_expr_ok(" foo[bar] ", index_of(id("foo"), id("bar")), -1);
+        do_test_expr_ok(" foo? ", chain_catch(id("foo")), -1);
+        do_test_expr_ok(
+            " aa.bb[cc].dd[\"ee\"]?[66] ",
             index_of(
                 chain_catch(index_of(
-                    prop_of(
-                        index_of(prop_of(ident("aa").into(), "bb"), ident("cc").into()),
-                        "dd",
-                    ),
-                    s("ee").into(),
+                    prop_of(index_of(prop_of(id("aa"), "bb"), id("cc")), "dd"),
+                    s("ee"),
                 )),
-                i(66).into(),
+                i(66),
             ),
             -1,
         );
-        do_test_parser_some(
-            Parser::expression,
-            "-aa . bb [ cc ] . dd [ \"ee\" ] ? [ 66 ] -",
+        do_test_expr_ok(
+            " aa . bb [ cc ] . dd [ \"ee\" ] ? [ 66 ]  ",
             index_of(
                 chain_catch(index_of(
-                    prop_of(
-                        index_of(prop_of(ident("aa").into(), "bb"), ident("cc").into()),
-                        "dd",
-                    ),
-                    s("ee").into(),
+                    prop_of(index_of(prop_of(id("aa"), "bb"), id("cc")), "dd"),
+                    s("ee"),
                 )),
-                i(66).into(),
+                i(66),
             ),
             -2,
         );
-        do_test_parser_some(
-            Parser::expression,
-            "-aa . #comment\n bb [ #comment\n cc #comment\n ] . #comment\n dd [ \"ee\" ] ? [ 66 ] -",
+        do_test_expr_ok(
+            " aa . #comment\n bb [ #comment\n cc #comment\n ] . #comment\n dd [ \"ee\" ] ? [ 66 ]  ",
             index_of(
                 chain_catch(index_of(
-                    prop_of(
-                        index_of(prop_of(ident("aa").into(), "bb"), ident("cc").into()),
-                        "dd",
-                    ),
-                    s("ee").into(),
+                    prop_of(index_of(prop_of(id("aa"), "bb"), id("cc")), "dd"),
+                    s("ee"),
                 )),
-                i(66).into(),
+                i(66),
             ),
             -2,
         );
-        do_test_parser_some(
-            Parser::expression,
-            "-aa #comment\n . foo -",
-            ident("aa").into(),
-            3,
+        do_test_expr_ok(" aa #comment\n . foo  ", id("aa"), 3);
+        do_test_expr_ok(" aa #comment\n [1]  ", id("aa"), 3);
+        do_test_expr_ok(" aa #comment\n ?  ", id("aa"), 3);
+
+        // unary prefix expressions
+        do_test_expr_ok(" -foo ", neg(id("foo")), -1);
+        do_test_expr_ok(" !foo ", not(id("foo")), -1);
+        do_test_expr_ok(
+            " -!-!!--foo.bar ",
+            neg(not(neg(not(not(neg(neg(prop_of(id("foo"), "bar")))))))),
+            -1,
         );
-        do_test_parser_some(
-            Parser::expression,
-            "-aa #comment\n [1] -",
-            ident("aa").into(),
-            3,
+
+        // math infix expressions
+        do_test_expr_ok(" a + b ", add(id("a"), id("b")), -1);
+        do_test_expr_ok(" a - b ", sub(id("a"), id("b")), -1);
+        do_test_expr_ok(" a * b ", mul(id("a"), id("b")), -1);
+        do_test_expr_ok(" a / b ", div(id("a"), id("b")), -1);
+        do_test_expr_ok(" a % b ", modulo(id("a"), id("b")), -1);
+
+        do_test_expr_ok(" a+b ", add(id("a"), id("b")), -1);
+        do_test_expr_ok(
+            " a + #comment\n \n b - #comment\n \n c ",
+            sub(add(id("a"), id("b")), id("c")),
+            -1,
         );
-        do_test_parser_some(
-            Parser::expression,
-            "-aa #comment\n ? -",
-            ident("aa").into(),
-            3,
+        do_test_expr_ok(
+            " a * #comment\n \n b / #comment\n \n c ",
+            div(mul(id("a"), id("b")), id("c")),
+            -1,
         );
-        do_test_parser_some(Parser::expression, "--foo-", neg(ident("foo").into()), -1);
-        do_test_parser_some(Parser::expression, "-!foo-", not(ident("foo").into()), -1);
-        do_test_parser_some(
-            Parser::expression,
-            "--!-!!--foo.bar-",
-            neg(not(neg(not(not(neg(neg(prop_of(
-                ident("foo").into(),
-                "bar",
-            )))))))),
+        do_test_expr_ok(
+            " a + b * c - d / e ",
+            sub(add(id("a"), mul(id("b"), id("c"))), div(id("d"), id("e"))),
+            -1,
+        );
+
+        // comparison expressions
+        do_test_expr_ok(" a == b ", equal(id("a"), id("b")), -1);
+        do_test_expr_ok(" a != b ", not_equal(id("a"), id("b")), -1);
+        do_test_expr_ok(" a < b ", less(id("a"), id("b")), -1);
+        do_test_expr_ok(" a > b ", greater(id("a"), id("b")), -1);
+        do_test_expr_ok(" a >= b ", greater_equal(id("a"), id("b")), -1);
+        do_test_expr_ok(" a <= b ", less_equal(id("a"), id("b")), -1);
+        do_test_expr_ok(" a<=b ", less_equal(id("a"), id("b")), -1);
+        do_test_expr_ok(
+            " a * b == c+d ",
+            equal(mul(id("a"), id("b")), add(id("c"), id("d"))),
+            -1,
+        );
+
+        do_test_expr_ok(" a == b ", equal(id("a"), id("b")), -1);
+        do_test_expr_ok(" a != b ", not_equal(id("a"), id("b")), -1);
+        do_test_expr_ok(" a < b ", less(id("a"), id("b")), -1);
+        do_test_expr_ok(" a > b ", greater(id("a"), id("b")), -1);
+        do_test_expr_ok(" a >= b ", greater_equal(id("a"), id("b")), -1);
+        do_test_expr_ok(" a <= b ", less_equal(id("a"), id("b")), -1);
+        do_test_expr_ok(" a == #comment\n \n b ", equal(id("a"), id("b")), -1);
+        do_test_expr_ok(
+            " a * b == c + d ",
+            equal(mul(id("a"), id("b")), add(id("c"), id("d"))),
+            -1,
+        );
+
+        // logical ops
+        do_test_expr_ok(" a && b ", and(id("a"), id("b")), -1);
+        do_test_expr_ok(" a || b ", or(id("a"), id("b")), -1);
+        do_test_expr_ok(" a||b ", or(id("a"), id("b")), -1);
+        do_test_expr_ok(" a || #comment \n b ", or(id("a"), id("b")), -1);
+        do_test_expr_ok(" a && b || c ", or(and(id("a"), id("b")), id("c")), -1);
+        do_test_expr_ok(
+            " a < b || c+d ",
+            or(less(id("a"), id("b")), add(id("c"), id("d"))),
+            -1,
+        );
+
+        // early ending (bad expressions)
+        do_test_expr_ok(" a=!b ", id("a"), 2);
+        do_test_expr_ok(" a=>b ", id("a"), 2);
+        do_test_expr_ok(" a + b #comment\n \n - c ", add(id("a"), id("b")), 6);
+        do_test_expr_ok(" a * b #comment\n \n / c ", mul(id("a"), id("b")), 6);
+        do_test_expr_ok(" a # comment \n == b ", id("a"), 2);
+        do_test_expr_ok(" a # comment \n && b ", id("a"), 2);
+        do_test_expr_ok(" a <= b == c ", less_equal(id("a"), id("b")), 7);
+
+        do_test_expr_ok(" (1>2)+3 ", add(greater(i(1), i(2)), i(3)), -1);
+        do_test_expr_ok(" 1>2+3 ", greater(i(1), add(i(2), i(3))), -1);
+
+        do_test_expr_ok(
+            r#" foo?.bar["baz" + 7] + 32 * 7 >= b.c * (x + y % z) || (3>4)+7 "#,
+            or(
+                greater_equal(
+                    add(
+                        index_of(prop_of(chain_catch(id("foo")), "bar"), add(s("baz"), i(7))),
+                        mul(i(32), i(7)),
+                    ),
+                    mul(
+                        prop_of(id("b"), "c"),
+                        add(id("x"), modulo(id("y"), id("z"))),
+                    ),
+                ),
+                add(greater(i(3), i(4)), i(7)),
+            ),
             -1,
         );
     }
 
     #[test]
     fn test_parens_expr_ok() {
-        do_test_parser_some(Parser::parens_expression, "-(1)-", i(1).into(), -1);
-        do_test_parser_some(Parser::parens_expression, "-(((1)))-", i(1).into(), -1);
-        do_test_parser_some(Parser::parens_expression, "-(((1)))", i(1).into(), 0);
+        do_test_expr_ok(" (1) ", i(1), -1);
+        do_test_expr_ok(" (((1))) ", i(1), -1);
+        do_test_expr_ok(" (((1)))", i(1), 0);
     }
 
     #[test]
     fn test_parens_expr_none() {
-        do_test_parser_none(Parser::parens_expression, "--");
+        do_test_parser_none(Parser::parens_expression, "  ");
     }
 
     #[test]
     fn test_parens_expr_err() {
         do_test_parser_err(
             Parser::parens_expression,
-            "-(((1)]-",
+            " (((1)] ",
             6,
             EXPECTED_COSING_PARENS,
         );
         do_test_parser_err(
             Parser::parens_expression,
-            "-(((1",
+            " (((1",
             5,
             EXPECTED_COSING_PARENS,
         );
-        do_test_parser_err(Parser::parens_expression, "-(;", 2, EXPECTED_EXPRESSION);
-        do_test_parser_err(Parser::parens_expression, "-(((\"..", 4, MISSING_END_QUOTE);
+        do_test_parser_err(Parser::parens_expression, " (;", 2, EXPECTED_EXPRESSION);
+        do_test_parser_err(Parser::parens_expression, " (((\"..", 4, MISSING_END_QUOTE);
     }
 }

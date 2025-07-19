@@ -89,7 +89,7 @@ mod tests {
 
     use super::SyntaxError;
     use crate::{
-        lang::{AstNode, Identifier, Value},
+        lang::{AstNode, BinaryOp, Identifier, UnaryOp, Value},
         parser::Parser,
     };
     use pretty_assertions::assert_eq;
@@ -109,34 +109,84 @@ mod tests {
     pub(crate) fn this() -> AstNode {
         AstNode::This
     }
-    pub(crate) fn ident(s: &str) -> Identifier {
+    pub(crate) fn id(s: &str) -> Identifier {
         Identifier::new(s)
     }
-    pub(crate) fn prop_of(from: AstNode, prop: &str) -> AstNode {
+    pub(crate) fn prop_of(from: impl Into<AstNode>, prop: &str) -> AstNode {
         AstNode::PropertyOf {
-            from: from.into(),
-            property: ident(prop),
+            from: from.into().into(),
+            property: id(prop),
         }
     }
-    pub(crate) fn index_of(from: AstNode, index: AstNode) -> AstNode {
+    pub(crate) fn index_of(from: impl Into<AstNode>, index: impl Into<AstNode>) -> AstNode {
         AstNode::IndexOf {
-            from: from.into(),
-            index: index.into(),
+            from: from.into().into(),
+            index: index.into().into(),
         }
     }
-    pub(crate) fn chain_catch(from: AstNode) -> AstNode {
-        AstNode::ChainCatch(from.into())
+    pub(crate) fn chain_catch(from: impl Into<AstNode>) -> AstNode {
+        AstNode::ChainCatch(from.into().into())
     }
-    pub(crate) fn neg(of: AstNode) -> AstNode {
-        AstNode::PrefixOp {
-            of: of.into(),
-            op: crate::lang::PrefixOp::Negative,
+    pub(crate) fn neg(on: impl Into<AstNode>) -> AstNode {
+        AstNode::UnaryOp {
+            on: on.into().into(),
+            op: UnaryOp::Negative,
         }
     }
-    pub(crate) fn not(of: AstNode) -> AstNode {
-        AstNode::PrefixOp {
-            of: of.into(),
-            op: crate::lang::PrefixOp::Not,
+    pub(crate) fn not(on: impl Into<AstNode>) -> AstNode {
+        AstNode::UnaryOp {
+            op: UnaryOp::Not,
+            on: on.into().into(),
+        }
+    }
+    pub(crate) fn add(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> AstNode {
+        binary(BinaryOp::Add, lhs, rhs)
+    }
+    pub(crate) fn sub(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> AstNode {
+        binary(BinaryOp::Sub, lhs, rhs)
+    }
+    pub(crate) fn mul(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> AstNode {
+        binary(BinaryOp::Mul, lhs, rhs)
+    }
+    pub(crate) fn div(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> AstNode {
+        binary(BinaryOp::Div, lhs, rhs)
+    }
+    pub(crate) fn modulo(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> AstNode {
+        binary(BinaryOp::Mod, lhs, rhs)
+    }
+    pub(crate) fn equal(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> AstNode {
+        binary(BinaryOp::Equal, lhs, rhs)
+    }
+    pub(crate) fn not_equal(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> AstNode {
+        binary(BinaryOp::NotEqual, lhs, rhs)
+    }
+    pub(crate) fn greater(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> AstNode {
+        binary(BinaryOp::Greater, lhs, rhs)
+    }
+    pub(crate) fn greater_equal(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> AstNode {
+        binary(BinaryOp::GreaterOrEqual, lhs, rhs)
+    }
+    pub(crate) fn less(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> AstNode {
+        binary(BinaryOp::Less, lhs, rhs)
+    }
+    pub(crate) fn less_equal(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> AstNode {
+        binary(BinaryOp::LessOrEqual, lhs, rhs)
+    }
+    pub(crate) fn and(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> AstNode {
+        binary(BinaryOp::And, lhs, rhs)
+    }
+    pub(crate) fn or(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> AstNode {
+        binary(BinaryOp::Or, lhs, rhs)
+    }
+    pub(crate) fn binary(
+        op: BinaryOp,
+        lhs: impl Into<AstNode>,
+        rhs: impl Into<AstNode>,
+    ) -> AstNode {
+        AstNode::BinaryOp {
+            op,
+            lhs: lhs.into().into(),
+            rhs: rhs.into().into(),
         }
     }
 

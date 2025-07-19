@@ -34,15 +34,15 @@ impl<'a> Parser<'a> {
 mod tests {
     use super::*;
     use crate::parser::tests::{
-        do_test_parser_err, do_test_parser_none, do_test_parser_some, ident,
+        do_test_parser_err, do_test_parser_none, do_test_parser_some, id,
     };
 
     #[test]
     fn test_identifiers() {
-        do_test_parser_some(Parser::identifier, "-one_TwO33_-", ident("one_TwO33_"), -1);
-        do_test_parser_some(Parser::identifier, "-one_TwO33_ ", ident("one_TwO33_"), -1);
-        do_test_parser_some(Parser::identifier, "-one_TwO33_", ident("one_TwO33_"), 0);
-        do_test_parser_some(Parser::identifier, "-o-", ident("o"), -1);
+        do_test_parser_some(Parser::identifier, "-one_TwO33_-", id("one_TwO33_"), -1);
+        do_test_parser_some(Parser::identifier, "-one_TwO33_ ", id("one_TwO33_"), -1);
+        do_test_parser_some(Parser::identifier, "-one_TwO33_", id("one_TwO33_"), 0);
+        do_test_parser_some(Parser::identifier, "-o-", id("o"), -1);
 
         do_test_parser_none(Parser::identifier, "-1-");
         do_test_parser_none(Parser::identifier, "-_-");

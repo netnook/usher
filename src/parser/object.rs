@@ -93,10 +93,10 @@ mod tests {
     #[test]
     fn test_object_ok() {
         let expect = ObjectBuilder::new(vec![
-            (ident("a").into(), i(1).into()),
-            (ident("b").into(), nil().into()),
-            (ident("c").into(), b(true).into()),
-            (ident("the_d").into(), s("bar").into()),
+            (id("a").into(), i(1).into()),
+            (id("b").into(), nil().into()),
+            (id("c").into(), b(true).into()),
+            (id("the_d").into(), s("bar").into()),
         ]);
         do_test_parser_some(
             Parser::object,
@@ -128,15 +128,15 @@ mod tests {
             r#"-{ a: { aa:1, ab:2, ac: {}}, b:3}-"#,
             ObjectBuilder::new(vec![
                 (
-                    ident("a").into(),
+                    id("a").into(),
                     ObjectBuilder::new(vec![
-                        (ident("aa").into(), i(1).into()),
-                        (ident("ab").into(), i(2).into()),
-                        (ident("ac").into(), ObjectBuilder::new(Vec::new()).into()),
+                        (id("aa").into(), i(1).into()),
+                        (id("ab").into(), i(2).into()),
+                        (id("ac").into(), ObjectBuilder::new(Vec::new()).into()),
                     ])
                     .into(),
                 ),
-                (ident("b").into(), i(3).into()),
+                (id("b").into(), i(3).into()),
             ]),
             -1,
         );
