@@ -9,6 +9,7 @@ impl<'a> Parser<'a> {
     /// Consume a string if next on input and return it.
     /// Otherwise consume nothing and return `None`
     // FIXME - handle interpolation !!!
+    // FIXME - handle non-ascii chars !!!
     pub(super) fn string(&mut self) -> ParseResult<Option<Value>> {
         let start = self.pos;
 

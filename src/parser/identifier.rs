@@ -9,6 +9,7 @@ pub(super) const KEYWORD_RESERVED: &str = "Keyword reserved and may not be used 
 impl<'a> Parser<'a> {
     /// Consume a identifie if next on input and return it.
     /// Otherwise consume nothing and return `None`
+    // FIXME - handle non-ascii chars !!!
     pub(super) fn identifier(&mut self) -> ParseResult<Option<Identifier>> {
         let start = self.pos;
 
@@ -33,9 +34,7 @@ impl<'a> Parser<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::tests::{
-        do_test_parser_err, do_test_parser_none, do_test_parser_some, id,
-    };
+    use crate::parser::tests::{do_test_parser_err, do_test_parser_none, do_test_parser_some, id};
 
     #[test]
     fn test_identifiers() {

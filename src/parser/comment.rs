@@ -1,26 +1,51 @@
-use super::{ParseResult, Parser, SyntaxError};
+use super::{ParseResult, Parser, SyntaxError, chars::WhitespaceDetailed};
+
+pub(crate) const EXPECTED_WS_OR_COMMENT: &str = "Expected whitespace or comment.";
 
 impl<'a> Parser<'a> {
     /// Consume as much whitespace and comments as possible.  Return an error
     /// if neither is found.
     pub(super) fn req_whitespace_comments(&mut self) -> ParseResult<()> {
-        let start = self.pos;
-        self.whitespace_comments();
-        if self.pos > start {
+        if self.whitespace_comments() {
             Ok(())
         } else {
-            Err(SyntaxError::new(start, "Expected whitespace or comment."))
+            Err(SyntaxError::new(self.pos, EXPECTED_WS_OR_COMMENT))
         }
     }
 
     /// Consume as much whitespace and comments as possible.
-    pub(super) fn whitespace_comments(&mut self) {
+    // FIXME: replace all occurrences with `whitespace_comments_detailed` ? - check performance
+    pub(super) fn whitespace_comments(&mut self) -> bool {
+        let start = self.pos;
         loop {
             self.whitespace();
             if !self.comment() {
                 break;
             }
         }
+        self.pos > start
+    }
+
+    /// Consume as much whitespace and comments as possible.
+    pub(super) fn whitespace_comments_detailed(&mut self) -> WhitespaceDetailed {
+        let mut result = WhitespaceDetailed {
+            newline: false,
+            any: false,
+        };
+
+        loop {
+            let d = self.whitespace_detailed();
+            result.newline |= d.newline;
+            result.any |= d.any;
+            if self.comment() {
+                result.newline = true;
+                result.any = true;
+            } else {
+                break;
+            }
+        }
+
+        result
     }
 
     /// Consume a single comment (including trailing CRLF) if it appears next in the input,
@@ -71,7 +96,8 @@ mod tests {
     fn do_test_whitespace_comments(input: &str, expect_len: usize, expect_next: u8) {
         let mut p = Parser::new(input);
         p.pos = 1;
-        p.whitespace_comments();
+        let r = p.whitespace_comments();
+        assert_eq!(r, expect_len > 0);
         assert_eq!(p.pos, expect_len + 1);
         assert_eq!(p.peek(), expect_next);
     }
@@ -95,35 +121,109 @@ mod tests {
     }
 
     #[track_caller]
-    fn do_test_req_whitespace_comments(input: &str, expect_len: usize, expect_next: u8) {
+    fn do_test_whitespace_comments_detailed(
+        input: &str,
+        expected_end: isize,
+        expected_newline: bool,
+    ) {
+        let mut parser = Parser::new(input);
+        parser.pos = 1;
+        let actual = parser.whitespace_comments_detailed();
+        // assert_eq!(p.pos, expect_len + 1);
+        // assert_eq!(p.peek(), expect_next);
+        if expected_end > 0 {
+            assert_eq!(
+                parser.pos, expected_end as usize,
+                "assert actual_end ({}) == expected_end ({expected_end})",
+                parser.pos
+            );
+        } else {
+            let actual_remain = input.len() - parser.pos;
+            let expected_remain = -expected_end as usize;
+            assert_eq!(
+                actual_remain, expected_remain,
+                "assert actual_remain ({actual_remain}) == expected_remaining ({expected_remain})"
+            );
+        }
+        assert_eq!(
+            actual,
+            WhitespaceDetailed {
+                newline: expected_newline,
+                any: expected_end != 1
+            }
+        )
+    }
+
+    #[test]
+    fn test_whitespace_comments_detailed() {
+        do_test_whitespace_comments_detailed("-not a comment-", 1, false);
+        do_test_whitespace_comments_detailed("-", 1, false);
+        do_test_whitespace_comments_detailed("-# a comment", 0, true);
+        do_test_whitespace_comments_detailed("-# a comment\n-", -1, true);
+        do_test_whitespace_comments_detailed(
+            "-# first comment\n# second comment\nnot a comment",
+            -13,
+            true,
+        );
+        do_test_whitespace_comments_detailed(
+            "-  \n # first comment\n  \r\n  \n  \r # second comment  \n  x not a comment",
+            -15,
+            true,
+        );
+    }
+
+    #[track_caller]
+    fn do_test_req_whitespace_comments_ok(input: &str, expected_end: isize) {
+        let mut parser = Parser::new(input);
+        parser.pos = 1;
+
+        assert!(parser.req_whitespace_comments().is_ok());
+
+        if expected_end > 0 {
+            assert_eq!(
+                parser.pos, expected_end as usize,
+                "assert actual_end ({}) == expected_end ({expected_end})",
+                parser.pos
+            );
+        } else {
+            let actual_remain = input.len() - parser.pos;
+            let expected_remain = -expected_end as usize;
+            assert_eq!(
+                actual_remain, expected_remain,
+                "assert actual_remain ({actual_remain}) == expected_remaining ({expected_remain})"
+            );
+        }
+    }
+
+    #[track_caller]
+    fn do_test_req_whitespace_comments_err(input: &str) {
         let mut p = Parser::new(input);
         p.pos = 1;
 
-        if expect_len > 0 {
-            assert!(p.req_whitespace_comments().is_ok());
-            assert_eq!(p.pos, expect_len + 1);
-        } else {
-            assert!(p.req_whitespace_comments().is_err());
-            assert_eq!(p.pos, 1);
-        }
-        assert_eq!(p.peek(), expect_next);
+        assert_eq!(
+            p.req_whitespace_comments()
+                .expect_err("expected syntax error"),
+            SyntaxError {
+                pos: 1,
+                msg: EXPECTED_WS_OR_COMMENT
+            }
+        );
+        assert_eq!(p.pos, 1);
     }
 
     #[test]
     fn test_req_whitespace_comments() {
-        do_test_req_whitespace_comments("-not a comment-", 0, b'n');
-        do_test_req_whitespace_comments("-", 0, 0);
-        do_test_req_whitespace_comments("-# a comment", 11, 0);
-        do_test_req_whitespace_comments("-# a comment\n-", 12, b'-');
-        do_test_req_whitespace_comments(
+        do_test_req_whitespace_comments_err("-not a comment-");
+        do_test_req_whitespace_comments_err("-");
+        do_test_req_whitespace_comments_ok("-# a comment", 0);
+        do_test_req_whitespace_comments_ok("-# a comment\n-", -1);
+        do_test_req_whitespace_comments_ok(
             "-# first comment\n# second comment\nnot a comment",
-            33,
-            b'n',
+            -13,
         );
-        do_test_req_whitespace_comments(
+        do_test_req_whitespace_comments_ok(
             "-  \n # first comment\n  \r\n  \n  \r # second comment  \n  x not a comment",
-            52,
-            b'x',
+            -15,
         );
     }
 }

@@ -25,6 +25,7 @@ pub enum AstNode {
         rhs: Box<AstNode>,
     },
     ChainCatch(Box<AstNode>),
+    IfElseStmt(IfElseStmt),
 }
 
 impl From<Identifier> for AstNode {
@@ -48,6 +49,12 @@ impl From<ListBuilder> for AstNode {
 impl From<ObjectBuilder> for AstNode {
     fn from(value: ObjectBuilder) -> Self {
         Self::ObjectBuilder(value)
+    }
+}
+
+impl From<IfElseStmt> for AstNode {
+    fn from(value: IfElseStmt) -> Self {
+        Self::IfElseStmt(value)
     }
 }
 
@@ -131,6 +138,23 @@ pub enum BinaryOp {
     Less,
     And,
     Or,
+}
+
+#[derive(PartialEq, Debug, Clone)]
+pub struct IfElseStmt {
+    pub conditional_blocks: Vec<ConditionalBlock>,
+    pub else_block: Option<Block>,
+}
+
+#[derive(PartialEq, Debug, Clone)]
+pub struct ConditionalBlock {
+    pub condition: AstNode,
+    pub block: Block,
+}
+
+#[derive(PartialEq, Debug, Clone)]
+pub struct Block {
+    pub stmts: Vec<AstNode>,
 }
 
 #[cfg(test)]

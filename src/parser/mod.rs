@@ -3,10 +3,12 @@ mod chars;
 mod comment;
 mod expression;
 mod identifier;
+mod if_stmt;
 mod list;
 mod nil;
 mod numbers;
 mod object;
+mod stmt;
 mod string;
 mod this;
 mod utils;
@@ -62,9 +64,7 @@ impl<'a> Parser<'a> {
 
     fn program(&mut self) -> ParseResult<()> {
         // // FIXME dummy code
-        self.expression().unwrap();
-        self.req(Self::string, "foo").unwrap();
-        let _ = self.req_whitespace_comments();
+        self.stmts().unwrap();
 
         Ok(())
     }
@@ -176,6 +176,41 @@ mod tests {
             rhs: rhs.into().into(),
         }
     }
+
+    macro_rules! _if {
+        ($(_cond($cond:expr, $block:expr)),+) => {{
+            let conditional_blocks = vec![
+                $(
+                    ConditionalBlock {
+                        condition: $cond.into(),
+                        block: $block.into(),
+                    }
+                ),+
+            ];
+            IfElseStmt{
+                conditional_blocks,
+                else_block: None,
+            }
+        }};
+        ($(_cond($cond:expr, $block:expr)),+ , _else($else_block:expr)) => {{
+            let stmt =_if!($(_cond($cond, $block)),*);
+            IfElseStmt {
+                conditional_blocks : stmt.conditional_blocks ,
+                else_block: $else_block.into(),
+            }
+        }};
+    }
+    pub(crate) use _if;
+
+    macro_rules! _block{
+        ($($stmt:expr),+) => {{
+            use crate::lang::Block;
+            Block{
+                stmts:vec![$($stmt.into()),+]
+            }
+        }};
+    }
+    pub(crate) use _block;
 
     #[track_caller]
     pub(crate) fn do_test_parser_ok<'a, F, T>(

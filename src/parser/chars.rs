@@ -89,8 +89,36 @@ impl<'a> Parser<'a> {
 
     /// Consume as many space, tab, CR and LF chacters as possible.
     /// Return the number of characters consumed.
+    // FIXME: replace all occurrences with `whitespace_detailed` ? - check performance
     pub(super) fn whitespace(&mut self) -> usize {
         self.repeat(|c| c == b' ' || c == b'\t' || c == b'\r' || c == b'\n')
+    }
+
+    /// Consume as many space, tab, CR and LF chacters as possible.
+    /// Return the number of characters consumed.
+    pub(super) fn whitespace_detailed(&mut self) -> WhitespaceDetailed {
+        let mut result = WhitespaceDetailed {
+            newline: false,
+            any: false,
+        };
+
+        let mut pos = self.pos;
+        let len = self.input.len();
+        while pos < len {
+            let c = self.input[pos];
+            if c == b' ' || c == b'\t' {
+                result.any = true;
+            } else if c == b'\n' || c == b'\r' {
+                result.newline = true;
+                result.any = true;
+            } else {
+                break;
+            };
+            pos += 1;
+        }
+        self.pos = pos;
+
+        result
     }
 
     /// Peek at the next byte in the input without consuming it.
@@ -116,6 +144,12 @@ pub(super) fn is_alpha(c: u8) -> bool {
 
 pub(super) fn is_alphanumeric(c: u8) -> bool {
     c.is_ascii_alphabetic() || c.is_ascii_digit()
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) struct WhitespaceDetailed {
+    pub(crate) newline: bool,
+    pub(crate) any: bool,
 }
 
 #[cfg(test)]
@@ -239,6 +273,35 @@ mod tests {
         do_test_whitespace("-  \n \n", 5);
         do_test_whitespace("-xxx", 0);
         do_test_whitespace("-", 0);
+    }
+
+    #[track_caller]
+    fn do_test_whitespace_detailed(input: &str, expect_count: usize, expect_newline: bool) {
+        let mut p = Parser::new(input);
+        p.pos = 1;
+
+        assert_eq!(
+            p.whitespace_detailed(),
+            WhitespaceDetailed {
+                newline: expect_newline,
+                any: expect_count > 0
+            }
+        );
+        assert_eq!(p.pos, 1 + expect_count);
+    }
+
+    #[test]
+    fn test_whitespace_detailed() {
+        do_test_whitespace_detailed("-  -", 2, false);
+        do_test_whitespace_detailed("-\t\t-", 2, false);
+        do_test_whitespace_detailed("-\r\r-", 2, true);
+        do_test_whitespace_detailed("-\n\n-", 2, true);
+        do_test_whitespace_detailed("-\t\t\n  -", 5, true);
+        do_test_whitespace_detailed("-\t\t\r  -", 5, true);
+        do_test_whitespace_detailed("-  \t \t abc--", 6, false);
+        do_test_whitespace_detailed("-  \n \n", 5, true);
+        do_test_whitespace_detailed("-xxx", 0, false);
+        do_test_whitespace_detailed("-", 0, false);
     }
 
     #[track_caller]
