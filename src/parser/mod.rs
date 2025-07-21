@@ -2,6 +2,7 @@ mod bool;
 mod chars;
 mod comment;
 mod declaration_stmt;
+mod error;
 mod expression;
 mod identifier;
 mod if_stmt;
@@ -14,25 +15,22 @@ mod string;
 mod this;
 mod utils;
 
+use error::{ParseError, build_parse_error};
+
 // FIXME: add all necessary keywords
 pub(crate) const RESERVED_KEYWORDS: [&str; 9] = [
     "print", "if", "else", "for", "in", "var", "true", "false", "nil",
 ];
 
-#[derive(Debug, PartialEq, Eq)]
-pub struct ParseError<'a> {
-    pub line_no: usize,
-    pub char_no: usize,
-    pub line: &'a str,
-    pub msg: &'static str,
-}
-
 pub fn parse(input: &str) -> Result<(), ParseError> {
     let mut p = Parser::new(input);
 
-    p.program().expect("FIXME");
+    match p.program() {
+        Ok(p) => p,
+        Err(se) => return Err(build_parse_error(input, se)),
+    };
 
-    todo!();
+    Ok(())
 }
 
 #[derive(Debug, PartialEq, Eq)]
