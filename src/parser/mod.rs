@@ -4,6 +4,7 @@ mod comment;
 mod declaration_stmt;
 mod error;
 mod expression;
+mod for_stmt;
 mod identifier;
 mod if_stmt;
 mod list;
@@ -75,7 +76,7 @@ mod tests {
 
     use super::SyntaxError;
     use crate::{
-        lang::{AstNode, BinaryOp, DeclarationStmt, Identifier, UnaryOp, Value},
+        lang::{AstNode, BinaryOp, Block, DeclarationStmt, ForStmt, Identifier, UnaryOp, Value},
         parser::Parser,
     };
     use pretty_assertions::assert_eq;
@@ -180,6 +181,19 @@ mod tests {
         DeclarationStmt {
             ident,
             value: value.into().into(),
+        }
+    }
+    pub(crate) fn _for(
+        ident1: Identifier,
+        ident2: Option<Identifier>,
+        expr: impl Into<AstNode>,
+        block: Block,
+    ) -> ForStmt {
+        ForStmt {
+            loop_var_1: ident1,
+            loop_var_2: ident2,
+            loop_expr: expr.into().into(),
+            block,
         }
     }
     macro_rules! _if {

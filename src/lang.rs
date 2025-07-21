@@ -26,6 +26,7 @@ pub enum AstNode {
     },
     ChainCatch(Box<AstNode>),
     IfElseStmt(IfElseStmt),
+    ForStmt(ForStmt),
     DeclarationStmt(DeclarationStmt),
 }
 
@@ -56,6 +57,11 @@ impl From<ObjectBuilder> for AstNode {
 impl From<IfElseStmt> for AstNode {
     fn from(value: IfElseStmt) -> Self {
         Self::IfElseStmt(value)
+    }
+}
+impl From<ForStmt> for AstNode {
+    fn from(value: ForStmt) -> Self {
+        Self::ForStmt(value)
     }
 }
 impl From<DeclarationStmt> for AstNode {
@@ -155,6 +161,14 @@ pub struct IfElseStmt {
 #[derive(PartialEq, Debug, Clone)]
 pub struct ConditionalBlock {
     pub condition: AstNode,
+    pub block: Block,
+}
+
+#[derive(PartialEq, Debug, Clone)]
+pub struct ForStmt {
+    pub loop_var_1: Identifier,
+    pub loop_var_2: Option<Identifier>,
+    pub loop_expr: Box<AstNode>,
     pub block: Block,
 }
 

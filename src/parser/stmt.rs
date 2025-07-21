@@ -30,9 +30,15 @@ impl<'a> Parser<'a> {
         if let Some(res) = self.if_stmt()? {
             return Ok(Some(res));
         }
+        if let Some(res) = self.for_stmt()? {
+            return Ok(Some(res));
+        }
         if let Some(res) = self.var_stmt()? {
             return Ok(Some(res));
         }
+        // FIXME: assignment or expression stmt
+        // FIXME: binary run exppression
+        // FIXME: function declaration statement
         if let Some(res) = self.expression()? {
             return Ok(Some(res));
         }
