@@ -1,5 +1,8 @@
 use super::{ParseResult, Parser, SyntaxError};
-use crate::lang::{AstNode, BinaryOp, Identifier, UnaryOp};
+use crate::lang::{
+    AstNode, BinaryOp, BinaryOpCode, ChainCatch, Identifier, IndexOf, PropertyOf, UnaryOp,
+    UnaryOpCode,
+};
 
 const EXPECTED_EXPRESSION: &str = "Expected expression.";
 const EXPECTED_COSING_PARENS: &str = "Expected closing parenthesis ')'";
@@ -21,11 +24,11 @@ impl<'a> Parser<'a> {
         self.infix_expression(Self::logical_op, Self::comparison_expression)
     }
 
-    fn logical_op(&mut self) -> Option<BinaryOp> {
+    fn logical_op(&mut self) -> Option<BinaryOpCode> {
         if self.tag(b"&&") {
-            Some(BinaryOp::And)
+            Some(BinaryOpCode::And)
         } else if self.tag(b"||") {
-            Some(BinaryOp::Or)
+            Some(BinaryOpCode::Or)
         } else {
             None
         }
@@ -42,17 +45,17 @@ impl<'a> Parser<'a> {
         self.linespace();
 
         let op = if self.tag(b"==") {
-            BinaryOp::Equal
+            BinaryOpCode::Equal
         } else if self.tag(b"!=") {
-            BinaryOp::NotEqual
+            BinaryOpCode::NotEqual
         } else if self.tag(b">=") {
-            BinaryOp::GreaterOrEqual
+            BinaryOpCode::GreaterOrEqual
         } else if self.tag(b"<=") {
-            BinaryOp::LessOrEqual
+            BinaryOpCode::LessOrEqual
         } else if self.char(b'>') {
-            BinaryOp::Greater
+            BinaryOpCode::Greater
         } else if self.char(b'<') {
-            BinaryOp::Less
+            BinaryOpCode::Less
         } else {
             self.pos = savepoint;
             return Ok(Some(lhs));
@@ -67,11 +70,11 @@ impl<'a> Parser<'a> {
             });
         };
 
-        lhs = AstNode::BinaryOp {
+        lhs = AstNode::BinaryOp(BinaryOp {
             op,
             lhs: lhs.into(),
             rhs: rhs.into(),
-        };
+        });
 
         Ok(Some(lhs))
     }
@@ -81,11 +84,11 @@ impl<'a> Parser<'a> {
         self.infix_expression(Self::addsub_op, Self::muldiv_expression)
     }
 
-    fn addsub_op(&mut self) -> Option<BinaryOp> {
+    fn addsub_op(&mut self) -> Option<BinaryOpCode> {
         if self.char(b'+') {
-            Some(BinaryOp::Add)
+            Some(BinaryOpCode::Add)
         } else if self.char(b'-') {
-            Some(BinaryOp::Sub)
+            Some(BinaryOpCode::Sub)
         } else {
             None
         }
@@ -96,13 +99,13 @@ impl<'a> Parser<'a> {
         self.infix_expression(Self::muldiv_op, Self::prefix_expression)
     }
 
-    fn muldiv_op(&mut self) -> Option<BinaryOp> {
+    fn muldiv_op(&mut self) -> Option<BinaryOpCode> {
         if self.char(b'*') {
-            Some(BinaryOp::Mul)
+            Some(BinaryOpCode::Mul)
         } else if self.char(b'/') {
-            Some(BinaryOp::Div)
+            Some(BinaryOpCode::Div)
         } else if self.char(b'%') {
-            Some(BinaryOp::Mod)
+            Some(BinaryOpCode::Mod)
         } else {
             None
         }
@@ -114,7 +117,7 @@ impl<'a> Parser<'a> {
         mut next_fn: N,
     ) -> ParseResult<Option<AstNode>>
     where
-        O: FnMut(&mut Self) -> Option<BinaryOp>,
+        O: FnMut(&mut Self) -> Option<BinaryOpCode>,
         N: FnMut(&mut Self) -> ParseResult<Option<AstNode>>,
     {
         let Some(mut lhs) = next_fn(self)? else {
@@ -139,11 +142,11 @@ impl<'a> Parser<'a> {
                 });
             };
 
-            lhs = AstNode::BinaryOp {
+            lhs = AstNode::BinaryOp(BinaryOp {
                 op,
                 lhs: lhs.into(),
                 rhs: rhs.into(),
-            }
+            })
         };
 
         Ok(Some(lhs))
@@ -157,11 +160,11 @@ impl<'a> Parser<'a> {
 
         loop {
             if self.char(b'!') {
-                prefixes.push(UnaryOp::Not);
+                prefixes.push(UnaryOpCode::Not);
                 continue;
             };
             if self.char(b'-') {
-                prefixes.push(UnaryOp::Negative);
+                prefixes.push(UnaryOpCode::Negative);
                 continue;
             };
             break;
@@ -173,10 +176,10 @@ impl<'a> Parser<'a> {
         };
 
         while let Some(op) = prefixes.pop() {
-            node = AstNode::UnaryOp {
+            node = AstNode::UnaryOp(UnaryOp {
                 op,
                 on: node.into(),
-            };
+            });
         }
 
         Ok(Some(node))
@@ -197,23 +200,23 @@ impl<'a> Parser<'a> {
             self.linespace();
 
             if let Some(property) = self.property_of()? {
-                node = AstNode::PropertyOf {
+                node = AstNode::PropertyOf(PropertyOf {
                     from: node.into(),
                     property,
-                };
+                });
                 continue;
             }
 
             if let Some(index) = self.index_of()? {
-                node = AstNode::IndexOf {
+                node = AstNode::IndexOf(IndexOf {
                     from: node.into(),
                     index: index.into(),
-                };
+                });
                 continue;
             }
 
             if self.chain_catch() {
-                node = AstNode::ChainCatch(node.into());
+                node = AstNode::ChainCatch(ChainCatch { inner: node.into() });
                 continue;
             }
 

@@ -1,0 +1,127 @@
+var a = 1
+if a.c[3] == 42 {
+	foo = 2
+} else if b<=7 {
+    foo = 3
+} else {
+	foo = 4
+}
+for a in b {
+	form = ((a+b)*c.d--e/f)
+}
+str = "hello {name}!"
+str = this.b?.c
+list = [ 1, "two", true, nil, b+c*d, { x: 42 } ]
+---
+(decl
+  (id a)
+  1
+)
+(if
+  (conditional
+    (==
+      (index
+        (property
+          (id a)
+          (id c)
+        )
+        3
+      )
+      42
+    )
+    (block
+      (assign
+        (id foo)
+        2
+      )
+    )
+  )
+  (conditional
+    (<=
+      (id b)
+      7
+    )
+    (block
+      (assign
+        (id foo)
+        3
+      )
+    )
+  )
+  (block
+    (assign
+      (id foo)
+      4
+    )
+  )
+)
+(for
+  (id a)
+  -
+  (id b)
+  (block
+    (assign
+      (id form)
+      (-
+        (*
+          (+
+            (id a)
+            (id b)
+          )
+          (property
+            (id c)
+            (id d)
+          )
+        )
+        (/
+          (neg
+            (id e)
+          )
+          (id f)
+        )
+      )
+    )
+  )
+)
+(assign
+  (id str)
+  (interpolate
+    "hello "
+    (id name)
+    "!"
+  )
+)
+(assign
+  (id str)
+  (property
+    (?
+      (property
+        this
+        (id b)
+      )
+    )
+    (id c)
+  )
+)
+(assign
+  (id list)
+  (list
+    1
+    "two"
+    true
+    nil
+    (+
+      (id b)
+      (*
+        (id c)
+        (id d)
+      )
+    )
+    (object
+      (kv
+        (id x)
+        42
+      )
+    )
+  )
+)

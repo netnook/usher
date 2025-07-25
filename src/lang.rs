@@ -10,31 +10,18 @@ pub enum AstNode {
     This,
     Identifier(Identifier),
     Value(Value),
-    InterpolatedStr(Vec<AstNode>),
+    InterpolatedStr(InterpolatedStr),
     ListBuilder(ListBuilder),
     ObjectBuilder(ObjectBuilder),
-    PropertyOf {
-        from: Box<AstNode>,
-        property: Identifier,
-    },
-    IndexOf {
-        from: Box<AstNode>,
-        index: Box<AstNode>,
-    },
-    UnaryOp {
-        op: UnaryOp,
-        on: Box<AstNode>,
-    },
-    BinaryOp {
-        op: BinaryOp,
-        lhs: Box<AstNode>,
-        rhs: Box<AstNode>,
-    },
-    ChainCatch(Box<AstNode>),
+    PropertyOf(PropertyOf),
+    IndexOf(IndexOf),
+    UnaryOp(UnaryOp),
+    BinaryOp(BinaryOp),
+    ChainCatch(ChainCatch),
     IfElseStmt(IfElseStmt),
     ForStmt(ForStmt),
-    DeclarationStmt(DeclarationStmt),
-    Assignment(Box<AstNode>, Box<AstNode>),
+    Declaration(Declaration),
+    Assignment(Assignment),
 }
 
 impl From<Identifier> for AstNode {
@@ -71,15 +58,15 @@ impl From<ForStmt> for AstNode {
         Self::ForStmt(value)
     }
 }
-impl From<DeclarationStmt> for AstNode {
-    fn from(value: DeclarationStmt) -> Self {
-        Self::DeclarationStmt(value)
+impl From<Declaration> for AstNode {
+    fn from(value: Declaration) -> Self {
+        Self::Declaration(value)
     }
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Identifier {
-    name: String,
+    pub(crate) name: String,
 }
 
 impl Identifier {
@@ -89,8 +76,43 @@ impl Identifier {
 }
 
 #[derive(PartialEq, Debug, Clone)]
+pub struct UnaryOp {
+    pub(crate) op: UnaryOpCode,
+    pub(crate) on: Box<AstNode>,
+}
+
+#[derive(PartialEq, Debug, Clone)]
+pub struct BinaryOp {
+    pub(crate) op: BinaryOpCode,
+    pub(crate) lhs: Box<AstNode>,
+    pub(crate) rhs: Box<AstNode>,
+}
+
+#[derive(PartialEq, Debug, Clone)]
+pub struct ChainCatch {
+    pub(crate) inner: Box<AstNode>,
+}
+
+#[derive(PartialEq, Debug, Clone)]
+pub struct PropertyOf {
+    pub(crate) from: Box<AstNode>,
+    pub(crate) property: Identifier,
+}
+
+#[derive(PartialEq, Debug, Clone)]
+pub struct IndexOf {
+    pub(crate) from: Box<AstNode>,
+    pub(crate) index: Box<AstNode>,
+}
+
+#[derive(PartialEq, Debug, Clone)]
+pub struct InterpolatedStr {
+    pub(crate) parts: Vec<AstNode>,
+}
+
+#[derive(PartialEq, Debug, Clone)]
 pub struct ListBuilder {
-    entries: Vec<AstNode>,
+    pub(crate) entries: Vec<AstNode>,
 }
 
 impl ListBuilder {
@@ -101,7 +123,7 @@ impl ListBuilder {
 
 #[derive(PartialEq, Debug, Clone)]
 pub struct ObjectBuilder {
-    entries: Vec<(AstNode, AstNode)>,
+    pub(crate) entries: Vec<(AstNode, AstNode)>,
 }
 
 impl ObjectBuilder {
@@ -135,13 +157,13 @@ impl Display for Value {
 }
 
 #[derive(PartialEq, Debug, Clone)]
-pub enum UnaryOp {
+pub enum UnaryOpCode {
     Not,
     Negative,
 }
 
 #[derive(PartialEq, Debug, Clone)]
-pub enum BinaryOp {
+pub enum BinaryOpCode {
     Add,
     Sub,
     Mul,
@@ -159,33 +181,39 @@ pub enum BinaryOp {
 
 #[derive(PartialEq, Debug, Clone)]
 pub struct IfElseStmt {
-    pub conditional_blocks: Vec<ConditionalBlock>,
-    pub else_block: Option<Block>,
+    pub(crate) conditional_blocks: Vec<ConditionalBlock>,
+    pub(crate) else_block: Option<Block>,
 }
 
 #[derive(PartialEq, Debug, Clone)]
 pub struct ConditionalBlock {
-    pub condition: AstNode,
-    pub block: Block,
+    pub(crate) condition: AstNode,
+    pub(crate) block: Block,
 }
 
 #[derive(PartialEq, Debug, Clone)]
 pub struct ForStmt {
-    pub loop_var_1: Identifier,
-    pub loop_var_2: Option<Identifier>,
-    pub loop_expr: Box<AstNode>,
-    pub block: Block,
+    pub(crate) loop_var_1: Identifier,
+    pub(crate) loop_var_2: Option<Identifier>,
+    pub(crate) loop_expr: Box<AstNode>,
+    pub(crate) block: Block,
 }
 
 #[derive(PartialEq, Debug, Clone)]
 pub struct Block {
-    pub stmts: Vec<AstNode>,
+    pub(crate) stmts: Vec<AstNode>,
 }
 
 #[derive(PartialEq, Debug, Clone)]
-pub struct DeclarationStmt {
-    pub ident: Identifier,
-    pub value: Box<AstNode>,
+pub struct Declaration {
+    pub(crate) ident: Identifier,
+    pub(crate) value: Box<AstNode>,
+}
+
+#[derive(PartialEq, Debug, Clone)]
+pub struct Assignment {
+    pub(crate) lhs: Box<AstNode>,
+    pub(crate) rhs: Box<AstNode>,
 }
 
 #[cfg(test)]

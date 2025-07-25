@@ -17,6 +17,7 @@ mod string;
 mod this;
 mod utils;
 
+use crate::lang::Program;
 use error::{ParseError, build_parse_error};
 
 // FIXME: add all necessary keywords
@@ -24,15 +25,15 @@ pub(crate) const RESERVED_KEYWORDS: [&str; 9] = [
     "print", "if", "else", "for", "in", "var", "true", "false", "nil",
 ];
 
-pub fn parse(input: &str) -> Result<(), ParseError> {
+pub fn parse(input: &str) -> Result<Program, ParseError> {
     let mut p = Parser::new(input);
 
-    match p.program() {
+    let p = match p.program() {
         Ok(p) => p,
         Err(se) => return Err(build_parse_error(input, se)),
     };
 
-    Ok(())
+    Ok(p)
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -67,10 +68,15 @@ impl<'a> Parser<'a> {
 #[cfg(test)]
 mod tests {
     mod nested_types;
+    mod printing;
+    mod programs;
 
     use super::SyntaxError;
     use crate::{
-        lang::{AstNode, BinaryOp, Block, DeclarationStmt, ForStmt, Identifier, UnaryOp, Value},
+        lang::{
+            Assignment, AstNode, BinaryOp, BinaryOpCode, Block, ChainCatch, Declaration, ForStmt,
+            Identifier, IndexOf, PropertyOf, UnaryOp, UnaryOpCode, Value,
+        },
         parser::Parser,
     };
     use pretty_assertions::assert_eq;
@@ -94,91 +100,96 @@ mod tests {
         Identifier::new(s.to_string())
     }
     pub(crate) fn prop_of(from: impl Into<AstNode>, prop: &str) -> AstNode {
-        AstNode::PropertyOf {
+        AstNode::PropertyOf(PropertyOf {
             from: from.into().into(),
             property: id(prop),
-        }
+        })
     }
     pub(crate) fn index_of(from: impl Into<AstNode>, index: impl Into<AstNode>) -> AstNode {
-        AstNode::IndexOf {
+        AstNode::IndexOf(IndexOf {
             from: from.into().into(),
             index: index.into().into(),
-        }
+        })
     }
     pub(crate) fn chain_catch(from: impl Into<AstNode>) -> AstNode {
-        AstNode::ChainCatch(from.into().into())
+        AstNode::ChainCatch(ChainCatch {
+            inner: from.into().into(),
+        })
     }
     pub(crate) fn neg(on: impl Into<AstNode>) -> AstNode {
-        AstNode::UnaryOp {
+        AstNode::UnaryOp(UnaryOp {
             on: on.into().into(),
-            op: UnaryOp::Negative,
-        }
+            op: UnaryOpCode::Negative,
+        })
     }
     pub(crate) fn not(on: impl Into<AstNode>) -> AstNode {
-        AstNode::UnaryOp {
-            op: UnaryOp::Not,
+        AstNode::UnaryOp(UnaryOp {
+            op: UnaryOpCode::Not,
             on: on.into().into(),
-        }
+        })
     }
     pub(crate) fn add(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> AstNode {
-        binary(BinaryOp::Add, lhs, rhs)
+        binary(BinaryOpCode::Add, lhs, rhs)
     }
     pub(crate) fn sub(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> AstNode {
-        binary(BinaryOp::Sub, lhs, rhs)
+        binary(BinaryOpCode::Sub, lhs, rhs)
     }
     pub(crate) fn mul(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> AstNode {
-        binary(BinaryOp::Mul, lhs, rhs)
+        binary(BinaryOpCode::Mul, lhs, rhs)
     }
     pub(crate) fn div(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> AstNode {
-        binary(BinaryOp::Div, lhs, rhs)
+        binary(BinaryOpCode::Div, lhs, rhs)
     }
     pub(crate) fn modulo(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> AstNode {
-        binary(BinaryOp::Mod, lhs, rhs)
+        binary(BinaryOpCode::Mod, lhs, rhs)
     }
     pub(crate) fn equal(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> AstNode {
-        binary(BinaryOp::Equal, lhs, rhs)
+        binary(BinaryOpCode::Equal, lhs, rhs)
     }
     pub(crate) fn not_equal(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> AstNode {
-        binary(BinaryOp::NotEqual, lhs, rhs)
+        binary(BinaryOpCode::NotEqual, lhs, rhs)
     }
     pub(crate) fn greater(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> AstNode {
-        binary(BinaryOp::Greater, lhs, rhs)
+        binary(BinaryOpCode::Greater, lhs, rhs)
     }
     pub(crate) fn greater_equal(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> AstNode {
-        binary(BinaryOp::GreaterOrEqual, lhs, rhs)
+        binary(BinaryOpCode::GreaterOrEqual, lhs, rhs)
     }
     pub(crate) fn less(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> AstNode {
-        binary(BinaryOp::Less, lhs, rhs)
+        binary(BinaryOpCode::Less, lhs, rhs)
     }
     pub(crate) fn less_equal(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> AstNode {
-        binary(BinaryOp::LessOrEqual, lhs, rhs)
+        binary(BinaryOpCode::LessOrEqual, lhs, rhs)
     }
     pub(crate) fn and(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> AstNode {
-        binary(BinaryOp::And, lhs, rhs)
+        binary(BinaryOpCode::And, lhs, rhs)
     }
     pub(crate) fn or(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> AstNode {
-        binary(BinaryOp::Or, lhs, rhs)
+        binary(BinaryOpCode::Or, lhs, rhs)
     }
     pub(crate) fn binary(
-        op: BinaryOp,
+        op: BinaryOpCode,
         lhs: impl Into<AstNode>,
         rhs: impl Into<AstNode>,
     ) -> AstNode {
-        AstNode::BinaryOp {
+        AstNode::BinaryOp(BinaryOp {
             op,
             lhs: lhs.into().into(),
             rhs: rhs.into().into(),
-        }
+        })
     }
 
-    pub(crate) fn var(ident: Identifier, value: impl Into<AstNode>) -> DeclarationStmt {
-        DeclarationStmt {
+    pub(crate) fn var(ident: Identifier, value: impl Into<AstNode>) -> Declaration {
+        Declaration {
             ident,
             value: value.into().into(),
         }
     }
     pub(crate) fn assign(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> AstNode {
-        AstNode::Assignment(lhs.into().into(), rhs.into().into())
+        AstNode::Assignment(Assignment {
+            lhs: lhs.into().into(),
+            rhs: rhs.into().into(),
+        })
     }
     pub(crate) fn _for(
         ident1: Identifier,
@@ -232,10 +243,11 @@ mod tests {
 
     macro_rules! _interp {
         ($($v:expr),+) => {{
-            let elems= vec![
+            use crate::lang::InterpolatedStr;
+            let parts= vec![
                 $($v.into()),+
             ];
-            AstNode::InterpolatedStr(elems)
+            AstNode::InterpolatedStr(InterpolatedStr{parts})
         }};
     }
     pub(crate) use _interp;

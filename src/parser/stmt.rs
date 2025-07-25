@@ -1,5 +1,5 @@
 use super::{ParseResult, Parser, SyntaxError};
-use crate::lang::{AstNode, Block};
+use crate::lang::{Assignment, AstNode, Block};
 
 pub(crate) const MISSING_BLOCK_END: &str = "Missing closing brace to end block.";
 pub(crate) const EXPECTED_NEW_LINE_AFTER_STMT: &str = "Expected new line after statement.";
@@ -91,12 +91,7 @@ impl<'a> Parser<'a> {
             let lhs = expr;
             let pass = matches!(
                 lhs,
-                AstNode::Identifier(_)
-                    | AstNode::PropertyOf {
-                        from: _,
-                        property: _
-                    }
-                    | AstNode::IndexOf { from: _, index: _ }
+                AstNode::Identifier(_) | AstNode::PropertyOf(_) | AstNode::IndexOf(_)
             );
             if !pass {
                 return Err(SyntaxError {
@@ -112,7 +107,10 @@ impl<'a> Parser<'a> {
                 });
             };
 
-            Ok(Some(AstNode::Assignment(lhs.into(), rhs.into())))
+            Ok(Some(AstNode::Assignment(Assignment {
+                lhs: lhs.into(),
+                rhs: rhs.into(),
+            })))
         } else {
             self.pos = savepos;
             Ok(Some(expr))

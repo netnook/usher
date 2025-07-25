@@ -1,5 +1,5 @@
 use super::{ParseResult, Parser, SyntaxError};
-use crate::lang::{AstNode, Value};
+use crate::lang::{AstNode, InterpolatedStr, Value};
 
 pub(super) const MISSING_END_QUOTE: &str = "Missing closing double quote to end string.";
 pub(super) const CRLF_IN_STRING_NOT_ALLOWED: &str = "Invalid characters CR or LF in string.";
@@ -98,7 +98,9 @@ impl<'a> Parser<'a> {
             if !simple_result.is_empty() {
                 interpolator_result.push(Value::Str(simple_result).into());
             }
-            Ok(Some(AstNode::InterpolatedStr(interpolator_result)))
+            Ok(Some(AstNode::InterpolatedStr(InterpolatedStr {
+                parts: interpolator_result,
+            })))
         }
     }
 }

@@ -1,5 +1,5 @@
 use super::{ParseResult, Parser, SyntaxError};
-use crate::lang::{AstNode, DeclarationStmt};
+use crate::lang::{AstNode, Declaration};
 
 const EXPECTED_IDENTIFIER: &str = "Expected identifier after 'var'.";
 const EXPECTED_EQUAL: &str = "Expected equals sign after identifier.";
@@ -37,7 +37,7 @@ impl<'a> Parser<'a> {
             });
         };
 
-        Ok(AstNode::DeclarationStmt(DeclarationStmt {
+        Ok(AstNode::Declaration(Declaration {
             ident,
             value: value.into(),
         }))
@@ -51,7 +51,7 @@ mod tests {
     use crate::parser::tests::*;
 
     #[track_caller]
-    fn do_test_var_ok(input: &'static str, expected: DeclarationStmt, expected_end: isize) {
+    fn do_test_var_ok(input: &'static str, expected: Declaration, expected_end: isize) {
         do_test_parser_ok(Parser::stmt, input, Some(expected.into()), expected_end);
     }
 
