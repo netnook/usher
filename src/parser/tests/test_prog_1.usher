@@ -7,7 +7,11 @@ if a.c[3] == 42 {
 	foo = 4
 }
 for a in b {
+    if a {
+      continue
+    }
 	form = ((a+b)*c.d--e/f)
+    break
 }
 str = "hello {name}!"
 str = this.b?.c
@@ -60,6 +64,14 @@ list = [ 1, "two", true, nil, b+c*d, { x: 42 } ]
   -
   (id b)
   (block
+    (if
+      (conditional
+        (id a)
+        (block
+          continue
+        )
+      )
+    )
     (assign
       (id form)
       (-
@@ -81,6 +93,7 @@ list = [ 1, "two", true, nil, b+c*d, { x: 42 } ]
         )
       )
     )
+    break
   )
 )
 (assign

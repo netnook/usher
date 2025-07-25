@@ -23,10 +23,7 @@ impl Program {
 impl AstNode {
     fn print(&self, w: &mut impl Write, indent: usize) {
         match self {
-            AstNode::This => {
-                write_indent(w, indent);
-                w.write(b"this\n").unwrap();
-            }
+            AstNode::This => write_indented(w, indent, "this"),
             AstNode::Identifier(v) => v.print(w, indent),
             AstNode::Value(v) => v.print(w, indent),
             AstNode::InterpolatedStr(v) => v.print(w, indent),
@@ -41,6 +38,8 @@ impl AstNode {
             AstNode::ForStmt(v) => v.print(w, indent),
             AstNode::Declaration(v) => v.print(w, indent),
             AstNode::Assignment(v) => v.print(w, indent),
+            AstNode::Break => write_indented(w, indent, "break"),
+            AstNode::Continue => write_indented(w, indent, "continue"),
         }
     }
 }
@@ -245,6 +244,12 @@ fn write_indent(w: &mut impl Write, indent: usize) {
     for _ in 0..indent {
         w.write(b"  ").unwrap();
     }
+}
+
+fn write_indented(w: &mut impl Write, indent: usize, name: &str) {
+    write_indent(w, indent);
+    w.write(name.as_bytes()).unwrap();
+    w.write(b"\n").unwrap();
 }
 
 fn write_open(w: &mut impl Write, indent: usize, name: &str) {

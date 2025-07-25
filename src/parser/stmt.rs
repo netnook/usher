@@ -22,6 +22,12 @@ impl<'a> Parser<'a> {
                 b"var" => {
                     return Ok(Some(self.var_stmt()?));
                 }
+                b"break" => {
+                    return Ok(Some(AstNode::Break));
+                }
+                b"continue" => {
+                    return Ok(Some(AstNode::Continue));
+                }
                 _ => {
                     self.pos = start;
                 }
@@ -218,5 +224,7 @@ mod tests {
         do_test_stmt_ok(" iffy + 2 ", add(id("iffy"), i(2)), -1);
         do_test_stmt_ok(" for_me + 2 ", add(id("for_me"), i(2)), -1);
         do_test_stmt_ok(" vario + 2 ", add(id("vario"), i(2)), -1);
+        do_test_stmt_ok(" break ", AstNode::Break, -1);
+        do_test_stmt_ok(" continue ", AstNode::Continue, -1);
     }
 }

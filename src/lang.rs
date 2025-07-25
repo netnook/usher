@@ -22,6 +22,8 @@ pub enum AstNode {
     ForStmt(ForStmt),
     Declaration(Declaration),
     Assignment(Assignment),
+    Break,
+    Continue,
 }
 
 impl From<Identifier> for AstNode {

@@ -21,8 +21,8 @@ use crate::lang::Program;
 use error::{ParseError, build_parse_error};
 
 // FIXME: add all necessary keywords
-pub(crate) const RESERVED_KEYWORDS: [&str; 9] = [
-    "print", "if", "else", "for", "in", "var", "true", "false", "nil",
+pub(crate) const RESERVED_KEYWORDS: [&str; 12] = [
+    "print", "if", "else", "for", "in", "break", "continue", "var", "true", "false", "nil", "end",
 ];
 
 pub fn parse(input: &str) -> Result<Program, ParseError> {
