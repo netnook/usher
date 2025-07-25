@@ -1,32 +1,47 @@
 use super::{ParseResult, Parser, SyntaxError};
 use crate::lang::ListBuilder;
 
-const MISSING_END_BRACKET: &str = "Missing closing ']'.";
-const EXPECTED_EXPRESSION_OR_CLOSE: &str = "Expected expression or ']'.";
-const EXPECTED_COMMA_OR_CLOSE: &str = "Expected ',' or ']'.";
+const MISSING_END_PARENS: &str = "Missing closing ')'.";
+const EXPECTED_OPEN_PARENS: &str = "Expected opening '('.";
+const EXPECTED_EXPRESSION_OR_CLOSE: &str = "Expected expression or ')'.";
+const EXPECTED_COMMA_OR_CLOSE: &str = "Expected ',' or ')'.";
 
 impl<'a> Parser<'a> {
     /// Consume a list if next on input and return it.
     /// Otherwise consume nothing and return `None`
-    // list = { "[" expr* "]"}
+    // "list(" expr,* ,? ")"
     pub(super) fn list(&mut self) -> ParseResult<Option<ListBuilder>> {
         let start = self.pos;
-        if !self.char(b'[') {
+        let Some(id) = self.unchecked_identifier() else {
             return Ok(None);
         };
+        if id != b"list" {
+            self.pos = start;
+            return Ok(None);
+        };
+
+        self.linespace();
+        if !self.char(b'(') {
+            return Err(SyntaxError {
+                pos: self.pos,
+                msg: EXPECTED_OPEN_PARENS,
+            });
+        };
+
+        let open_pos = self.pos - 1;
         self.whitespace_comments();
 
         let mut entries = Vec::new();
         loop {
-            if self.char(b']') {
+            if self.char(b')') {
                 break;
             }
 
             let Some(expr) = self.expression()? else {
                 if self.is_eoi() {
                     return Err(SyntaxError {
-                        pos: start,
-                        msg: MISSING_END_BRACKET,
+                        pos: open_pos,
+                        msg: MISSING_END_PARENS,
                     });
                 } else {
                     return Err(SyntaxError {
@@ -44,14 +59,14 @@ impl<'a> Parser<'a> {
                 continue;
             }
 
-            if self.char(b']') {
+            if self.char(b')') {
                 break;
             }
 
             if self.is_eoi() {
                 return Err(SyntaxError {
-                    pos: start,
-                    msg: MISSING_END_BRACKET,
+                    pos: open_pos,
+                    msg: MISSING_END_PARENS,
                 });
             }
 
@@ -73,20 +88,31 @@ mod tests {
     #[test]
     fn test_list_ok() {
         let expect = ListBuilder::new(vec![i(1).into(), i(2).into(), i(3).into(), i(4).into()]);
-        do_test_parser_some(Parser::list, "-[1,2,3,4]-", expect.clone(), -1);
-        do_test_parser_some(Parser::list, "-[1,2,3,4,]-", expect.clone(), -1);
-        do_test_parser_some(Parser::list, "-[ 1 , 2 , 3 , 4 ]-", expect.clone(), -1);
-        do_test_parser_some(Parser::list, r#"-[]-"#, ListBuilder::new(Vec::new()), -1);
-        do_test_parser_some(Parser::list, r#"-[  ]-"#, ListBuilder::new(Vec::new()), -1);
+        do_test_parser_some(Parser::list, "-list(1,2,3,4)-", expect.clone(), -1);
+        do_test_parser_some(Parser::list, "-list(1,2,3,4,)-", expect.clone(), -1);
+        do_test_parser_some(Parser::list, "-list( 1 , 2 , 3 , 4 )-", expect.clone(), -1);
+        do_test_parser_some(Parser::list, "-list ( 1 , 2 , 3 , 4 )-", expect.clone(), -1);
         do_test_parser_some(
             Parser::list,
-            "-[ # comment \n 1 , # comment \n 2 # comment \n , # comment \n\n 3 # comment \n , # comment \n 4 ]-",
+            r#"-list()-"#,
+            ListBuilder::new(Vec::new()),
+            -1,
+        );
+        do_test_parser_some(
+            Parser::list,
+            r#"-list(  )-"#,
+            ListBuilder::new(Vec::new()),
+            -1,
+        );
+        do_test_parser_some(
+            Parser::list,
+            "-list( # comment \n 1 , # comment \n 2 # comment \n , # comment \n\n 3 # comment \n , # comment \n 4 )-",
             expect.clone(),
             -1,
         );
         do_test_parser_some(
             Parser::list,
-            "-[# comment \n1# comment \n,2,# comment \n# comment \n\n3# comment \n,# comment \n4,]-",
+            "-list(# comment \n1# comment \n,2,# comment \n# comment \n\n3# comment \n,# comment \n4,)-",
             expect,
             -1,
         );
@@ -97,28 +123,33 @@ mod tests {
             b(false).into(),
             s("foo").into(),
         ]);
-        do_test_parser_some(Parser::list, r#"-[1,nil,false,"foo"]-"#, expect.clone(), -1);
         do_test_parser_some(
             Parser::list,
-            r#"-[1, nil, false, "foo"]-"#,
+            r#"-list(1,nil,false,"foo")-"#,
             expect.clone(),
             -1,
         );
         do_test_parser_some(
             Parser::list,
-            r#"-[1, nil, false, "foo", ]-"#,
+            r#"-list(1, nil, false, "foo")-"#,
             expect.clone(),
             -1,
         );
         do_test_parser_some(
             Parser::list,
-            "-[ # comment\n # comment \n \n ]-",
+            r#"-list(1, nil, false, "foo", )-"#,
+            expect.clone(),
+            -1,
+        );
+        do_test_parser_some(
+            Parser::list,
+            "-list( # comment\n # comment \n \n )-",
             ListBuilder::new(Vec::new()),
             -1,
         );
         do_test_parser_some(
             Parser::list,
-            "-[[1, 1], 2, [3, 3, 3,], 4,]-",
+            "-list(list(1, 1), 2, list(3, 3, 3,), 4,)-",
             ListBuilder::new(vec![
                 ListBuilder::new(vec![i(1).into(), i(1).into()]).into(),
                 i(2).into(),
@@ -136,26 +167,37 @@ mod tests {
 
     #[test]
     fn test_list_err() {
-        do_test_parser_err(Parser::list, r#"-[1,2,3,4"#, 1, MISSING_END_BRACKET);
-        do_test_parser_err(Parser::list, r#"-[1,2,3,"#, 1, MISSING_END_BRACKET);
-        do_test_parser_err(Parser::list, r#"-[1 2]-"#, 4, EXPECTED_COMMA_OR_CLOSE);
+        do_test_parser_err(Parser::list, r#"-list(1,2,3,4"#, 5, MISSING_END_PARENS);
+        do_test_parser_err(Parser::list, r#"-list(1,2,3,"#, 5, MISSING_END_PARENS);
+        do_test_parser_err(Parser::list, r#"-list(1 2)-"#, 8, EXPECTED_COMMA_OR_CLOSE);
         do_test_parser_err(
             Parser::list,
-            r#"-[1, 2, 3, 4 } "#,
-            13,
+            "-list #comment \n(1,2)-",
+            6,
+            EXPECTED_OPEN_PARENS,
+        );
+        do_test_parser_err(
+            Parser::list,
+            r#"-list(1, 2, 3, 4 } "#,
+            17,
             EXPECTED_COMMA_OR_CLOSE,
         );
         do_test_parser_err(
             Parser::list,
-            r#"-[1, 2, 3, 4, } "#,
-            14,
+            r#"-list(1, 2, 3, 4, } "#,
+            18,
             EXPECTED_EXPRESSION_OR_CLOSE,
         );
-        do_test_parser_err(Parser::list, r#"-[ , ]-"#, 3, EXPECTED_EXPRESSION_OR_CLOSE);
         do_test_parser_err(
             Parser::list,
-            r#"-[1, 2, 3, "bad-string"#,
-            11,
+            r#"-list( , )-"#,
+            7,
+            EXPECTED_EXPRESSION_OR_CLOSE,
+        );
+        do_test_parser_err(
+            Parser::list,
+            r#"-list(1, 2, 3, "bad-string"#,
+            15,
             MISSING_END_QUOTE,
         );
     }

@@ -12,12 +12,13 @@ pub enum AstNode {
     Value(Value),
     InterpolatedStr(InterpolatedStr),
     ListBuilder(ListBuilder),
-    ObjectBuilder(ObjectBuilder),
+    MapBuilder(MapBuilder),
     PropertyOf(PropertyOf),
     IndexOf(IndexOf),
     UnaryOp(UnaryOp),
     BinaryOp(BinaryOp),
     ChainCatch(ChainCatch),
+    Block(Block),
     IfElseStmt(IfElseStmt),
     ForStmt(ForStmt),
     Declaration(Declaration),
@@ -38,15 +39,21 @@ impl From<Value> for AstNode {
     }
 }
 
+impl From<Block> for AstNode {
+    fn from(value: Block) -> Self {
+        Self::Block(value)
+    }
+}
+
 impl From<ListBuilder> for AstNode {
     fn from(value: ListBuilder) -> Self {
         Self::ListBuilder(value)
     }
 }
 
-impl From<ObjectBuilder> for AstNode {
-    fn from(value: ObjectBuilder) -> Self {
-        Self::ObjectBuilder(value)
+impl From<MapBuilder> for AstNode {
+    fn from(value: MapBuilder) -> Self {
+        Self::MapBuilder(value)
     }
 }
 
@@ -124,11 +131,11 @@ impl ListBuilder {
 }
 
 #[derive(PartialEq, Debug, Clone)]
-pub struct ObjectBuilder {
+pub struct MapBuilder {
     pub(crate) entries: Vec<(AstNode, AstNode)>,
 }
 
-impl ObjectBuilder {
+impl MapBuilder {
     pub(crate) fn new(entries: Vec<(AstNode, AstNode)>) -> Self {
         Self { entries }
     }

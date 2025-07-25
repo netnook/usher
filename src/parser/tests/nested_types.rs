@@ -1,6 +1,6 @@
 use super::{b, do_test_parser_some, i, id, nil, s};
 use crate::{
-    lang::{ListBuilder, ObjectBuilder},
+    lang::{ListBuilder, MapBuilder},
     parser::Parser,
 };
 
@@ -8,11 +8,11 @@ use crate::{
 fn test_nested() {
     do_test_parser_some(
         Parser::expression,
-        r#" {a:{a:false, b:"xxx",} , b:nil, c:[1, 2, 3,], the_d:"bar"} "#,
-        ObjectBuilder::new(vec![
+        r#" map(a:map(a:false, b:"xxx",) , b:nil, c:list(1, 2, 3,), the_d:"bar") "#,
+        MapBuilder::new(vec![
             (
                 id("a").into(),
-                ObjectBuilder::new(vec![
+                MapBuilder::new(vec![
                     (id("a").into(), b(false).into()),
                     (id("b").into(), s("xxx").into()),
                 ])
@@ -30,9 +30,9 @@ fn test_nested() {
     );
     do_test_parser_some(
         Parser::expression,
-        r#" [{a:"one"}] "#,
+        r#" list(map(a:"one")) "#,
         ListBuilder::new(vec![
-            ObjectBuilder::new(vec![(id("a").into(), s("one").into())]).into(),
+            MapBuilder::new(vec![(id("a").into(), s("one").into())]).into(),
         ])
         .into(),
         -1,

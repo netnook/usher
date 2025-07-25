@@ -8,9 +8,9 @@ mod for_stmt;
 mod identifier;
 mod if_stmt;
 mod list;
+mod map;
 mod nil;
 mod numbers;
-mod object;
 mod program;
 mod stmt;
 mod string;
@@ -21,8 +21,9 @@ use crate::lang::Program;
 use error::{ParseError, build_parse_error};
 
 // FIXME: add all necessary keywords
-pub(crate) const RESERVED_KEYWORDS: [&str; 12] = [
-    "print", "if", "else", "for", "in", "break", "continue", "var", "true", "false", "nil", "end",
+pub(crate) const RESERVED_KEYWORDS: [&str; 19] = [
+    "print", "if", "else", "for", "in", "break", "continue", "return", "function", "var", "true",
+    "false", "nil", "end", "map", "list", "switch", "case", "defer",
 ];
 
 pub fn parse(input: &str) -> Result<Program, ParseError> {

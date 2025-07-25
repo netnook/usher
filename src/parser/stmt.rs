@@ -34,6 +34,10 @@ impl<'a> Parser<'a> {
             }
         }
 
+        if let Some(blk) = self.block()? {
+            return Ok(Some(blk.into()));
+        }
+
         // FIXME: binary run exppression
         // FIXME: function declaration statement
 
