@@ -91,7 +91,7 @@ mod tests {
         AstNode::This
     }
     pub(crate) fn id(s: &str) -> Identifier {
-        Identifier::new(s)
+        Identifier::new(s.to_string())
     }
     pub(crate) fn prop_of(from: impl Into<AstNode>, prop: &str) -> AstNode {
         AstNode::PropertyOf {
@@ -195,6 +195,8 @@ mod tests {
     }
     macro_rules! _if {
         ($(_cond($cond:expr, $block:expr)),+) => {{
+            use crate::lang::ConditionalBlock;
+            use crate::lang::IfElseStmt;
             let conditional_blocks = vec![
                 $(
                     ConditionalBlock {

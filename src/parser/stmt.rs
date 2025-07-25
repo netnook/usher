@@ -9,20 +9,31 @@ pub(crate) const INVALID_LHS_OF_ASSIGNMENT: &str = "Invalid LHS of assignment.";
 
 impl<'a> Parser<'a> {
     pub(super) fn stmt(&mut self) -> ParseResult<Option<AstNode>> {
-        if let Some(res) = self.if_stmt()? {
-            return Ok(Some(res));
+        let start = self.pos;
+
+        if let Some(id) = self.unchecked_identifier() {
+            match id {
+                b"if" => {
+                    return Ok(Some(self.if_stmt()?));
+                }
+                b"for" => {
+                    return Ok(Some(self.for_stmt()?));
+                }
+                b"var" => {
+                    return Ok(Some(self.var_stmt()?));
+                }
+                _ => {
+                    self.pos = start;
+                }
+            }
         }
-        if let Some(res) = self.for_stmt()? {
-            return Ok(Some(res));
-        }
-        if let Some(res) = self.var_stmt()? {
-            return Ok(Some(res));
-        }
+
+        // FIXME: binary run exppression
+        // FIXME: function declaration statement
+
         if let Some(res) = self.assignment_or_expression()? {
             return Ok(Some(res));
         }
-        // FIXME: binary run exppression
-        // FIXME: function declaration statement
 
         Ok(None)
     }
@@ -182,5 +193,32 @@ mod tests {
     fn test_assign_or_expr_err() {
         do_test_assign_or_expr_err(" a = ;", 5, EXPECTED_EXPRESSION_ON_RHS);
         do_test_assign_or_expr_err(" a + b = 3", 1, INVALID_LHS_OF_ASSIGNMENT);
+    }
+
+    #[track_caller]
+    fn do_test_stmt_ok(input: &'static str, expected: AstNode, expected_end: isize) {
+        do_test_parser_ok(Parser::stmt, input, Some(expected), expected_end);
+    }
+
+    #[test]
+    fn test_stmt() {
+        do_test_stmt_ok(
+            " if true { 2 } ",
+            _if!(_cond(b(true), _block![i(2)])).into(),
+            -1,
+        );
+        do_test_stmt_ok(
+            " for a in b { 2 } ",
+            _for(id("a"), None, id("b"), _block![i(2)]).into(),
+            -1,
+        );
+        do_test_stmt_ok(" var a = 1 ", var(id("a"), i(1)).into(), -1);
+        do_test_stmt_ok(" a = 1 ", assign(id("a"), i(1)).into(), -1);
+        do_test_stmt_ok(" a + 2 ", add(id("a"), i(2)), -1);
+
+        // check that vars starting with keywords are not mistaken for those keywords
+        do_test_stmt_ok(" iffy + 2 ", add(id("iffy"), i(2)), -1);
+        do_test_stmt_ok(" for_me + 2 ", add(id("for_me"), i(2)), -1);
+        do_test_stmt_ok(" vario + 2 ", add(id("vario"), i(2)), -1);
     }
 }

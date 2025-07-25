@@ -2,15 +2,14 @@ use super::{ParseResult, Parser, SyntaxError, comment::EXPECTED_WS_OR_COMMENT};
 use crate::lang::{AstNode, ConditionalBlock, IfElseStmt};
 
 const EXPECTED_CONDITION_EXPRESSION: &str = "Expected condition expression following if/else.";
+const EXPECTED_BLOCK_OR_IF: &str = "Expected else block or 'if' keyword.";
 
 impl<'a> Parser<'a> {
     // if_expr = { "if" ~ expr ~ block ~ if_else_if* ~ if_else? }
     // if_else_if = { "else" ~ "if" ~ expr ~ block }
     // if_else    = { "else" ~ block }
-    pub(super) fn if_stmt(&mut self) -> ParseResult<Option<AstNode>> {
-        if !self.tag(b"if") {
-            return Ok(None);
-        };
+    pub(super) fn if_stmt(&mut self) -> ParseResult<AstNode> {
+        // already passed "if" when called
 
         self.req_whitespace_comments()?;
 
@@ -24,13 +23,14 @@ impl<'a> Parser<'a> {
 
             self.whitespace_comments();
 
-            if !self.tag(b"else") {
+            if self.unchecked_identifier() != Some(b"else") {
                 break savepoint;
             };
 
             let ws = self.whitespace_comments();
 
-            if self.tag(b"if") {
+            let savepoint = self.pos;
+            if self.unchecked_identifier() == Some(b"if") {
                 if !ws {
                     return Err(SyntaxError {
                         pos: savepoint,
@@ -40,14 +40,22 @@ impl<'a> Parser<'a> {
                 self.req_whitespace_comments()?;
                 conditional_blocks.push(self.conditional_block()?);
             } else {
+                self.pos = savepoint;
                 else_block = self.block()?;
+                if else_block.is_none() {
+                    return Err(SyntaxError {
+                        pos: savepoint,
+                        msg: EXPECTED_BLOCK_OR_IF,
+                    });
+                }
+                break self.pos;
             };
         };
 
-        Ok(Some(AstNode::IfElseStmt(IfElseStmt {
+        Ok(AstNode::IfElseStmt(IfElseStmt {
             conditional_blocks,
             else_block,
-        })))
+        }))
     }
 
     // if_condition_block
@@ -76,15 +84,16 @@ mod tests {
 
     #[track_caller]
     fn do_test_if_ok(input: &'static str, expected: IfElseStmt, expected_end: isize) {
-        do_test_parser_ok(Parser::if_stmt, input, Some(expected.into()), expected_end);
+        do_test_parser_ok(Parser::stmt, input, Some(expected.into()), expected_end);
     }
+
     #[track_caller]
     fn do_test_if_err(
         input: &'static str,
         expected_err_pos: usize,
         expected_err_msg: &'static str,
     ) {
-        do_test_parser_err(Parser::if_stmt, input, expected_err_pos, expected_err_msg);
+        do_test_parser_err(Parser::stmt, input, expected_err_pos, expected_err_msg);
     }
 
     #[test]
@@ -128,9 +137,13 @@ mod tests {
             ),
             -1,
         );
-
+        do_test_if_ok(
+            " if x { 1 } else { 2 } else { 3 } ",
+            _if!(_cond(id("x"), _block![i(1)]), _else(_block![i(2)])),
+            -12,
+        );
         do_test_if_err(
-            " ifx { 1 } else if y { 2 } else { 3 } ",
+            " if, { 1 } else if y { 2 } else { 3 } ",
             3,
             EXPECTED_WS_OR_COMMENT,
         );
@@ -141,8 +154,8 @@ mod tests {
         );
         do_test_if_err(
             " if x { 1 } else ify { 2 } else { 3 } ",
-            19,
-            EXPECTED_WS_OR_COMMENT,
+            17,
+            EXPECTED_BLOCK_OR_IF,
         );
         do_test_if_err(
             " if x { 1 } else if y { 2  else { 3 } ",

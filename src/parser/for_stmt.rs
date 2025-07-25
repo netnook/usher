@@ -10,10 +10,8 @@ const EXPECTED_BLOCK: &str = "Expected loop block after expression.";
 impl<'a> Parser<'a> {
     // "for" ident "in" expr block
     // "for" ident, ident "in" expr block
-    pub(super) fn for_stmt(&mut self) -> ParseResult<Option<AstNode>> {
-        if !self.tag(b"for") {
-            return Ok(None);
-        };
+    pub(super) fn for_stmt(&mut self) -> ParseResult<AstNode> {
+        // already passed "for" when called
 
         self.req_whitespace_comments()?;
 
@@ -42,7 +40,7 @@ impl<'a> Parser<'a> {
             self.whitespace_comments();
         }
 
-        if !self.tag(b"in") {
+        if self.unchecked_identifier() != Some(b"in") {
             return Err(SyntaxError {
                 pos: self.pos,
                 msg: EXPECTED_IN,
@@ -67,12 +65,12 @@ impl<'a> Parser<'a> {
             });
         };
 
-        Ok(Some(AstNode::ForStmt(ForStmt {
+        Ok(AstNode::ForStmt(ForStmt {
             loop_var_1,
             loop_var_2,
             loop_expr: loop_expr.into(),
             block,
-        })))
+        }))
     }
 }
 
@@ -83,15 +81,16 @@ mod tests {
 
     #[track_caller]
     fn do_test_for_ok(input: &'static str, expected: ForStmt, expected_end: isize) {
-        do_test_parser_ok(Parser::for_stmt, input, Some(expected.into()), expected_end);
+        do_test_parser_ok(Parser::stmt, input, Some(expected.into()), expected_end);
     }
+
     #[track_caller]
     fn do_test_for_err(
         input: &'static str,
         expected_err_pos: usize,
         expected_err_msg: &'static str,
     ) {
-        do_test_parser_err(Parser::for_stmt, input, expected_err_pos, expected_err_msg);
+        do_test_parser_err(Parser::stmt, input, expected_err_pos, expected_err_msg);
     }
 
     #[test]

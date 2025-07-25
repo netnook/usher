@@ -82,10 +82,8 @@ pub struct Identifier {
 }
 
 impl Identifier {
-    pub(crate) fn new(name: &str) -> Self {
-        Self {
-            name: name.to_string(),
-        }
+    pub(crate) fn new(name: String) -> Self {
+        Self { name }
     }
 }
 

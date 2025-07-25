@@ -7,27 +7,41 @@ use crate::lang::Identifier;
 pub(super) const KEYWORD_RESERVED: &str = "Keyword reserved and may not be used as identifier.";
 
 impl<'a> Parser<'a> {
-    /// Consume a identifie if next on input and return it.
+    /// Consume a identifier if next on input and return it.  Checks that identifier is
+    /// not one of the reserved words.
     /// Otherwise consume nothing and return `None`
     // FIXME - handle non-ascii chars !!!
     pub(super) fn identifier(&mut self) -> ParseResult<Option<Identifier>> {
         let start = self.pos;
 
-        if self.repeat(is_alpha) < 1 {
+        let Some(ident) = self.unchecked_identifier() else {
             return Ok(None);
+        };
+
+        let ident = String::from_utf8_lossy(ident).to_string();
+
+        if RESERVED_KEYWORDS.contains(&ident.as_str()) {
+            return Err(SyntaxError::new(start, KEYWORD_RESERVED));
+        }
+
+        Ok(Some(Identifier::new(ident)))
+    }
+
+    /// Consume a identifier if next on input and return it.
+    /// Otherwise consume nothing and return `None`
+    // FIXME - handle non-ascii chars !!!
+    pub(super) fn unchecked_identifier(&mut self) -> Option<&[u8]> {
+        let start = self.pos;
+
+        if self.repeat(is_alpha) < 1 {
+            return None;
         }
 
         self.repeat(|c| is_alphanumeric(c) || c == b'_');
 
         let end = self.pos;
 
-        let ident = String::from_utf8_lossy(&self.input[start..end]);
-
-        if RESERVED_KEYWORDS.contains(&&ident[..]) {
-            return Err(SyntaxError::new(start, KEYWORD_RESERVED));
-        }
-
-        Ok(Some(Identifier::new(&ident)))
+        Some(&self.input[start..end])
     }
 }
 

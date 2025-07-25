@@ -7,10 +7,8 @@ const EXPECTED_EXPRESSION: &str = "Expected expression.";
 
 impl<'a> Parser<'a> {
     // "var" identifier = expr
-    pub(super) fn var_stmt(&mut self) -> ParseResult<Option<AstNode>> {
-        if !self.tag(b"var") {
-            return Ok(None);
-        };
+    pub(super) fn var_stmt(&mut self) -> ParseResult<AstNode> {
+        // already passed "var" when called
 
         self.req_whitespace_comments()?;
 
@@ -39,10 +37,10 @@ impl<'a> Parser<'a> {
             });
         };
 
-        Ok(Some(AstNode::DeclarationStmt(DeclarationStmt {
+        Ok(AstNode::DeclarationStmt(DeclarationStmt {
             ident,
             value: value.into(),
-        })))
+        }))
     }
 }
 
@@ -54,15 +52,16 @@ mod tests {
 
     #[track_caller]
     fn do_test_var_ok(input: &'static str, expected: DeclarationStmt, expected_end: isize) {
-        do_test_parser_ok(Parser::var_stmt, input, Some(expected.into()), expected_end);
+        do_test_parser_ok(Parser::stmt, input, Some(expected.into()), expected_end);
     }
+
     #[track_caller]
     fn do_test_var_err(
         input: &'static str,
         expected_err_pos: usize,
         expected_err_msg: &'static str,
     ) {
-        do_test_parser_err(Parser::var_stmt, input, expected_err_pos, expected_err_msg);
+        do_test_parser_err(Parser::stmt, input, expected_err_pos, expected_err_msg);
     }
 
     #[test]
@@ -76,11 +75,9 @@ mod tests {
             -1,
         );
 
-        do_test_var_err(" vara=x+2 ", 4, EXPECTED_WS_OR_COMMENT);
+        do_test_var_err(" var,=x+2 ", 4, EXPECTED_WS_OR_COMMENT);
         do_test_var_err(" var a # comment \n = 1 ", 7, EXPECTED_EQUAL);
         do_test_var_err(" var a +  = 1 ", 7, EXPECTED_EQUAL);
         do_test_var_err(" var a = ; 1 ", 9, EXPECTED_EXPRESSION);
-
-        do_test_parser_none(Parser::var_stmt, " vir a = ; 1 ");
     }
 }

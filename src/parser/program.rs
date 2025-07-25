@@ -56,6 +56,7 @@ mod tests {
             parser.pos
         );
     }
+
     #[track_caller]
     fn do_test_program_err(
         input: &'static str,
