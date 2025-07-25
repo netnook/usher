@@ -183,6 +183,10 @@ mod tests {
             value: value.into().into(),
         }
     }
+    pub(crate) fn assign(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> AstNode {
+        AstNode::Assignment(lhs.into().into(), rhs.into().into())
+    }
+
     pub(crate) fn _for(
         ident1: Identifier,
         ident2: Option<Identifier>,

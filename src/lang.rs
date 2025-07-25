@@ -28,6 +28,7 @@ pub enum AstNode {
     IfElseStmt(IfElseStmt),
     ForStmt(ForStmt),
     DeclarationStmt(DeclarationStmt),
+    Assignment(Box<AstNode>, Box<AstNode>),
 }
 
 impl From<Identifier> for AstNode {
