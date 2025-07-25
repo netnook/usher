@@ -96,7 +96,7 @@ impl<'a> Parser<'a> {
             } else if let Some(id) = self.identifier()? {
                 Some(id.into())
             } else if let Some(s) = self.string()? {
-                Some(s.into())
+                Some(s)
             } else if let Some(i) = self.integer() {
                 Some(i.into())
             } else {

@@ -29,7 +29,7 @@ mod tests {
 
         assert_eq!(
             p.req(Parser::string, "the-error"),
-            Ok(Value::Str("xxx".to_string()))
+            Ok(Value::Str("xxx".to_string()).into())
         );
         assert_eq!(p.pos, 6);
     }

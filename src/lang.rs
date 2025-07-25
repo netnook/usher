@@ -10,6 +10,7 @@ pub enum AstNode {
     This,
     Identifier(Identifier),
     Value(Value),
+    InterpolatedStr(Vec<AstNode>),
     ListBuilder(ListBuilder),
     ObjectBuilder(ObjectBuilder),
     PropertyOf {

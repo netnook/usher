@@ -233,7 +233,7 @@ impl<'a> Parser<'a> {
             return Ok(Some(v));
         }
         if let Some(v) = self.string()? {
-            return Ok(Some(AstNode::Value(v)));
+            return Ok(Some(v));
         }
         if let Some(v) = self.float() {
             return Ok(Some(AstNode::Value(v)));

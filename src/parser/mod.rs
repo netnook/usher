@@ -230,6 +230,16 @@ mod tests {
     }
     pub(crate) use _block;
 
+    macro_rules! _interp {
+        ($($v:expr),+) => {{
+            let elems= vec![
+                $($v.into()),+
+            ];
+            AstNode::InterpolatedStr(elems)
+        }};
+    }
+    pub(crate) use _interp;
+
     macro_rules! _prog{
         ($($stmt:expr),+) => {{
             use crate::lang::Program;
@@ -239,12 +249,6 @@ mod tests {
         }};
     }
     pub(crate) use _prog;
-
-    // pub(crate) fn prog(stmts: Vec<impl Into<AstNode>>) -> Program {
-    //     Program {
-    //         stmts: stmts.into_iter().map(|s| s.into()).collect(),
-    //     }
-    // }
 
     #[track_caller]
     pub(crate) fn do_test_parser_ok<'a, F, T>(
