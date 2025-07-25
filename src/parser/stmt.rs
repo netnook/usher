@@ -8,26 +8,6 @@ pub(crate) const EXPECTED_EXPRESSION_ON_RHS: &str = "Expected expression on RHS 
 pub(crate) const INVALID_LHS_OF_ASSIGNMENT: &str = "Invalid LHS of assignment.";
 
 impl<'a> Parser<'a> {
-    // stmt*
-    pub(super) fn stmts(&mut self) -> ParseResult<Vec<AstNode>> {
-        let mut stmts = Vec::new();
-
-        loop {
-            let Some(stmt) = self.stmt()? else {
-                break;
-            };
-            stmts.push(stmt);
-
-            let save = self.pos;
-            if self.req_whitespace_comments().is_err() {
-                self.pos = save;
-                break;
-            };
-        }
-
-        Ok(stmts)
-    }
-
     pub(super) fn stmt(&mut self) -> ParseResult<Option<AstNode>> {
         if let Some(res) = self.if_stmt()? {
             return Ok(Some(res));
@@ -202,14 +182,5 @@ mod tests {
     fn test_assign_or_expr_err() {
         do_test_assign_or_expr_err(" a = ;", 5, EXPECTED_EXPRESSION_ON_RHS);
         do_test_assign_or_expr_err(" a + b = 3", 1, INVALID_LHS_OF_ASSIGNMENT);
-        // do_test_assign_or_expr_ok(" a = 1 + 2 ", assign(id("a"), add(i(1), i(2))), -1);
-        // do_test_block_ok(" { 1 } ", _block![i(1)], -1);
-        // do_test_block_ok(" { 1 \n 2 \n 3 } ", _block![i(1), i(2), i(3)], -1);
-        // do_test_block_ok(" { \n 1 \n 2 \n 3 \n } ", _block![i(1), i(2), i(3)], -1);
-        // do_test_block_ok(" { #foo\n 1 #bar\n #baz \n 2 } ", _block![i(1), i(2)], -1);
-
-        // do_test_block_err(" { 1 ", 1, MISSING_BLOCK_END);
-        // do_test_block_err(" { 1 2 } ", 5, EXPECTED_NEW_LINE_AFTER_STMT);
-        // do_test_block_err(" { 1 \n ; } ", 7, EXPECTED_STATEMENT);
     }
 }

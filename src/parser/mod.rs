@@ -11,6 +11,7 @@ mod list;
 mod nil;
 mod numbers;
 mod object;
+mod program;
 mod stmt;
 mod string;
 mod this;
@@ -60,13 +61,6 @@ impl<'a> Parser<'a> {
             input: input.as_bytes(),
             pos: 0,
         }
-    }
-
-    fn program(&mut self) -> ParseResult<()> {
-        // // FIXME dummy code
-        self.stmts().unwrap();
-
-        Ok(())
     }
 }
 
@@ -186,7 +180,6 @@ mod tests {
     pub(crate) fn assign(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> AstNode {
         AstNode::Assignment(lhs.into().into(), rhs.into().into())
     }
-
     pub(crate) fn _for(
         ident1: Identifier,
         ident2: Option<Identifier>,
@@ -234,6 +227,22 @@ mod tests {
         }};
     }
     pub(crate) use _block;
+
+    macro_rules! _prog{
+        ($($stmt:expr),+) => {{
+            use crate::lang::Program;
+            Program{
+                stmts:vec![$($stmt.into()),+]
+            }
+        }};
+    }
+    pub(crate) use _prog;
+
+    // pub(crate) fn prog(stmts: Vec<impl Into<AstNode>>) -> Program {
+    //     Program {
+    //         stmts: stmts.into_iter().map(|s| s.into()).collect(),
+    //     }
+    // }
 
     #[track_caller]
     pub(crate) fn do_test_parser_ok<'a, F, T>(

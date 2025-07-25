@@ -1,6 +1,11 @@
 use std::fmt::Display;
 
 #[derive(PartialEq, Debug, Clone)]
+pub struct Program {
+    pub stmts: Vec<AstNode>,
+}
+
+#[derive(PartialEq, Debug, Clone)]
 pub enum AstNode {
     This,
     Identifier(Identifier),
