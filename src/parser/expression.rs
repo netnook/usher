@@ -1,7 +1,7 @@
 use super::{ParseResult, Parser, SyntaxError};
 use crate::lang::{
     AstNode, BinaryOp, BinaryOpCode, ChainCatch, Identifier, IndexOf, PropertyOf, UnaryOp,
-    UnaryOpCode,
+    UnaryOpCode, Value,
 };
 
 const EXPECTED_EXPRESSION: &str = "Expected expression.";
@@ -232,8 +232,23 @@ impl<'a> Parser<'a> {
     //   - list or object
     //   - parenthesised expression
     fn primary_expression(&mut self) -> ParseResult<Option<AstNode>> {
-        if let Some(v) = self.this() {
-            return Ok(Some(v));
+        let start = self.pos;
+        match self.unchecked_identifier() {
+            Some(b"this") => return Ok(Some(AstNode::This)),
+            Some(b"nil") => return Ok(Some(AstNode::Value(Value::Nil))),
+            Some(b"dict") => return Ok(Some(AstNode::DictBuilder(self.dict()?))),
+            Some(b"true") => return Ok(Some(AstNode::Value(Value::Bool(true)))),
+            Some(b"false") => return Ok(Some(AstNode::Value(Value::Bool(false)))),
+            _ => {
+                self.pos = start;
+            }
+        }
+        // FIXME: combine this with above so as not to have to re-parse identifier
+        if let Some(v) = self.list()? {
+            return Ok(Some(AstNode::ListBuilder(v)));
+        }
+        if let Some(v) = self.identifier()? {
+            return Ok(Some(AstNode::Identifier(v)));
         }
         if let Some(v) = self.string()? {
             return Ok(Some(v));
@@ -243,21 +258,6 @@ impl<'a> Parser<'a> {
         }
         if let Some(v) = self.integer() {
             return Ok(Some(AstNode::Value(v)));
-        }
-        if let Some(v) = self.boolean() {
-            return Ok(Some(AstNode::Value(v)));
-        }
-        if let Some(v) = self.nil() {
-            return Ok(Some(AstNode::Value(v)));
-        }
-        if let Some(v) = self.list()? {
-            return Ok(Some(AstNode::ListBuilder(v)));
-        }
-        if let Some(v) = self.dict()? {
-            return Ok(Some(AstNode::DictBuilder(v)));
-        }
-        if let Some(v) = self.identifier()? {
-            return Ok(Some(AstNode::Identifier(v)));
         }
         if let Some(v) = self.parens_expression()? {
             return Ok(Some(v));
@@ -334,7 +334,7 @@ impl<'a> Parser<'a> {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use super::*;
     use crate::parser::{dict::EXPECTED_OPEN, string::MISSING_END_QUOTE, tests::*};
 
@@ -530,19 +530,36 @@ mod tests {
 
     #[test]
     fn test_parens_expr_err() {
-        do_test_parser_err(
-            Parser::parens_expression,
-            " (((1)] ",
-            6,
-            EXPECTED_COSING_PARENS,
-        );
-        do_test_parser_err(
-            Parser::parens_expression,
-            " (((1",
-            5,
-            EXPECTED_COSING_PARENS,
-        );
-        do_test_parser_err(Parser::parens_expression, " (;", 2, EXPECTED_EXPRESSION);
-        do_test_parser_err(Parser::parens_expression, " (((\"..", 4, MISSING_END_QUOTE);
+        do_test_expr_err(" (((1)] ", 6, EXPECTED_COSING_PARENS);
+        do_test_expr_err(" (((1", 5, EXPECTED_COSING_PARENS);
+        do_test_expr_err(" (;", 2, EXPECTED_EXPRESSION);
+        do_test_expr_err(" (((\"..", 4, MISSING_END_QUOTE);
+    }
+
+    #[test]
+    fn test_this() {
+        do_test_expr_ok(" this ", this(), -1);
+        do_test_expr_ok(" this", this(), 0);
+
+        do_test_expr_ok(" thiss ", id("thiss"), -1);
+    }
+
+    #[test]
+    fn test_nil() {
+        do_test_expr_ok(" nil ", nil(), -1);
+        do_test_expr_ok(" nil", nil(), 0);
+
+        do_test_expr_ok(" nil2 ", id("nil2"), -1);
+    }
+
+    #[test]
+    fn test_boolean() {
+        do_test_expr_ok(" true ", b(true), -1);
+        do_test_expr_ok(" false ", b(false), -1);
+        do_test_expr_ok(" true", b(true), 0);
+
+        do_test_expr_ok(" tru ", id("tru"), -1);
+        do_test_expr_ok(" falsey", id("falsey"), 0);
+        do_test_parser_none(Parser::expression, " ");
     }
 }

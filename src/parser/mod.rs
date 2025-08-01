@@ -1,4 +1,3 @@
-mod bool;
 mod chars;
 mod comment;
 mod declaration_stmt;
@@ -9,12 +8,10 @@ mod for_stmt;
 mod identifier;
 mod if_stmt;
 mod list;
-mod nil;
 mod numbers;
 mod program;
 mod stmt;
 mod string;
-mod this;
 mod utils;
 
 use crate::lang::Program;

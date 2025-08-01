@@ -6,9 +6,8 @@ const EXPECTED_EXPRESSION_OR_CLOSE: &str = "Expected expression or ']'.";
 const EXPECTED_COMMA_OR_CLOSE: &str = "Expected ',' or ']'.";
 
 impl<'a> Parser<'a> {
-    /// Consume a list if next on input and return it.
-    /// Otherwise consume nothing and return `None`
-    // "[" expr,* ,? "]"
+    /// Consume a list arguments if next on input and return it.
+    /// "[" expr,* ,? "]"
     pub(super) fn list(&mut self) -> ParseResult<Option<ListBuilder>> {
         let start = self.pos;
         if !self.char(b'[') {
@@ -69,24 +68,26 @@ impl<'a> Parser<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::{string::MISSING_END_QUOTE, tests::*};
+    use crate::parser::{
+        expression::tests::{do_test_expr_err, do_test_expr_ok},
+        string::MISSING_END_QUOTE,
+        tests::*,
+    };
 
     #[test]
     fn test_list_ok() {
         let expect = ListBuilder::new(vec![i(1).into(), i(2).into(), i(3).into(), i(4).into()]);
-        do_test_parser_some(Parser::list, " [1,2,3,4] ", expect.clone(), -1);
-        do_test_parser_some(Parser::list, " [1,2,3,4,] ", expect.clone(), -1);
-        do_test_parser_some(Parser::list, " [ 1 , 2 , 3 , 4 ] ", expect.clone(), -1);
-        do_test_parser_some(Parser::list, r#" [] "#, ListBuilder::new(Vec::new()), -1);
-        do_test_parser_some(Parser::list, r#" [  ] "#, ListBuilder::new(Vec::new()), -1);
-        do_test_parser_some(
-            Parser::list,
+        do_test_expr_ok(" [1,2,3,4] ", expect.clone(), -1);
+        do_test_expr_ok(" [1,2,3,4,] ", expect.clone(), -1);
+        do_test_expr_ok(" [ 1 , 2 , 3 , 4 ] ", expect.clone(), -1);
+        do_test_expr_ok(r#" [] "#, ListBuilder::new(Vec::new()), -1);
+        do_test_expr_ok(r#" [  ] "#, ListBuilder::new(Vec::new()), -1);
+        do_test_expr_ok(
             " [ # comment \n 1 , # comment \n 2 # comment \n , # comment \n\n 3 # comment \n , # comment \n 4 ] ",
             expect.clone(),
             -1,
         );
-        do_test_parser_some(
-            Parser::list,
+        do_test_expr_ok(
             " [# comment \n1# comment \n,2,# comment \n# comment \n\n3# comment \n,# comment \n4,] ",
             expect,
             -1,
@@ -98,28 +99,16 @@ mod tests {
             b(false).into(),
             s("foo").into(),
         ]);
-        do_test_parser_some(Parser::list, r#" [1,nil,false,"foo"]-"#, expect.clone(), -1);
-        do_test_parser_some(
-            Parser::list,
-            r#" [1, nil, false, "foo"]-"#,
-            expect.clone(),
-            -1,
-        );
-        do_test_parser_some(
-            Parser::list,
-            r#" [1, nil, false, "foo", ]-"#,
-            expect.clone(),
-            -1,
-        );
-        do_test_parser_some(
-            Parser::list,
-            " [ # comment\n # comment \n \n ]-",
+        do_test_expr_ok(r#" [1,nil,false,"foo"] "#, expect.clone(), -1);
+        do_test_expr_ok(r#" [1, nil, false, "foo"] "#, expect.clone(), -1);
+        do_test_expr_ok(r#" [1, nil, false, "foo", ] "#, expect.clone(), -1);
+        do_test_expr_ok(
+            " [ # comment\n # comment \n \n ] ",
             ListBuilder::new(Vec::new()),
             -1,
         );
-        do_test_parser_some(
-            Parser::list,
-            " [[1, 1], 2, [3, 3, 3,], 4,]-",
+        do_test_expr_ok(
+            " [[1, 1], 2, [3, 3, 3,], 4,] ",
             ListBuilder::new(vec![
                 ListBuilder::new(vec![i(1).into(), i(1).into()]).into(),
                 i(2).into(),
@@ -131,33 +120,13 @@ mod tests {
     }
 
     #[test]
-    fn test_list_none() {
-        do_test_parser_none(Parser::list, "--");
-    }
-
-    #[test]
     fn test_list_err() {
-        do_test_parser_err(Parser::list, r#" [1,2,3,4"#, 1, MISSING_CLOSE);
-        do_test_parser_err(Parser::list, r#" [1,2,3,"#, 1, MISSING_CLOSE);
-        do_test_parser_err(Parser::list, r#" [1 2]-"#, 4, EXPECTED_COMMA_OR_CLOSE);
-        do_test_parser_err(
-            Parser::list,
-            r#" [1, 2, 3, 4 } "#,
-            13,
-            EXPECTED_COMMA_OR_CLOSE,
-        );
-        do_test_parser_err(
-            Parser::list,
-            r#" [1, 2, 3, 4, } "#,
-            14,
-            EXPECTED_EXPRESSION_OR_CLOSE,
-        );
-        do_test_parser_err(Parser::list, r#" [ , ]-"#, 3, EXPECTED_EXPRESSION_OR_CLOSE);
-        do_test_parser_err(
-            Parser::list,
-            r#" [1, 2, 3, "bad-string"#,
-            11,
-            MISSING_END_QUOTE,
-        );
+        do_test_expr_err(r#" [1,2,3,4"#, 1, MISSING_CLOSE);
+        do_test_expr_err(r#" [1,2,3,"#, 1, MISSING_CLOSE);
+        do_test_expr_err(r#" [1 2]-"#, 4, EXPECTED_COMMA_OR_CLOSE);
+        do_test_expr_err(r#" [1, 2, 3, 4 } "#, 13, EXPECTED_COMMA_OR_CLOSE);
+        do_test_expr_err(r#" [1, 2, 3, 4, } "#, 14, EXPECTED_EXPRESSION_OR_CLOSE);
+        do_test_expr_err(r#" [ , ]-"#, 3, EXPECTED_EXPRESSION_OR_CLOSE);
+        do_test_expr_err(r#" [1, 2, 3, "bad-string"#, 11, MISSING_END_QUOTE);
     }
 }
