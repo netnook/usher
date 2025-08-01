@@ -1,7 +1,7 @@
 use super::{ParseResult, Parser, SyntaxError};
 use crate::lang::{
-    AstNode, BinaryOp, BinaryOpCode, ChainCatch, Identifier, IndexOf, KeyValue, PropertyOf,
-    UnaryOp, UnaryOpCode, Value,
+    Arg, AstNode, BinaryOp, BinaryOpCode, ChainCatch, FunctionCall, Identifier, IndexOf, KeyValue,
+    PropertyOf, UnaryOp, UnaryOpCode, Value,
 };
 
 pub(crate) const EXPECTED_EXPRESSION: &str = "Expected expression.";
@@ -9,6 +9,12 @@ pub(crate) const EXPECTED_COSING_PARENS: &str = "Expected closing parenthesis ')
 pub(crate) const EXPECTED_COSING_BRACKET: &str = "Expected closing bracket ']'";
 pub(crate) const EXPECTED_IDENTIFIER: &str = "Expected identifier.";
 pub(crate) const EXPECTED_IDENT_ON_KV_LHS: &str = "Expected identifier on LHS of key:value pair.";
+pub(crate) const MISSING_CALL_CLOSE: &str =
+    "Expected closing parenthesis ')' after function call arguments.";
+pub(crate) const EXPECTED_CALL_ARG_OR_CLOSE: &str =
+    "Expected function call argument or closing parenthesis ')'.";
+pub(crate) const EXPECTED_CALL_COMMA_OR_CLOSE: &str =
+    "Expected comma or closing parenthesis ')' for function call arguments.";
 
 impl<'a> Parser<'a> {
     /// Consume an expression or nothing.
@@ -255,6 +261,14 @@ impl<'a> Parser<'a> {
                 continue;
             }
 
+            if let Some(args) = self.call_of()? {
+                node = AstNode::FunctionCall(FunctionCall {
+                    on: node.into(),
+                    args,
+                });
+                continue;
+            }
+
             if self.chain_catch() {
                 node = AstNode::ChainCatch(ChainCatch { inner: node.into() });
                 continue;
@@ -370,6 +384,72 @@ impl<'a> Parser<'a> {
         Ok(Some(index))
     }
 
+    fn call_of(&mut self) -> ParseResult<Option<Vec<Arg>>> {
+        let start = self.pos;
+        if !self.char(b'(') {
+            return Ok(None);
+        };
+
+        self.whitespace_comments();
+
+        let mut args = Vec::new();
+        loop {
+            if self.char(b')') {
+                break;
+            }
+
+            let Some(expr) = self.expression()? else {
+                if self.is_eoi() {
+                    return Err(SyntaxError {
+                        pos: start,
+                        msg: MISSING_CALL_CLOSE,
+                    });
+                } else {
+                    return Err(SyntaxError {
+                        pos: self.pos,
+                        msg: EXPECTED_CALL_ARG_OR_CLOSE,
+                    });
+                }
+            };
+
+            let arg = match expr {
+                AstNode::KeyValue(KeyValue { key, value }) => Arg {
+                    name: Some(key),
+                    value: *value,
+                },
+                other => Arg {
+                    name: None,
+                    value: other,
+                },
+            };
+            args.push(arg);
+            self.whitespace_comments();
+
+            if self.char(b',') {
+                self.whitespace_comments();
+                continue;
+            }
+
+            if self.char(b')') {
+                break;
+            }
+
+            if self.is_eoi() {
+                return Err(SyntaxError {
+                    pos: start,
+                    msg: MISSING_CALL_CLOSE,
+                });
+            }
+
+            return Err(SyntaxError {
+                pos: self.pos,
+                msg: EXPECTED_CALL_COMMA_OR_CLOSE,
+            });
+        }
+
+        Ok(Some(args))
+    }
+
     fn chain_catch(&mut self) -> bool {
         self.char(b'?')
     }
@@ -414,6 +494,17 @@ pub mod tests {
         do_test_expr_ok(" foo.bar ", prop_of(id("foo"), "bar"), -1);
         do_test_expr_ok(" foo[\"bar\"] ", index_of(id("foo"), s("bar")), -1);
         do_test_expr_ok(" foo[bar] ", index_of(id("foo"), id("bar")), -1);
+        do_test_expr_ok(" foo() ", _call!(id("foo"),), -1);
+        do_test_expr_ok(
+            r#" foo.bar(a,"33",c:7*2) "#,
+            _call!(
+                prop_of(id("foo"), "bar"),
+                arg(id("a")),
+                arg(s("33")),
+                arg(id("c"), mul(i(7), i(2))),
+            ),
+            -1,
+        );
         do_test_expr_ok(" foo? ", chain_catch(id("foo")), -1);
         do_test_expr_ok(" foo.map ", prop_of(id("foo"), "map"), -1);
         do_test_expr_ok(
@@ -452,7 +543,16 @@ pub mod tests {
         do_test_expr_ok(" aa #comment\n . foo  ", id("aa"), 3);
         do_test_expr_ok(" aa #comment\n [1]  ", id("aa"), 3);
         do_test_expr_ok(" aa #comment\n ?  ", id("aa"), 3);
-
+        do_test_expr_ok(
+            " foo.bar(#comment\n a#comment\n ,#comment\n 7#comment\n ,#comment\n c :#comment\n 7*2) ",
+            _call!(
+                prop_of(id("foo"), "bar"),
+                arg(id("a")),
+                arg(i(7)),
+                arg(id("c"), mul(i(7), i(2))),
+            ),
+            -1,
+        );
         // unary prefix expressions
         do_test_expr_ok(" -foo ", neg(id("foo")), -1);
         do_test_expr_ok(" !foo ", not(id("foo")), -1);
@@ -556,6 +656,11 @@ pub mod tests {
         );
 
         do_test_expr_err(" dict.foo ", 5, EXPECTED_OPEN);
+        do_test_expr_err(" foo(]) ", 5, EXPECTED_CALL_ARG_OR_CLOSE);
+        do_test_expr_err(" foo(a,,) ", 7, EXPECTED_CALL_ARG_OR_CLOSE);
+        do_test_expr_err(" foo(a b) ", 7, EXPECTED_CALL_COMMA_OR_CLOSE);
+        do_test_expr_err(" foo(a", 4, MISSING_CALL_CLOSE);
+        do_test_expr_err(" foo( ", 4, MISSING_CALL_CLOSE);
     }
 
     #[test]

@@ -23,6 +23,7 @@ pub enum AstNode {
     ForStmt(ForStmt),
     Declaration(Declaration),
     FunctionDef(FunctionDef),
+    FunctionCall(FunctionCall),
     ReturnStmt(ReturnStmt),
     Assignment(Assignment),
     KeyValue(KeyValue),
@@ -79,6 +80,11 @@ impl From<Declaration> for AstNode {
 impl From<FunctionDef> for AstNode {
     fn from(value: FunctionDef) -> Self {
         Self::FunctionDef(value)
+    }
+}
+impl From<FunctionCall> for AstNode {
+    fn from(value: FunctionCall) -> Self {
+        Self::FunctionCall(value)
     }
 }
 impl From<ReturnStmt> for AstNode {
@@ -238,6 +244,18 @@ pub struct FunctionDef {
 pub struct Param {
     pub(crate) name: Identifier,
     pub(crate) value: Option<AstNode>,
+}
+
+#[derive(PartialEq, Debug, Clone)]
+pub struct FunctionCall {
+    pub(crate) on: Box<AstNode>,
+    pub(crate) args: Vec<Arg>,
+}
+
+#[derive(PartialEq, Debug, Clone)]
+pub struct Arg {
+    pub(crate) name: Option<Identifier>,
+    pub(crate) value: AstNode,
 }
 
 #[derive(PartialEq, Debug, Clone)]

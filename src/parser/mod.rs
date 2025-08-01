@@ -319,6 +319,44 @@ mod tests {
     }
     pub(crate) use _func;
 
+    macro_rules! _call{
+        ($on:expr, $($rest:tt)*) => {{
+            use crate::lang::FunctionCall;
+            let c = _call!(@inner $($rest)*);
+            FunctionCall {
+                on: Box::new($on.into()),
+                ..c
+            }
+        }};
+        (@inner arg($name:expr, $value:expr), $($rest:tt)*) => {{
+            use crate::lang::Arg;
+            let mut c = _call!(@inner $($rest)*);
+            c.args.insert(0, Arg{
+                name: Some($name),
+                value: $value
+            });
+            c
+        }};
+        (@inner arg($value:expr), $($rest:tt)*) => {{
+            use crate::lang::Arg;
+            let mut c = _call!(@inner $($rest)*);
+            c.args.insert(0, Arg{
+                name: None,
+                value: $value.into()
+            });
+            c
+        }};
+        (@inner) => {{
+            use crate::lang::FunctionCall;
+            use crate::lang::AstNode;
+            FunctionCall{
+                 on: AstNode::Break.into(), // dummy value
+                 args: Vec::new()
+            }
+        }};
+    }
+    pub(crate) use _call;
+
     #[track_caller]
     pub(crate) fn do_test_parser_ok<'a, F, T>(
         func: F,

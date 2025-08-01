@@ -33,7 +33,8 @@ function foo(a: 1*2) {
    return 42
 }
 
-# foo("22", c:"ccc")
+foo("22", c:"ccc")
+a.foo("22", c:"ccc")
 ---
 (decl
   (id a)
@@ -223,4 +224,28 @@ end
     )
   )
 )
-
+(call
+  (on
+    (id foo)
+  )
+  (args
+    "22"
+    (c
+      "ccc"
+    )
+  )
+)
+(call
+  (on
+    (property
+      (id a)
+      (id foo)
+    )
+  )
+  (args
+    "22"
+    (c
+      "ccc"
+    )
+  )
+)

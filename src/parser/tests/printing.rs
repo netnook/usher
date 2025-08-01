@@ -1,7 +1,8 @@
 use crate::lang::{
-    Assignment, AstNode, BinaryOp, BinaryOpCode, Block, ChainCatch, ConditionalBlock, Declaration,
-    DictBuilder, ForStmt, FunctionDef, Identifier, IfElseStmt, IndexOf, InterpolatedStr, KeyValue,
-    ListBuilder, Param, Program, PropertyOf, ReturnStmt, UnaryOp, UnaryOpCode, Value,
+    Arg, Assignment, AstNode, BinaryOp, BinaryOpCode, Block, ChainCatch, ConditionalBlock,
+    Declaration, DictBuilder, ForStmt, FunctionCall, FunctionDef, Identifier, IfElseStmt, IndexOf,
+    InterpolatedStr, KeyValue, ListBuilder, Param, Program, PropertyOf, ReturnStmt, UnaryOp,
+    UnaryOpCode, Value,
 };
 use std::io::{BufWriter, Write};
 
@@ -37,6 +38,7 @@ impl AstNode {
             AstNode::IfElseStmt(v) => v.print(w, indent),
             AstNode::ForStmt(v) => v.print(w, indent),
             AstNode::FunctionDef(v) => v.print(w, indent),
+            AstNode::FunctionCall(v) => v.print(w, indent),
             AstNode::ReturnStmt(v) => v.print(w, indent),
             AstNode::Declaration(v) => v.print(w, indent),
             AstNode::Assignment(v) => v.print(w, indent),
@@ -154,6 +156,37 @@ impl Param {
     }
 }
 
+impl FunctionCall {
+    fn print(&self, w: &mut impl Write, indent: usize) {
+        write_open(w, indent, "call");
+        write_open(w, indent + 1, "on");
+        self.on.print(w, indent + 2);
+        write_close(w, indent + 1);
+
+        if !self.args.is_empty() {
+            write_open(w, indent + 1, "args");
+            for a in &self.args {
+                a.print(w, indent + 2);
+            }
+            write_close(w, indent + 1);
+        }
+
+        write_close(w, indent);
+    }
+}
+
+impl Arg {
+    fn print(&self, w: &mut impl Write, indent: usize) {
+        match &self.name {
+            Some(name) => {
+                write_open(w, indent, &name.name);
+                self.value.print(w, indent + 1);
+                write_close(w, indent);
+            }
+            None => self.value.print(w, indent),
+        }
+    }
+}
 impl ReturnStmt {
     fn print(&self, w: &mut impl Write, indent: usize) {
         if let Some(value) = &self.value {
