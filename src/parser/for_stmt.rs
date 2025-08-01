@@ -15,7 +15,7 @@ impl<'a> Parser<'a> {
 
         self.req_whitespace_comments()?;
 
-        let Some(loop_var_1) = self.identifier()? else {
+        let Some(loop_var_1) = self.declaration_identifier()? else {
             return Err(SyntaxError {
                 pos: self.pos,
                 msg: EXPECTED_VARIABLE,
@@ -28,7 +28,7 @@ impl<'a> Parser<'a> {
 
         if self.char(b',') {
             self.whitespace_comments();
-            loop_var_2 = self.identifier()?;
+            loop_var_2 = self.declaration_identifier()?;
 
             if loop_var_2.is_none() {
                 return Err(SyntaxError {
@@ -40,7 +40,7 @@ impl<'a> Parser<'a> {
             self.whitespace_comments();
         }
 
-        if self.unchecked_identifier() != Some(b"in") {
+        if self.unchecked_identifier() != Some("in") {
             return Err(SyntaxError {
                 pos: self.pos,
                 msg: EXPECTED_IN,
@@ -77,7 +77,10 @@ impl<'a> Parser<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::tests::*;
+    use crate::parser::{
+        identifier::{KEYWORD_RESERVED, NAME_RESERVED},
+        tests::*,
+    };
 
     #[track_caller]
     fn do_test_for_ok(input: &'static str, expected: ForStmt, expected_end: isize) {
@@ -122,5 +125,7 @@ mod tests {
         do_test_for_err(" for a,b { in x { 1 } ", 9, EXPECTED_IN);
         do_test_for_err(" for a in ; x { 1 } ", 10, EXPECTED_EXPRESSION);
         do_test_for_err(" for a in x ; { 1 } ", 12, EXPECTED_BLOCK);
+        do_test_for_err(" for else in x { 1 } ", 5, KEYWORD_RESERVED);
+        do_test_for_err(" for a, print in x { 1 } ", 8, NAME_RESERVED);
     }
 }

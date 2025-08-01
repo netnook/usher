@@ -35,12 +35,12 @@ fn main() {
     let prog = match parser::parse(&script) {
         Ok(prog) => prog,
         Err(e) => {
-            eprintln!("");
+            eprintln!();
             eprintln!(
                 "Error parsing script at line {}, char {}: {}",
                 e.line_no, e.char_no, e.msg
             );
-            eprintln!("");
+            eprintln!();
             eprintln!("> {}", e.line);
             eprintln!("> {}^", " ".repeat(e.char_no));
 
@@ -51,7 +51,7 @@ fn main() {
     match prog.run() {
         Ok(_) => {}
         Err(e) => {
-            eprintln!("Program error: {:?}", e);
+            eprintln!("Program error: {e:?}");
             std::process::exit(1)
         }
     }

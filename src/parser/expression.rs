@@ -288,21 +288,19 @@ impl<'a> Parser<'a> {
     fn primary_expression(&mut self) -> ParseResult<Option<AstNode>> {
         let start = self.pos;
         match self.unchecked_identifier() {
-            Some(b"this") => return Ok(Some(AstNode::This)),
-            Some(b"nil") => return Ok(Some(AstNode::Value(Value::Nil))),
-            Some(b"dict") => return Ok(Some(AstNode::DictBuilder(self.dict()?))),
-            Some(b"true") => return Ok(Some(AstNode::Value(Value::Bool(true)))),
-            Some(b"false") => return Ok(Some(AstNode::Value(Value::Bool(false)))),
-            Some(b"function") => return Ok(Some(AstNode::FunctionDef(self.function_def()?))),
-            // to error if function def added to something, for example
+            Some("this") => return Ok(Some(AstNode::This)),
+            Some("nil") => return Ok(Some(AstNode::Value(Value::Nil))),
+            Some("dict") => return Ok(Some(AstNode::DictBuilder(self.dict()?))),
+            Some("true") => return Ok(Some(AstNode::Value(Value::Bool(true)))),
+            Some("false") => return Ok(Some(AstNode::Value(Value::Bool(false)))),
+            Some("function") => return Ok(Some(AstNode::FunctionDef(self.function_def()?))),
+            Some(id) => return Ok(Some(AstNode::Identifier(Identifier::new(id.to_string())))),
+            // FIXME error if function def added to something, for example
             _ => {
                 self.pos = start;
             }
         }
         // FIXME: combine this with above so as not to have to re-parse identifier
-        if let Some(v) = self.identifier()? {
-            return Ok(Some(AstNode::Identifier(v)));
-        }
         if let Some(v) = self.list()? {
             return Ok(Some(AstNode::ListBuilder(v)));
         }
@@ -359,9 +357,9 @@ impl<'a> Parser<'a> {
             return Err(SyntaxError::new(self.pos, EXPECTED_IDENTIFIER));
         };
 
-        let ident = String::from_utf8_lossy(ident).to_string();
-
-        Ok(Some(Identifier { name: ident }))
+        Ok(Some(Identifier {
+            name: ident.to_string(),
+        }))
     }
 
     fn index_of(&mut self) -> ParseResult<Option<AstNode>> {

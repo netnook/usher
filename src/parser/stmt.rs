@@ -13,25 +13,25 @@ impl<'a> Parser<'a> {
 
         if let Some(id) = self.unchecked_identifier() {
             match id {
-                b"if" => {
+                "if" => {
                     return Ok(Some(self.if_stmt()?));
                 }
-                b"for" => {
+                "for" => {
                     return Ok(Some(self.for_stmt()?));
                 }
-                b"var" => {
+                "var" => {
                     return Ok(Some(self.var_stmt()?));
                 }
-                b"break" => {
+                "break" => {
                     return Ok(Some(AstNode::Break));
                 }
-                b"end" => {
+                "end" => {
                     return Ok(Some(AstNode::End));
                 }
-                b"continue" => {
+                "continue" => {
                     return Ok(Some(AstNode::Continue));
                 }
-                b"return" => {
+                "return" => {
                     return Ok(Some(self.return_stmt()?));
                 }
                 _ => {
@@ -90,6 +90,7 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn assignment_or_expression(&mut self) -> ParseResult<Option<AstNode>> {
+        // FIXME check assignment does not assign to resered name on LHS
         let start = self.pos;
 
         let Some(expr) = self.expression()? else {

@@ -23,14 +23,14 @@ impl<'a> Parser<'a> {
 
             self.whitespace_comments();
 
-            if self.unchecked_identifier() != Some(b"else") {
+            if self.unchecked_identifier() != Some("else") {
                 break savepoint;
             };
 
             let ws = self.whitespace_comments();
 
             let savepoint = self.pos;
-            if self.unchecked_identifier() == Some(b"if") {
+            if self.unchecked_identifier() == Some("if") {
                 if !ws {
                     return Err(SyntaxError {
                         pos: savepoint,

@@ -21,10 +21,13 @@ use crate::lang::Program;
 use error::{ParseError, build_parse_error};
 
 // FIXME: add all necessary keywords
-pub(crate) const RESERVED_KEYWORDS: [&str; 19] = [
-    "print", "if", "else", "for", "in", "break", "continue", "return", "function", "var", "true",
-    "false", "nil", "end", "dict", "switch", "case", "defer", "error",
+pub(crate) const KEYWORDS: [&str; 17] = [
+    "if", "else", "for", "in", "break", "continue", "return", "function", "var", "true", "false",
+    "nil", "end", "dict", "switch", "case", "defer",
 ];
+
+// FIXME: add all necessary keywords
+pub(crate) const RESERVED_NAMES: [&str; 3] = ["print", "error", "std"];
 
 pub fn parse(input: &str) -> Result<Program, ParseError> {
     let mut p = Parser::new(input);

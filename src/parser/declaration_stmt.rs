@@ -12,7 +12,7 @@ impl<'a> Parser<'a> {
 
         self.req_whitespace_comments()?;
 
-        let Some(ident) = self.identifier()? else {
+        let Some(ident) = self.declaration_identifier()? else {
             return Err(SyntaxError {
                 pos: self.pos,
                 msg: EXPECTED_IDENTIFIER,
@@ -48,6 +48,7 @@ impl<'a> Parser<'a> {
 mod tests {
     use super::*;
     use crate::parser::comment::EXPECTED_WS_OR_COMMENT;
+    use crate::parser::identifier::{KEYWORD_RESERVED, NAME_RESERVED};
     use crate::parser::tests::*;
 
     #[track_caller]
@@ -79,5 +80,7 @@ mod tests {
         do_test_var_err(" var a # comment \n = 1 ", 7, EXPECTED_EQUAL);
         do_test_var_err(" var a +  = 1 ", 7, EXPECTED_EQUAL);
         do_test_var_err(" var a = ; 1 ", 9, EXPECTED_EXPRESSION);
+        do_test_var_err(" var print = 1 ", 5, NAME_RESERVED);
+        do_test_var_err(" var else = 1 ", 5, KEYWORD_RESERVED);
     }
 }

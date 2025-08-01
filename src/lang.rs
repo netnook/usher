@@ -7,7 +7,7 @@ pub struct Program {
 
 impl Program {
     pub(crate) fn run(&self) -> Result<(), ProgramError> {
-        todo!()
+        todo!("run not implemented !!!")
     }
 }
 

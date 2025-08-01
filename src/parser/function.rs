@@ -12,7 +12,7 @@ impl<'a> Parser<'a> {
     pub(super) fn function_def(&mut self) -> ParseResult<FunctionDef> {
         self.linespace();
 
-        let name = self.identifier()?;
+        let name = self.declaration_identifier()?;
         if name.is_some() {
             self.linespace();
         }
