@@ -1,4 +1,24 @@
-use std::fmt::Display;
+use std::{collections::HashMap, fmt::Display};
+
+#[derive(Debug, Clone)]
+pub struct Context {
+    pub vars: HashMap<Identifier, Value>,
+}
+
+impl Context {
+    pub fn new() -> Self {
+        Self {
+            vars: HashMap::new(),
+        }
+    }
+
+    pub fn set(&mut self, ident: &Identifier, value: Value) {
+        self.vars.insert(ident.clone(), value);
+    }
+    pub fn get(&mut self, ident: &Identifier) -> Value {
+        self.vars.get(ident).cloned().unwrap_or(Value::Nil)
+    }
+}
 
 #[derive(PartialEq, Debug, Clone)]
 pub struct Program {
@@ -7,7 +27,11 @@ pub struct Program {
 
 impl Program {
     pub(crate) fn run(&self) -> Result<(), ProgramError> {
-        todo!("run not implemented !!!")
+        let mut ctxt = Context::new();
+        for stmt in &self.stmts {
+            stmt.eval(&mut ctxt)?;
+        }
+        Ok(())
     }
 }
 
@@ -39,6 +63,33 @@ pub enum AstNode {
     Break,
     Continue,
     End,
+}
+
+impl AstNode {
+    pub fn eval(&self, ctxt: &mut Context) -> Result<Value, ProgramError> {
+        match self {
+            AstNode::Declaration(v) => v.eval(ctxt),
+            AstNode::Value(v) => v.eval(ctxt),
+            AstNode::FunctionCall(v) => v.eval(ctxt),
+            AstNode::Identifier(v) => v.eval(ctxt),
+            AstNode::InterpolatedStr(v) => v.eval(ctxt),
+            // AstNode::ListBuilder(list_builder) => todo!(),
+            // AstNode::DictBuilder(dict_builder) => todo!(),
+            // AstNode::PropertyOf(property_of) => todo!(),
+            // AstNode::IndexOf(index_of) => todo!(),
+            // AstNode::UnaryOp(unary_op) => todo!(),
+            // AstNode::BinaryOp(binary_op) => todo!(),
+            // AstNode::ChainCatch(chain_catch) => todo!(),
+            // AstNode::Block(block) => todo!(),
+            // AstNode::IfElseStmt(if_else_stmt) => todo!(),
+            // AstNode::ForStmt(for_stmt) => todo!(),
+            // AstNode::FunctionDef(function_def) => todo!(),
+            // AstNode::ReturnStmt(return_stmt) => todo!(),
+            // AstNode::Assignment(assignment) => todo!(),
+            // AstNode::KeyValue(key_value) => todo!(),
+            n => todo!("eval not implemented for {n:?}"),
+        }
+    }
 }
 
 impl From<Identifier> for AstNode {
@@ -102,7 +153,7 @@ impl From<ReturnStmt> for AstNode {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct Identifier {
     pub(crate) name: String,
 }
@@ -110,6 +161,13 @@ pub struct Identifier {
 impl Identifier {
     pub(crate) fn new(name: String) -> Self {
         Self { name }
+    }
+    pub fn eval(&self, ctxt: &mut Context) -> Result<Value, ProgramError> {
+        if self.name == "print" {
+            Ok(Value::FuncBuiltIn(FuncBuiltIn::Print))
+        } else {
+            Ok(ctxt.get(self))
+        }
     }
 }
 
@@ -148,6 +206,24 @@ pub struct InterpolatedStr {
     pub(crate) parts: Vec<AstNode>,
 }
 
+impl InterpolatedStr {
+    pub fn eval(&self, ctxt: &mut Context) -> Result<Value, ProgramError> {
+        if self.parts.len() == 1 {
+            self.parts.get(0).expect("should be there").eval(ctxt)
+        } else {
+            let mut res = String::new();
+            for p in &self.parts {
+                let val = p.eval(ctxt)?;
+                match val {
+                    Value::Func(_) => todo!("error"),
+                    Value::FuncBuiltIn(_) => todo!("error"),
+                    v => res.push_str(&format!("{}", v)),
+                }
+            }
+            Ok(Value::Str(res))
+        }
+    }
+}
 #[derive(PartialEq, Debug, Clone)]
 pub struct ListBuilder {
     pub(crate) entries: Vec<AstNode>,
@@ -172,6 +248,8 @@ impl DictBuilder {
 
 #[derive(PartialEq, Debug, Clone)]
 pub enum Value {
+    Func(FunctionDef),
+    FuncBuiltIn(FuncBuiltIn),
     Str(String),
     Integer(isize),
     Float(f64),
@@ -179,9 +257,17 @@ pub enum Value {
     Nil,
 }
 
+impl Value {
+    pub fn eval(&self, _: &mut Context) -> Result<Value, ProgramError> {
+        Ok(self.clone())
+    }
+}
+
 impl Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Value::Func(_) => write!(f, "@func@"),
+            Value::FuncBuiltIn(_) => write!(f, "@func-builtin@"),
             Value::Str(v) => write!(f, "{v}"),
             Value::Integer(v) => write!(f, "{v}"),
             Value::Float(v) => write!(f, "{v}"),
@@ -249,6 +335,33 @@ pub struct FunctionDef {
     pub(crate) body: Block,
 }
 
+impl FunctionDef {
+    pub fn call(&self, ctxt: &mut Context, params: Vec<Value>) -> Result<Value, ProgramError> {
+        let _ = params;
+        let _ = ctxt;
+        let _ = Value::Func(self.clone());
+        todo!()
+    }
+}
+
+#[derive(PartialEq, Debug, Clone)]
+pub enum FuncBuiltIn {
+    Print,
+}
+
+impl FuncBuiltIn {
+    pub fn call(&self, _ctxt: &mut Context, params: Vec<Value>) -> Result<Value, ProgramError> {
+        match self {
+            FuncBuiltIn::Print => {
+                for p in params {
+                    println!("got {p}");
+                }
+                Ok(Value::Nil)
+            }
+        }
+    }
+}
+
 #[derive(PartialEq, Debug, Clone)]
 pub struct Param {
     pub(crate) name: Identifier,
@@ -261,10 +374,42 @@ pub struct FunctionCall {
     pub(crate) args: Vec<Arg>,
 }
 
+impl FunctionCall {
+    pub fn eval(&self, ctxt: &mut Context) -> Result<Value, ProgramError> {
+        // get the function
+        let maybe_func = self.on.eval(ctxt)?;
+
+        // evaluate the args
+        let mut args = Vec::with_capacity(self.args.len());
+        for arg_def in &self.args {
+            args.push(arg_def.eval(ctxt)?);
+        }
+
+        // call the function
+        // func.call(ctxt, args)
+        match maybe_func {
+            Value::Func(func) => func.call(ctxt, args),
+            Value::FuncBuiltIn(func) => func.call(ctxt, args),
+            _ => {
+                todo!()
+            }
+        }
+    }
+}
+
 #[derive(PartialEq, Debug, Clone)]
 pub struct Arg {
     pub(crate) name: Option<Identifier>,
     pub(crate) value: AstNode,
+}
+
+impl Arg {
+    pub fn eval(&self, ctxt: &mut Context) -> Result<Value, ProgramError> {
+        if self.name.is_some() {
+            todo!("named arg not handleld");
+        }
+        self.value.eval(ctxt)
+    }
 }
 
 #[derive(PartialEq, Debug, Clone)]
@@ -276,6 +421,14 @@ pub struct ReturnStmt {
 pub struct Declaration {
     pub(crate) ident: Identifier,
     pub(crate) value: Box<AstNode>,
+}
+
+impl Declaration {
+    pub fn eval(&self, ctxt: &mut Context) -> Result<Value, ProgramError> {
+        let value = self.value.eval(ctxt)?;
+        ctxt.set(&self.ident, value);
+        Ok(Value::Nil)
+    }
 }
 
 #[derive(PartialEq, Debug, Clone)]
