@@ -1,13 +1,11 @@
 use super::{ParseResult, Parser, SyntaxError};
-use crate::lang::{AstNode, DictBuilder, Value};
+use crate::lang::{AstNode, DictBuilder};
 
 pub(crate) const MISSING_CLOSE: &str = "Missing closing ')'.";
 pub(crate) const EXPECTED_OPEN: &str = "Expected opening '('.";
 pub(crate) const EXPECTED_KEY_EXPRESSION_OR_CLOSE: &str = "Expected expression or ')'.";
 pub(crate) const EXPECTED_COMMA_OR_CLOSE: &str = "Expected ',' or ')'.";
 pub(crate) const EXPECTED_KEY_VALUE_PAIR: &str = "Expected key value pair separated by ':'.";
-pub(crate) const INVALID_KEY_EXPRESSION: &str =
-    "Invalid key expression. Only string, integer, bool or identifier allowed.";
 
 impl<'a> Parser<'a> {
     /// Consume an object if next on input and return it.
@@ -55,22 +53,6 @@ impl<'a> Parser<'a> {
                 });
             };
 
-            let k = kv.key.as_ref();
-
-            match k {
-                AstNode::This => {}
-                AstNode::Identifier(_) => {}
-                AstNode::Value(Value::Str(_)) => {}
-                AstNode::Value(Value::Integer(_)) => {}
-                AstNode::Value(Value::Bool(_)) => {}
-                _ => {
-                    return Err(SyntaxError {
-                        pos: kv_start,
-                        msg: INVALID_KEY_EXPRESSION,
-                    });
-                }
-            };
-
             entries.push(kv);
 
             self.whitespace_comments();
@@ -106,7 +88,7 @@ mod tests {
     use super::*;
     use crate::parser::{
         expression::{
-            EXPECTED_EXPRESSION,
+            EXPECTED_EXPRESSION, EXPECTED_IDENT_ON_KV_LHS,
             tests::{do_test_expr_err, do_test_expr_ok},
         },
         string::MISSING_END_QUOTE,
@@ -168,7 +150,7 @@ mod tests {
         );
         do_test_expr_err(r#" dict( a:1 ; ) "#, 11, EXPECTED_COMMA_OR_CLOSE);
         do_test_expr_err(r#" dict( 1;1  ) "#, 7, EXPECTED_KEY_VALUE_PAIR);
-        do_test_expr_err(r#" dict( nil:1 ; ) "#, 7, INVALID_KEY_EXPRESSION);
+        do_test_expr_err(r#" dict( nil:1 ; ) "#, 7, EXPECTED_IDENT_ON_KV_LHS);
         do_test_expr_err(r#" dict( a:1, ] ) "#, 12, EXPECTED_KEY_EXPRESSION_OR_CLOSE);
 
         do_test_expr_err(r#" dict( a:1 , b 2, ) "#, 13, EXPECTED_KEY_VALUE_PAIR);

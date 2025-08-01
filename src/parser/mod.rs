@@ -99,9 +99,9 @@ mod tests {
     pub(crate) fn id(s: &str) -> Identifier {
         Identifier::new(s.to_string())
     }
-    pub(crate) fn kv(key: impl Into<AstNode>, value: impl Into<AstNode>) -> KeyValue {
+    pub(crate) fn kv(key: impl Into<Identifier>, value: impl Into<AstNode>) -> KeyValue {
         KeyValue {
-            key: key.into().into(),
+            key: key.into(),
             value: value.into().into(),
         }
     }

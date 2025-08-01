@@ -8,6 +8,7 @@ pub(crate) const EXPECTED_EXPRESSION: &str = "Expected expression.";
 pub(crate) const EXPECTED_COSING_PARENS: &str = "Expected closing parenthesis ')'";
 pub(crate) const EXPECTED_COSING_BRACKET: &str = "Expected closing bracket ']'";
 pub(crate) const EXPECTED_IDENTIFIER: &str = "Expected identifier.";
+pub(crate) const EXPECTED_IDENT_ON_KV_LHS: &str = "Expected identifier on LHS of key:value pair.";
 
 impl<'a> Parser<'a> {
     /// Consume an expression or nothing.
@@ -24,6 +25,8 @@ impl<'a> Parser<'a> {
 
     // Key value expression
     fn key_value_expression(&mut self) -> ParseResult<Option<AstNode>> {
+        let start = self.pos;
+
         let Some(lhs) = self.logical_expression()? else {
             return Ok(None);
         };
@@ -37,6 +40,13 @@ impl<'a> Parser<'a> {
             return Ok(Some(lhs));
         }
 
+        let AstNode::Identifier(id) = lhs else {
+            return Err(SyntaxError {
+                pos: start,
+                msg: EXPECTED_IDENT_ON_KV_LHS,
+            });
+        };
+
         self.whitespace_comments();
 
         let Some(rhs) = self.logical_expression()? else {
@@ -47,7 +57,7 @@ impl<'a> Parser<'a> {
         };
 
         Ok(Some(AstNode::KeyValue(KeyValue {
-            key: lhs.into(),
+            key: id,
             value: rhs.into(),
         })))
     }

@@ -259,7 +259,7 @@ pub struct Assignment {
 
 #[derive(PartialEq, Debug, Clone)]
 pub struct KeyValue {
-    pub(crate) key: Box<AstNode>,
+    pub(crate) key: Identifier,
     pub(crate) value: Box<AstNode>,
 }
 

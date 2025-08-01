@@ -74,17 +74,8 @@ impl<'a> Parser<'a> {
                     });
                 }
                 AstNode::KeyValue(KeyValue { key, value }) => {
-                    let name = match *key {
-                        AstNode::Identifier(identifier) => identifier,
-                        _ => {
-                            return Err(SyntaxError {
-                                pos: ref_pos,
-                                msg: EXPECTED_PARAM_IDENT,
-                            });
-                        }
-                    };
                     params.push(Param {
-                        name,
+                        name: key,
                         value: Some(*value),
                     });
                 }
@@ -120,7 +111,7 @@ impl<'a> Parser<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::tests::*;
+    use crate::parser::{expression::EXPECTED_IDENT_ON_KV_LHS, tests::*};
 
     #[track_caller]
     fn do_test_func_ok(input: &'static str, expected: FunctionDef, expected_end: isize) {
@@ -187,6 +178,6 @@ mod tests {
 
         do_test_func_err(" function #foo\n () { } ", 10, EXPECTED_OPEN_PARENS);
         do_test_func_err(r#" function("a") { } "#, 10, EXPECTED_PARAM_IDENT);
-        do_test_func_err(r#" function("a":42) { } "#, 10, EXPECTED_PARAM_IDENT);
+        do_test_func_err(r#" function("a":42) { } "#, 10, EXPECTED_IDENT_ON_KV_LHS);
     }
 }
