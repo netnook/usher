@@ -180,11 +180,11 @@ mod tests {
 
         match pass {
             true => {
-                assert_eq!(p.char(c), true);
+                assert!(p.char(c));
                 assert_eq!(p.pos, 2);
             }
             false => {
-                assert_eq!(p.char(c), false);
+                assert!(!p.char(c));
                 assert_eq!(p.pos, 1);
             }
         }

@@ -14,9 +14,8 @@ impl Program {
         }
 
         let bytes = buf.into_inner().expect("ok");
-        let printed = String::from_utf8(bytes).expect("utf-8 ok");
 
-        printed
+        String::from_utf8(bytes).expect("utf-8 ok")
     }
 }
 
@@ -48,9 +47,9 @@ impl AstNode {
 impl Identifier {
     fn print(&self, w: &mut impl Write, indent: usize) {
         write_indent(w, indent);
-        w.write(b"(id ").unwrap();
-        w.write(self.name.as_bytes()).unwrap();
-        w.write(b")\n").unwrap();
+        w.write_all(b"(id ").unwrap();
+        w.write_all(self.name.as_bytes()).unwrap();
+        w.write_all(b")\n").unwrap();
     }
 }
 
@@ -102,7 +101,7 @@ impl ForStmt {
             Some(v) => v.print(w, indent + 1),
             None => {
                 write_indent(w, indent + 1);
-                w.write(b"-\n").unwrap();
+                w.write_all(b"-\n").unwrap();
             }
         }
         self.loop_expr.print(w, indent + 1);
@@ -219,49 +218,49 @@ impl Value {
         write_indent(w, indent);
         match self {
             Value::Str(s) => {
-                w.write(b"\"").unwrap();
-                w.write(s.as_bytes()).unwrap();
-                w.write(b"\"").unwrap();
+                w.write_all(b"\"").unwrap();
+                w.write_all(s.as_bytes()).unwrap();
+                w.write_all(b"\"").unwrap();
             }
             Value::Integer(v) => {
-                w.write(format!("{v}").as_bytes()).unwrap();
+                w.write_all(format!("{v}").as_bytes()).unwrap();
             }
             Value::Float(v) => {
-                w.write(format!("{v}").as_bytes()).unwrap();
-                w.write(b"f").unwrap();
+                w.write_all(format!("{v}").as_bytes()).unwrap();
+                w.write_all(b"f").unwrap();
             }
             Value::Bool(v) => {
-                w.write(format!("{v}").as_bytes()).unwrap();
+                w.write_all(format!("{v}").as_bytes()).unwrap();
             }
             Value::Nil => {
-                w.write("nil".as_bytes()).unwrap();
+                w.write_all("nil".as_bytes()).unwrap();
             }
         }
-        w.write(b"\n").unwrap();
+        w.write_all(b"\n").unwrap();
     }
 }
 
 fn write_indent(w: &mut impl Write, indent: usize) {
     for _ in 0..indent {
-        w.write(b"  ").unwrap();
+        w.write_all(b"  ").unwrap();
     }
 }
 
 fn write_indented(w: &mut impl Write, indent: usize, name: &str) {
     write_indent(w, indent);
-    w.write(name.as_bytes()).unwrap();
-    w.write(b"\n").unwrap();
+    w.write_all(name.as_bytes()).unwrap();
+    w.write_all(b"\n").unwrap();
 }
 
 fn write_open(w: &mut impl Write, indent: usize, name: &str) {
     write_indent(w, indent);
-    w.write(b"(").unwrap();
-    w.write(name.as_bytes()).unwrap();
-    w.write(b"\n").unwrap();
+    w.write_all(b"(").unwrap();
+    w.write_all(name.as_bytes()).unwrap();
+    w.write_all(b"\n").unwrap();
 }
 
 fn write_close(w: &mut impl Write, indent: usize) {
     write_indent(w, indent);
-    w.write(b")").unwrap();
-    w.write(b"\n").unwrap();
+    w.write_all(b")").unwrap();
+    w.write_all(b"\n").unwrap();
 }
