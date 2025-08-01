@@ -2,9 +2,13 @@ use crate::parser::{self};
 use pretty_assertions::assert_eq;
 
 #[test]
-fn test_programs() {
-    let prog1 = include_str!("test_prog_1.usher");
-    do_test_program_ok(prog1);
+fn test_prog1() {
+    do_test_program_ok(include_str!("test_prog_1.usher"));
+}
+
+#[test]
+fn test_prog_funcs() {
+    do_test_program_ok(include_str!("test_prog_funcs.usher"));
 }
 
 fn do_test_program_ok(src: &str) {

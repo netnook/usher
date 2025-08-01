@@ -1,0 +1,72 @@
+var foo = function() {
+  return 42
+}
+var foo = function(a, b, c:77) {
+  return 42
+}
+
+a.foo("22", c:"cc")
+
+function foo(a:1*2) {
+   return 42
+}
+# error("this is the error", exit_code=7)
+# error("this is the error", exit_code:7)
+---
+(decl
+  (id foo)
+  (fn
+    (block
+      (return
+        42
+      )
+    )
+  )
+)
+(decl
+  (id foo)
+  (fn
+    (params
+      a
+      b
+      (c
+        77
+      )
+    )
+    (block
+      (return
+        42
+      )
+    )
+  )
+)
+(call
+  (on
+    (property
+      (id a)
+      (id foo)
+    )
+  )
+  (args
+    "22"
+    (c
+      "cc"
+    )
+  )
+)
+(fn
+  (name foo)
+  (params
+    (a
+      (*
+        1
+        2
+      )
+    )
+  )
+  (block
+    (return
+      42
+    )
+  )
+)
