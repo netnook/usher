@@ -45,8 +45,6 @@ impl<'a> Parser<'a> {
         }
 
         // FIXME: binary run exppression
-        // FIXME: function declaration statement
-
         if let Some(res) = self.assignment_or_expression()? {
             return Ok(Some(res));
         }
