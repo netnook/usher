@@ -1,5 +1,5 @@
 use super::{ParseResult, Parser, SyntaxError};
-use crate::lang::{AstNode, FunctionDef};
+use crate::lang::{AstNode, FunctionDef, KeyValue, Param};
 
 const EXPECTED_OPEN_PARENS: &str = "Expected '('.";
 const EXPECTED_PARAM_IDENT: &str = "Expected parameter name.";
@@ -7,7 +7,7 @@ const EXPECTED_COMMA_OR_CLOSE: &str = "Expected ',' or ')'.";
 const EXPECTED_BODY: &str = "Expected function body.";
 
 impl<'a> Parser<'a> {
-    // "function(" ident,* ")"
+    // "function(" param,* ")"
     pub(super) fn anonymous_function(&mut self) -> ParseResult<Option<AstNode>> {
         let start = self.pos;
 
@@ -18,6 +18,25 @@ impl<'a> Parser<'a> {
 
         self.linespace();
 
+        let params = self.function_params()?;
+
+        self.whitespace_comments();
+
+        let Some(body) = self.block()? else {
+            return Err(SyntaxError {
+                pos: self.pos,
+                msg: EXPECTED_BODY,
+            });
+        };
+
+        Ok(Some(AstNode::FunctionDef(FunctionDef {
+            name: None,
+            params,
+            body,
+        })))
+    }
+
+    fn function_params(&mut self) -> ParseResult<Vec<Param>> {
         if !self.char(b'(') {
             return Err(SyntaxError {
                 pos: self.pos,
@@ -34,14 +53,43 @@ impl<'a> Parser<'a> {
                 break;
             }
 
-            let Some(param) = self.identifier()? else {
+            let ref_pos = self.pos;
+            let Some(expr) = self.expression()? else {
                 return Err(SyntaxError {
                     pos: self.pos,
                     msg: EXPECTED_PARAM_IDENT,
                 });
             };
 
-            params.push(param);
+            match expr {
+                AstNode::Identifier(identifier) => {
+                    params.push(Param {
+                        name: identifier,
+                        value: None,
+                    });
+                }
+                AstNode::KeyValue(KeyValue { key, value }) => {
+                    let name = match *key {
+                        AstNode::Identifier(identifier) => identifier,
+                        _ => {
+                            return Err(SyntaxError {
+                                pos: ref_pos,
+                                msg: EXPECTED_PARAM_IDENT,
+                            });
+                        }
+                    };
+                    params.push(Param {
+                        name,
+                        value: Some(*value),
+                    });
+                }
+                _ => {
+                    return Err(SyntaxError {
+                        pos: ref_pos,
+                        msg: EXPECTED_PARAM_IDENT,
+                    });
+                }
+            }
 
             self.whitespace_comments();
 
@@ -60,20 +108,7 @@ impl<'a> Parser<'a> {
             });
         }
 
-        self.whitespace_comments();
-
-        let Some(body) = self.block()? else {
-            return Err(SyntaxError {
-                pos: self.pos,
-                msg: EXPECTED_BODY,
-            });
-        };
-
-        Ok(Some(AstNode::FunctionDef(FunctionDef {
-            name: None,
-            params,
-            body,
-        })))
+        Ok(params)
     }
 }
 
@@ -110,18 +145,40 @@ mod tests {
     fn test_anon_func() {
         do_test_anon_func_ok(r" function(){} ", _func!(_block![]), -1);
         do_test_anon_func_ok(r" function ( ) { } ", _func!(_block![]), -1);
-        do_test_anon_func_ok(" function(a) { 1 } ", _func!(p["a"], _block![i(1)]), -1);
+        do_test_anon_func_ok(
+            " function(a) { 1 } ",
+            _func!(p = [_param!("a")], _block![i(1)]),
+            -1,
+        );
+        do_test_anon_func_ok(
+            " function(a:1) { 1 } ",
+            _func!(p = [_param!("a"=> i(1))], _block![i(1)]),
+            -1,
+        );
+        do_test_anon_func_ok(
+            " function(a:1, b) { 1 } ",
+            _func!(p = [_param!("a"=>i(1)), _param!("b")], _block![i(1)]),
+            -1,
+        );
         do_test_anon_func_ok(
             " function (a,b, cd) { 1 } ",
-            _func!(p[ "a", "b", "cd"], _block![i(1)]),
+            _func!(
+                p = [_param!("a"), _param!("b"), _param!("cd")],
+                _block![i(1)]
+            ),
             -1,
         );
         do_test_anon_func_ok(
             " function (a,#foo\nb   #foo\n, cd  #foo\n) #foo\n { 1 } ",
-            _func!(p[ "a", "b", "cd"], _block![i(1)]),
+            _func!(
+                p = [_param!("a"), _param!("b"), _param!("cd")],
+                _block![i(1)]
+            ),
             -1,
         );
 
         do_test_anon_func_err(" function #foo\n () { } ", 10, EXPECTED_OPEN_PARENS);
+        do_test_anon_func_err(r#" function("a") { } "#, 10, EXPECTED_PARAM_IDENT);
+        do_test_anon_func_err(r#" function("a":42) { } "#, 10, EXPECTED_PARAM_IDENT);
     }
 }

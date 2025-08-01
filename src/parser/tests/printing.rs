@@ -1,7 +1,7 @@
 use crate::lang::{
     Assignment, AstNode, BinaryOp, BinaryOpCode, Block, ChainCatch, ConditionalBlock, Declaration,
     DictBuilder, ForStmt, FunctionDef, Identifier, IfElseStmt, IndexOf, InterpolatedStr, KeyValue,
-    ListBuilder, Program, PropertyOf, ReturnStmt, UnaryOp, UnaryOpCode, Value,
+    ListBuilder, Param, Program, PropertyOf, ReturnStmt, UnaryOp, UnaryOpCode, Value,
 };
 use std::io::{BufWriter, Write};
 
@@ -133,7 +133,6 @@ impl FunctionDef {
             write_open(w, indent + 1, "params");
             for p in &self.params {
                 p.print(w, indent + 2);
-                // write_indented(w, indent + 2, &p.name);
             }
             write_close(w, indent + 1);
         }
@@ -141,6 +140,20 @@ impl FunctionDef {
         write_close(w, indent);
     }
 }
+
+impl Param {
+    fn print(&self, w: &mut impl Write, indent: usize) {
+        match &self.value {
+            Some(value) => {
+                write_open(w, indent, &self.name.name);
+                value.print(w, indent + 1);
+                write_close(w, indent);
+            }
+            None => write_indented(w, indent, &self.name.name),
+        }
+    }
+}
+
 impl ReturnStmt {
     fn print(&self, w: &mut impl Write, indent: usize) {
         if let Some(value) = &self.value {

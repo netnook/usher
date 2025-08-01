@@ -272,16 +272,18 @@ impl<'a> Parser<'a> {
             Some(b"dict") => return Ok(Some(AstNode::DictBuilder(self.dict()?))),
             Some(b"true") => return Ok(Some(AstNode::Value(Value::Bool(true)))),
             Some(b"false") => return Ok(Some(AstNode::Value(Value::Bool(false)))),
+            // FIXME: move anonymous function to here, then have top level validator
+            // to error if function def added to something, for example
             _ => {
                 self.pos = start;
             }
         }
         // FIXME: combine this with above so as not to have to re-parse identifier
-        if let Some(v) = self.list()? {
-            return Ok(Some(AstNode::ListBuilder(v)));
-        }
         if let Some(v) = self.identifier()? {
             return Ok(Some(AstNode::Identifier(v)));
+        }
+        if let Some(v) = self.list()? {
+            return Ok(Some(AstNode::ListBuilder(v)));
         }
         if let Some(v) = self.string()? {
             return Ok(Some(v));

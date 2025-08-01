@@ -210,24 +210,8 @@ mod tests {
             block,
         }
     }
-    // pub(crate) fn ret(value: Option<impl Into<AstNode>>) -> AstNode {
-    //     AstNode::ReturnStmt(ReturnStmt {
-    //         value: value.map(|v| v.into().into()),
-    //     })
-    // }
     macro_rules! _ret {
         ($val:expr) => {{
-            // use crate::lang::ConditionalBlock;
-            // use crate::lang::ConditionalBlock;
-            // use crate::lang::IfElseStmt;
-            // let conditional_blocks = vec![
-            //     $(
-            //         ConditionalBlock {
-            //             condition: $cond.into(),
-            //             block: $block.into(),
-            //         }
-            //     ),+
-            // ];
             AstNode::ReturnStmt(ReturnStmt {
                 value: Some(Box::new($val.into())),
             })
@@ -295,12 +279,10 @@ mod tests {
     pub(crate) use _prog;
 
     macro_rules! _func {
-        (p[$($param:expr),*], $body:expr) => {{
+        (p=[$($param:expr),*] , $body:expr) => {{
             use crate::lang::FunctionDef;
             use crate::lang::Identifier;
-            let params = vec![
-                $(Identifier::new($param.to_string())),*
-            ];
+            let params = vec![$($param),*];
             FunctionDef {
                 name: None,
                 params,
@@ -317,6 +299,24 @@ mod tests {
         }};
     }
     pub(crate) use _func;
+
+    macro_rules! _param {
+        ($name:expr => $value:expr) => {{
+            use crate::lang::Param;
+            Param {
+                name: Identifier::new($name.to_string()),
+                value: Some($value.into()),
+            }
+        }};
+        ($name:expr) => {{
+            use crate::lang::Param;
+            Param {
+                name: Identifier::new($name.to_string()),
+                value: None,
+            }
+        }};
+    }
+    pub(crate) use _param;
 
     #[track_caller]
     pub(crate) fn do_test_parser_ok<'a, F, T>(

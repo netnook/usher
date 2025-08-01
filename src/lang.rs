@@ -230,8 +230,14 @@ pub struct Block {
 #[derive(PartialEq, Debug, Clone)]
 pub struct FunctionDef {
     pub(crate) name: Option<Identifier>,
-    pub(crate) params: Vec<Identifier>,
+    pub(crate) params: Vec<Param>,
     pub(crate) body: Block,
+}
+
+#[derive(PartialEq, Debug, Clone)]
+pub struct Param {
+    pub(crate) name: Identifier,
+    pub(crate) value: Option<AstNode>,
 }
 
 #[derive(PartialEq, Debug, Clone)]
