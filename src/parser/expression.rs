@@ -1,22 +1,53 @@
 use super::{ParseResult, Parser, SyntaxError};
 use crate::lang::{
-    AstNode, BinaryOp, BinaryOpCode, ChainCatch, Identifier, IndexOf, PropertyOf, UnaryOp,
-    UnaryOpCode, Value,
+    AstNode, BinaryOp, BinaryOpCode, ChainCatch, Identifier, IndexOf, KeyValue, PropertyOf,
+    UnaryOp, UnaryOpCode, Value,
 };
 
-const EXPECTED_EXPRESSION: &str = "Expected expression.";
-const EXPECTED_COSING_PARENS: &str = "Expected closing parenthesis ')'";
-const EXPECTED_COSING_BRACKET: &str = "Expected closing bracket ']'";
-const EXPECTED_IDENTIFIER: &str = "Expected identifier.";
+pub(crate) const EXPECTED_EXPRESSION: &str = "Expected expression.";
+pub(crate) const EXPECTED_COSING_PARENS: &str = "Expected closing parenthesis ')'";
+pub(crate) const EXPECTED_COSING_BRACKET: &str = "Expected closing bracket ']'";
+pub(crate) const EXPECTED_IDENTIFIER: &str = "Expected identifier.";
 
 impl<'a> Parser<'a> {
     /// Consume an expression or nothing.
     pub(super) fn expression(&mut self) -> ParseResult<Option<AstNode>> {
-        if let Some(v) = self.logical_expression()? {
+        // if let Some(v) = self.logical_expression()? {
+        if let Some(v) = self.key_value_expression()? {
             return Ok(Some(v));
         }
 
         Ok(None)
+    }
+
+    // Key value expression
+    fn key_value_expression(&mut self) -> ParseResult<Option<AstNode>> {
+        let Some(lhs) = self.logical_expression()? else {
+            return Ok(None);
+        };
+
+        let savepos = self.pos;
+
+        self.linespace();
+
+        if !self.char(b':') {
+            self.pos = savepos;
+            return Ok(Some(lhs));
+        }
+
+        self.whitespace_comments();
+
+        let Some(rhs) = self.logical_expression()? else {
+            return Err(SyntaxError {
+                pos: self.pos,
+                msg: EXPECTED_EXPRESSION,
+            });
+        };
+
+        Ok(Some(AstNode::KeyValue(KeyValue {
+            key: lhs.into(),
+            value: rhs.into(),
+        })))
     }
 
     // Logical and (&&), or (||) expression

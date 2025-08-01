@@ -73,7 +73,7 @@ mod tests {
     use crate::{
         lang::{
             Assignment, AstNode, BinaryOp, BinaryOpCode, Block, ChainCatch, Declaration, ForStmt,
-            Identifier, IndexOf, PropertyOf, UnaryOp, UnaryOpCode, Value,
+            Identifier, IndexOf, KeyValue, PropertyOf, UnaryOp, UnaryOpCode, Value,
         },
         parser::Parser,
     };
@@ -96,6 +96,12 @@ mod tests {
     }
     pub(crate) fn id(s: &str) -> Identifier {
         Identifier::new(s.to_string())
+    }
+    pub(crate) fn kv(key: impl Into<AstNode>, value: impl Into<AstNode>) -> KeyValue {
+        KeyValue {
+            key: key.into().into(),
+            value: value.into().into(),
+        }
     }
     pub(crate) fn prop_of(from: impl Into<AstNode>, prop: &str) -> AstNode {
         AstNode::PropertyOf(PropertyOf {

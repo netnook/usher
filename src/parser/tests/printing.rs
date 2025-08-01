@@ -1,7 +1,7 @@
 use crate::lang::{
     Assignment, AstNode, BinaryOp, BinaryOpCode, Block, ChainCatch, ConditionalBlock, Declaration,
-    DictBuilder, ForStmt, Identifier, IfElseStmt, IndexOf, InterpolatedStr, ListBuilder, Program,
-    PropertyOf, UnaryOp, UnaryOpCode, Value,
+    DictBuilder, ForStmt, Identifier, IfElseStmt, IndexOf, InterpolatedStr, KeyValue, ListBuilder,
+    Program, PropertyOf, UnaryOp, UnaryOpCode, Value,
 };
 use std::io::{BufWriter, Write};
 
@@ -38,6 +38,7 @@ impl AstNode {
             AstNode::ForStmt(v) => v.print(w, indent),
             AstNode::Declaration(v) => v.print(w, indent),
             AstNode::Assignment(v) => v.print(w, indent),
+            AstNode::KeyValue(v) => v.print(w, indent),
             AstNode::Break => write_indented(w, indent, "break"),
             AstNode::Continue => write_indented(w, indent, "continue"),
             AstNode::End => write_indented(w, indent, "end"),
@@ -68,6 +69,15 @@ impl Assignment {
         write_open(w, indent, "assign");
         self.lhs.print(w, indent + 1);
         self.rhs.print(w, indent + 1);
+        write_close(w, indent);
+    }
+}
+
+impl KeyValue {
+    fn print(&self, w: &mut impl Write, indent: usize) {
+        write_open(w, indent, "kv");
+        self.key.print(w, indent + 1);
+        self.value.print(w, indent + 1);
         write_close(w, indent);
     }
 }
@@ -194,11 +204,8 @@ impl ListBuilder {
 impl DictBuilder {
     fn print(&self, w: &mut impl Write, indent: usize) {
         write_open(w, indent, "dict");
-        for (k, v) in &self.entries {
-            write_open(w, indent + 1, "kv");
-            k.print(w, indent + 2);
-            v.print(w, indent + 2);
-            write_close(w, indent + 1);
+        for kv in &self.entries {
+            kv.print(w, indent + 1);
         }
         write_close(w, indent);
     }

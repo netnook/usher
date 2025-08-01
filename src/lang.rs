@@ -23,6 +23,7 @@ pub enum AstNode {
     ForStmt(ForStmt),
     Declaration(Declaration),
     Assignment(Assignment),
+    KeyValue(KeyValue),
     Break,
     Continue,
     End,
@@ -133,11 +134,11 @@ impl ListBuilder {
 
 #[derive(PartialEq, Debug, Clone)]
 pub struct DictBuilder {
-    pub(crate) entries: Vec<(AstNode, AstNode)>,
+    pub(crate) entries: Vec<KeyValue>,
 }
 
 impl DictBuilder {
-    pub(crate) fn new(entries: Vec<(AstNode, AstNode)>) -> Self {
+    pub(crate) fn new(entries: Vec<KeyValue>) -> Self {
         Self { entries }
     }
 }
@@ -224,6 +225,12 @@ pub struct Declaration {
 pub struct Assignment {
     pub(crate) lhs: Box<AstNode>,
     pub(crate) rhs: Box<AstNode>,
+}
+
+#[derive(PartialEq, Debug, Clone)]
+pub struct KeyValue {
+    pub(crate) key: Box<AstNode>,
+    pub(crate) value: Box<AstNode>,
 }
 
 #[cfg(test)]

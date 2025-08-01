@@ -5,8 +5,7 @@ pub(crate) const MISSING_CLOSE: &str = "Missing closing ')'.";
 pub(crate) const EXPECTED_OPEN: &str = "Expected opening '('.";
 pub(crate) const EXPECTED_KEY_EXPRESSION_OR_CLOSE: &str = "Expected expression or ')'.";
 pub(crate) const EXPECTED_COMMA_OR_CLOSE: &str = "Expected ',' or ')'.";
-pub(crate) const EXPECTED_COLON: &str = "Expected ':' after key and before value.";
-pub(crate) const EXPECTED_VALUE_EXPRESSION: &str = "Expected expression for value.";
+pub(crate) const EXPECTED_KEY_VALUE_PAIR: &str = "Expected key value pair separated by ':'.";
 pub(crate) const INVALID_KEY_EXPRESSION: &str =
     "Invalid key expression. Only string, integer, bool or identifier allowed.";
 
@@ -15,8 +14,7 @@ impl<'a> Parser<'a> {
     /// Otherwise consume nothing and return `None`
     ///
     /// Already passed "dict" when called
-    /// "(" entry*  ")"
-    /// entry = expr ":" expr ","?
+    /// "(" kv*  ")"
     pub(super) fn dict(&mut self) -> ParseResult<DictBuilder> {
         self.linespace();
         if !self.char(b'(') {
@@ -35,7 +33,8 @@ impl<'a> Parser<'a> {
                 break;
             }
 
-            let Some(key_expr) = self.key()? else {
+            let kv_start = self.pos;
+            let Some(n) = self.expression()? else {
                 if self.is_eoi() {
                     return Err(SyntaxError {
                         pos: open_pos,
@@ -49,22 +48,30 @@ impl<'a> Parser<'a> {
                 }
             };
 
-            self.whitespace_comments();
-
-            if !self.char(b':') {
-                return Err(SyntaxError::new(self.pos, EXPECTED_COLON));
-            };
-
-            self.whitespace_comments();
-
-            let Some(value_expr) = self.expression()? else {
+            let AstNode::KeyValue(kv) = n else {
                 return Err(SyntaxError {
-                    pos: self.pos,
-                    msg: EXPECTED_VALUE_EXPRESSION,
+                    pos: kv_start,
+                    msg: EXPECTED_KEY_VALUE_PAIR,
                 });
             };
 
-            entries.push((key_expr, value_expr));
+            let k = kv.key.as_ref();
+
+            match k {
+                AstNode::This => {}
+                AstNode::Identifier(_) => {}
+                AstNode::Value(Value::Str(_)) => {}
+                AstNode::Value(Value::Integer(_)) => {}
+                AstNode::Value(Value::Bool(_)) => {}
+                _ => {
+                    return Err(SyntaxError {
+                        pos: kv_start,
+                        msg: INVALID_KEY_EXPRESSION,
+                    });
+                }
+            };
+
+            entries.push(kv);
 
             self.whitespace_comments();
 
@@ -92,34 +99,16 @@ impl<'a> Parser<'a> {
 
         Ok(DictBuilder::new(entries))
     }
-
-    fn key(&mut self) -> ParseResult<Option<AstNode>> {
-        let start = self.pos;
-        let r = self.expression()?;
-
-        match r {
-            Some(v @ AstNode::This) => Ok(Some(v)),
-            Some(v @ AstNode::Identifier(_)) => Ok(Some(v)),
-            Some(v @ AstNode::Value(Value::Str(_))) => Ok(Some(v)),
-            Some(v @ AstNode::Value(Value::Integer(_))) => Ok(Some(v)),
-            Some(v @ AstNode::Value(Value::Bool(_))) => Ok(Some(v)),
-            Some(_) => Err(SyntaxError {
-                pos: start,
-                msg: INVALID_KEY_EXPRESSION,
-            }),
-            None => {
-                self.pos = start;
-                Ok(None)
-            }
-        }
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::parser::{
-        expression::tests::{do_test_expr_err, do_test_expr_ok},
+        expression::{
+            EXPECTED_EXPRESSION,
+            tests::{do_test_expr_err, do_test_expr_ok},
+        },
         string::MISSING_END_QUOTE,
         tests::*,
     };
@@ -127,10 +116,10 @@ mod tests {
     #[test]
     fn test_dict_ok() {
         let expect = DictBuilder::new(vec![
-            (id("a").into(), i(1).into()),
-            (id("b").into(), nil().into()),
-            (id("c").into(), b(true).into()),
-            (id("the_d").into(), s("bar").into()),
+            kv(id("a"), i(1)),
+            kv(id("b"), nil()),
+            kv(id("c"), b(true)),
+            kv(id("the_d"), s("bar")),
         ]);
         do_test_expr_ok(
             r#" dict(a:1,b:nil,c:true,the_d:"bar") "#,
@@ -148,16 +137,15 @@ mod tests {
         do_test_expr_ok(
             r#" dict( a: dict( aa:1, ab:2, ac: dict()), b:3) "#,
             DictBuilder::new(vec![
-                (
-                    id("a").into(),
+                kv(
+                    id("a"),
                     DictBuilder::new(vec![
-                        (id("aa").into(), i(1).into()),
-                        (id("ab").into(), i(2).into()),
-                        (id("ac").into(), DictBuilder::new(Vec::new()).into()),
-                    ])
-                    .into(),
+                        kv(id("aa"), i(1)),
+                        kv(id("ab"), i(2)),
+                        kv(id("ac"), DictBuilder::new(Vec::new())),
+                    ]),
                 ),
-                (id("b").into(), i(3).into()),
+                kv(id("b"), i(3)),
             ]),
             -1,
         );
@@ -179,13 +167,13 @@ mod tests {
             EXPECTED_KEY_EXPRESSION_OR_CLOSE,
         );
         do_test_expr_err(r#" dict( a:1 ; ) "#, 11, EXPECTED_COMMA_OR_CLOSE);
-        do_test_expr_err(r#" dict( 1;1  ) "#, 8, EXPECTED_COLON);
+        do_test_expr_err(r#" dict( 1;1  ) "#, 7, EXPECTED_KEY_VALUE_PAIR);
         do_test_expr_err(r#" dict( nil:1 ; ) "#, 7, INVALID_KEY_EXPRESSION);
         do_test_expr_err(r#" dict( a:1, ] ) "#, 12, EXPECTED_KEY_EXPRESSION_OR_CLOSE);
 
-        do_test_expr_err(r#" dict( a:1 , b 2, ) "#, 15, EXPECTED_COLON);
+        do_test_expr_err(r#" dict( a:1 , b 2, ) "#, 13, EXPECTED_KEY_VALUE_PAIR);
 
-        do_test_expr_err(r#" dict( a:1 , b: ;, ) "#, 16, EXPECTED_VALUE_EXPRESSION);
+        do_test_expr_err(r#" dict( a:1 , b: ;, ) "#, 16, EXPECTED_EXPRESSION);
 
         do_test_expr_err(r#" dict(a:1, b:"aaa ) "#, 13, MISSING_END_QUOTE);
         do_test_expr_err(" dict #comment \n (a:1) ", 6, EXPECTED_OPEN);

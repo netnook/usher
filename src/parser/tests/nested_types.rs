@@ -1,4 +1,4 @@
-use super::{b, do_test_parser_some, i, id, nil, s};
+use super::{b, do_test_parser_some, i, id, kv, nil, s};
 use crate::{
     lang::{DictBuilder, ListBuilder},
     parser::Parser,
@@ -10,20 +10,16 @@ fn test_nested() {
         Parser::expression,
         r#" dict(a:dict(a:false, b:"xxx",) , b:nil, c:[1, 2, 3,], the_d:"bar") "#,
         DictBuilder::new(vec![
-            (
-                id("a").into(),
-                DictBuilder::new(vec![
-                    (id("a").into(), b(false).into()),
-                    (id("b").into(), s("xxx").into()),
-                ])
-                .into(),
+            kv(
+                id("a"),
+                DictBuilder::new(vec![kv(id("a"), b(false)), kv(id("b"), s("xxx"))]),
             ),
-            (id("b").into(), nil().into()),
-            (
-                id("c").into(),
-                ListBuilder::new(vec![i(1).into(), i(2).into(), i(3).into()]).into(),
+            kv(id("b"), nil()),
+            kv(
+                id("c"),
+                ListBuilder::new(vec![i(1).into(), i(2).into(), i(3).into()]),
             ),
-            (id("the_d").into(), s("bar").into()),
+            kv(id("the_d"), s("bar")),
         ])
         .into(),
         -1,
@@ -31,10 +27,7 @@ fn test_nested() {
     do_test_parser_some(
         Parser::expression,
         r#" [dict(a:"one")] "#,
-        ListBuilder::new(vec![
-            DictBuilder::new(vec![(id("a").into(), s("one").into())]).into(),
-        ])
-        .into(),
+        ListBuilder::new(vec![DictBuilder::new(vec![kv(id("a"), s("one"))]).into()]).into(),
         -1,
     );
 }
