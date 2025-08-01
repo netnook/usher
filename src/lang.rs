@@ -5,6 +5,15 @@ pub struct Program {
     pub stmts: Vec<AstNode>,
 }
 
+impl Program {
+    pub(crate) fn run(&self) -> Result<(), ProgramError> {
+        todo!()
+    }
+}
+
+#[derive(PartialEq, Debug)]
+pub enum ProgramError {}
+
 #[derive(PartialEq, Debug, Clone)]
 pub enum AstNode {
     This,
