@@ -17,6 +17,8 @@ for a in b {
 }
 str = "hello {name}!"
 str = this.b?.c
+end
+# comment
 lst = [1, "two", true, nil, b+c*d, dict(x: 42)]
 mip = dict (a:1, b:"two", c:[3,3,3])
 ---
@@ -121,6 +123,7 @@ mip = dict (a:1, b:"two", c:[3,3,3])
     (id c)
   )
 )
+end
 (assign
   (id lst)
   (list

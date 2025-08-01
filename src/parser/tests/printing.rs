@@ -40,6 +40,7 @@ impl AstNode {
             AstNode::Assignment(v) => v.print(w, indent),
             AstNode::Break => write_indented(w, indent, "break"),
             AstNode::Continue => write_indented(w, indent, "continue"),
+            AstNode::End => write_indented(w, indent, "end"),
         }
     }
 }

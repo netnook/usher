@@ -25,6 +25,7 @@ pub enum AstNode {
     Assignment(Assignment),
     Break,
     Continue,
+    End,
 }
 
 impl From<Identifier> for AstNode {

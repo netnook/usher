@@ -25,6 +25,9 @@ impl<'a> Parser<'a> {
                 b"break" => {
                     return Ok(Some(AstNode::Break));
                 }
+                b"end" => {
+                    return Ok(Some(AstNode::End));
+                }
                 b"continue" => {
                     return Ok(Some(AstNode::Continue));
                 }
@@ -230,5 +233,6 @@ mod tests {
         do_test_stmt_ok(" vario + 2 ", add(id("vario"), i(2)), -1);
         do_test_stmt_ok(" break ", AstNode::Break, -1);
         do_test_stmt_ok(" continue ", AstNode::Continue, -1);
+        do_test_stmt_ok(" end ", AstNode::End, -1);
     }
 }
