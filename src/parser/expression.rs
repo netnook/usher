@@ -12,7 +12,9 @@ pub(crate) const EXPECTED_IDENTIFIER: &str = "Expected identifier.";
 impl<'a> Parser<'a> {
     /// Consume an expression or nothing.
     pub(super) fn expression(&mut self) -> ParseResult<Option<AstNode>> {
-        // if let Some(v) = self.logical_expression()? {
+        if let Some(v) = self.anonymous_function()? {
+            return Ok(Some(v));
+        }
         if let Some(v) = self.key_value_expression()? {
             return Ok(Some(v));
         }

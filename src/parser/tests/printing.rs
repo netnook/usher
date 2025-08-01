@@ -1,7 +1,7 @@
 use crate::lang::{
     Assignment, AstNode, BinaryOp, BinaryOpCode, Block, ChainCatch, ConditionalBlock, Declaration,
-    DictBuilder, ForStmt, Identifier, IfElseStmt, IndexOf, InterpolatedStr, KeyValue, ListBuilder,
-    Program, PropertyOf, UnaryOp, UnaryOpCode, Value,
+    DictBuilder, ForStmt, FunctionDef, Identifier, IfElseStmt, IndexOf, InterpolatedStr, KeyValue,
+    ListBuilder, Program, PropertyOf, ReturnStmt, UnaryOp, UnaryOpCode, Value,
 };
 use std::io::{BufWriter, Write};
 
@@ -36,6 +36,8 @@ impl AstNode {
             AstNode::Block(v) => v.print(w, indent),
             AstNode::IfElseStmt(v) => v.print(w, indent),
             AstNode::ForStmt(v) => v.print(w, indent),
+            AstNode::FunctionDef(v) => v.print(w, indent),
+            AstNode::ReturnStmt(v) => v.print(w, indent),
             AstNode::Declaration(v) => v.print(w, indent),
             AstNode::Assignment(v) => v.print(w, indent),
             AstNode::KeyValue(v) => v.print(w, indent),
@@ -118,6 +120,36 @@ impl ForStmt {
         self.loop_expr.print(w, indent + 1);
         self.block.print(w, indent + 1);
         write_close(w, indent);
+    }
+}
+
+impl FunctionDef {
+    fn print(&self, w: &mut impl Write, indent: usize) {
+        write_open(w, indent, "fn");
+        if let Some(name) = &self.name {
+            write_indented(w, indent + 1, &format!("(name {})", name.name));
+        }
+        if !self.params.is_empty() {
+            write_open(w, indent + 1, "params");
+            for p in &self.params {
+                p.print(w, indent + 2);
+                // write_indented(w, indent + 2, &p.name);
+            }
+            write_close(w, indent + 1);
+        }
+        self.body.print(w, indent + 1);
+        write_close(w, indent);
+    }
+}
+impl ReturnStmt {
+    fn print(&self, w: &mut impl Write, indent: usize) {
+        if let Some(value) = &self.value {
+            write_open(w, indent, "return");
+            value.print(w, indent + 1);
+            write_close(w, indent);
+        } else {
+            write_indented(w, indent, "return");
+        }
     }
 }
 
@@ -254,9 +286,9 @@ fn write_indent(w: &mut impl Write, indent: usize) {
     }
 }
 
-fn write_indented(w: &mut impl Write, indent: usize, name: &str) {
+fn write_indented(w: &mut impl Write, indent: usize, text: &str) {
     write_indent(w, indent);
-    w.write_all(name.as_bytes()).unwrap();
+    w.write_all(text.as_bytes()).unwrap();
     w.write_all(b"\n").unwrap();
 }
 

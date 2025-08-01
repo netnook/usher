@@ -22,6 +22,8 @@ pub enum AstNode {
     IfElseStmt(IfElseStmt),
     ForStmt(ForStmt),
     Declaration(Declaration),
+    FunctionDef(FunctionDef),
+    ReturnStmt(ReturnStmt),
     Assignment(Assignment),
     KeyValue(KeyValue),
     Break,
@@ -72,6 +74,16 @@ impl From<ForStmt> for AstNode {
 impl From<Declaration> for AstNode {
     fn from(value: Declaration) -> Self {
         Self::Declaration(value)
+    }
+}
+impl From<FunctionDef> for AstNode {
+    fn from(value: FunctionDef) -> Self {
+        Self::FunctionDef(value)
+    }
+}
+impl From<ReturnStmt> for AstNode {
+    fn from(value: ReturnStmt) -> Self {
+        Self::ReturnStmt(value)
     }
 }
 
@@ -213,6 +225,18 @@ pub struct ForStmt {
 #[derive(PartialEq, Debug, Clone)]
 pub struct Block {
     pub(crate) stmts: Vec<AstNode>,
+}
+
+#[derive(PartialEq, Debug, Clone)]
+pub struct FunctionDef {
+    pub(crate) name: Option<Identifier>,
+    pub(crate) params: Vec<Identifier>,
+    pub(crate) body: Block,
+}
+
+#[derive(PartialEq, Debug, Clone)]
+pub struct ReturnStmt {
+    pub(crate) value: Option<Box<AstNode>>,
 }
 
 #[derive(PartialEq, Debug, Clone)]

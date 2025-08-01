@@ -5,11 +5,13 @@ mod dict;
 mod error;
 mod expression;
 mod for_stmt;
+mod function;
 mod identifier;
 mod if_stmt;
 mod list;
 mod numbers;
 mod program;
+mod return_stmt;
 mod stmt;
 mod string;
 mod utils;
@@ -18,9 +20,9 @@ use crate::lang::Program;
 use error::{ParseError, build_parse_error};
 
 // FIXME: add all necessary keywords
-pub(crate) const RESERVED_KEYWORDS: [&str; 18] = [
+pub(crate) const RESERVED_KEYWORDS: [&str; 19] = [
     "print", "if", "else", "for", "in", "break", "continue", "return", "function", "var", "true",
-    "false", "nil", "end", "dict", "switch", "case", "defer",
+    "false", "nil", "end", "dict", "switch", "case", "defer", "error",
 ];
 
 pub fn parse(input: &str) -> Result<Program, ParseError> {
@@ -208,6 +210,32 @@ mod tests {
             block,
         }
     }
+    // pub(crate) fn ret(value: Option<impl Into<AstNode>>) -> AstNode {
+    //     AstNode::ReturnStmt(ReturnStmt {
+    //         value: value.map(|v| v.into().into()),
+    //     })
+    // }
+    macro_rules! _ret {
+        ($val:expr) => {{
+            // use crate::lang::ConditionalBlock;
+            // use crate::lang::ConditionalBlock;
+            // use crate::lang::IfElseStmt;
+            // let conditional_blocks = vec![
+            //     $(
+            //         ConditionalBlock {
+            //             condition: $cond.into(),
+            //             block: $block.into(),
+            //         }
+            //     ),+
+            // ];
+            AstNode::ReturnStmt(ReturnStmt {
+                value: Some(Box::new($val.into())),
+            })
+        }};
+        () => {{ AstNode::ReturnStmt(ReturnStmt { value: None }) }};
+    }
+    pub(crate) use _ret;
+
     macro_rules! _if {
         ($(_cond($cond:expr, $block:expr)),+) => {{
             use crate::lang::ConditionalBlock;
@@ -236,10 +264,10 @@ mod tests {
     pub(crate) use _if;
 
     macro_rules! _block{
-        ($($stmt:expr),+) => {{
+        ($($stmt:expr),*) => {{
             use crate::lang::Block;
             Block{
-                stmts:vec![$($stmt.into()),+]
+                stmts:vec![$($stmt.into()),*]
             }
         }};
     }
@@ -265,6 +293,30 @@ mod tests {
         }};
     }
     pub(crate) use _prog;
+
+    macro_rules! _func {
+        (p[$($param:expr),*], $body:expr) => {{
+            use crate::lang::FunctionDef;
+            use crate::lang::Identifier;
+            let params = vec![
+                $(Identifier::new($param.to_string())),*
+            ];
+            FunctionDef {
+                name: None,
+                params,
+                body: $body,
+            }
+        }};
+        ($body:expr) => {{
+            use crate::lang::FunctionDef;
+            FunctionDef {
+                name: None,
+                params: Vec::new(),
+                body: $body,
+            }
+        }};
+    }
+    pub(crate) use _func;
 
     #[track_caller]
     pub(crate) fn do_test_parser_ok<'a, F, T>(

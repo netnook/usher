@@ -31,6 +31,9 @@ impl<'a> Parser<'a> {
                 b"continue" => {
                     return Ok(Some(AstNode::Continue));
                 }
+                b"return" => {
+                    return Ok(Some(self.return_stmt()?));
+                }
                 _ => {
                     self.pos = start;
                 }
