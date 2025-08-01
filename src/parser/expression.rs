@@ -250,14 +250,14 @@ impl<'a> Parser<'a> {
         if let Some(v) = self.nil() {
             return Ok(Some(AstNode::Value(v)));
         }
-        if let Some(v) = self.identifier()? {
-            return Ok(Some(AstNode::Identifier(v)));
-        }
         if let Some(v) = self.list()? {
             return Ok(Some(AstNode::ListBuilder(v)));
         }
-        if let Some(v) = self.object()? {
-            return Ok(Some(AstNode::ObjectBuilder(v)));
+        if let Some(v) = self.dict()? {
+            return Ok(Some(AstNode::DictBuilder(v)));
+        }
+        if let Some(v) = self.identifier()? {
+            return Ok(Some(AstNode::Identifier(v)));
         }
         if let Some(v) = self.parens_expression()? {
             return Ok(Some(v));
@@ -299,11 +299,13 @@ impl<'a> Parser<'a> {
 
         self.whitespace_comments();
 
-        let Some(ident) = self.identifier()? else {
+        let Some(ident) = self.unchecked_identifier() else {
             return Err(SyntaxError::new(self.pos, EXPECTED_IDENTIFIER));
         };
 
-        Ok(Some(ident))
+        let ident = String::from_utf8_lossy(ident).to_string();
+
+        Ok(Some(Identifier { name: ident }))
     }
 
     fn index_of(&mut self) -> ParseResult<Option<AstNode>> {
@@ -334,7 +336,7 @@ impl<'a> Parser<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::{string::MISSING_END_QUOTE, tests::*};
+    use crate::parser::{dict::EXPECTED_OPEN, string::MISSING_END_QUOTE, tests::*};
 
     #[track_caller]
     pub(crate) fn do_test_expr_ok(
@@ -350,6 +352,20 @@ mod tests {
         );
     }
 
+    #[track_caller]
+    pub(crate) fn do_test_expr_err(
+        input: &'static str,
+        expected_err_pos: usize,
+        expected_err_msg: &'static str,
+    ) {
+        do_test_parser_err(
+            Parser::expression,
+            input,
+            expected_err_pos,
+            expected_err_msg,
+        );
+    }
+
     #[test]
     fn test_expr_ok() {
         do_test_expr_ok(" foo ", id("foo"), -1);
@@ -357,6 +373,7 @@ mod tests {
         do_test_expr_ok(" foo[\"bar\"] ", index_of(id("foo"), s("bar")), -1);
         do_test_expr_ok(" foo[bar] ", index_of(id("foo"), id("bar")), -1);
         do_test_expr_ok(" foo? ", chain_catch(id("foo")), -1);
+        do_test_expr_ok(" foo.map ", prop_of(id("foo"), "map"), -1);
         do_test_expr_ok(
             " aa.bb[cc].dd[\"ee\"]?[66] ",
             index_of(
@@ -495,6 +512,8 @@ mod tests {
             ),
             -1,
         );
+
+        do_test_expr_err(" dict.foo ", 5, EXPECTED_OPEN);
     }
 
     #[test]

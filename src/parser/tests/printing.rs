@@ -1,6 +1,6 @@
 use crate::lang::{
     Assignment, AstNode, BinaryOp, BinaryOpCode, Block, ChainCatch, ConditionalBlock, Declaration,
-    ForStmt, Identifier, IfElseStmt, IndexOf, InterpolatedStr, ListBuilder, ObjectBuilder, Program,
+    DictBuilder, ForStmt, Identifier, IfElseStmt, IndexOf, InterpolatedStr, ListBuilder, Program,
     PropertyOf, UnaryOp, UnaryOpCode, Value,
 };
 use std::io::{BufWriter, Write};
@@ -28,12 +28,13 @@ impl AstNode {
             AstNode::Value(v) => v.print(w, indent),
             AstNode::InterpolatedStr(v) => v.print(w, indent),
             AstNode::ListBuilder(v) => v.print(w, indent),
-            AstNode::ObjectBuilder(v) => v.print(w, indent),
+            AstNode::DictBuilder(v) => v.print(w, indent),
             AstNode::PropertyOf(v) => v.print(w, indent),
             AstNode::IndexOf(v) => v.print(w, indent),
             AstNode::UnaryOp(v) => v.print(w, indent),
             AstNode::BinaryOp(v) => v.print(w, indent),
             AstNode::ChainCatch(v) => v.print(w, indent),
+            AstNode::Block(v) => v.print(w, indent),
             AstNode::IfElseStmt(v) => v.print(w, indent),
             AstNode::ForStmt(v) => v.print(w, indent),
             AstNode::Declaration(v) => v.print(w, indent),
@@ -190,9 +191,9 @@ impl ListBuilder {
     }
 }
 
-impl ObjectBuilder {
+impl DictBuilder {
     fn print(&self, w: &mut impl Write, indent: usize) {
-        write_open(w, indent, "object");
+        write_open(w, indent, "dict");
         for (k, v) in &self.entries {
             write_open(w, indent + 1, "kv");
             k.print(w, indent + 2);

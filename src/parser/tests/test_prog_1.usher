@@ -10,12 +10,15 @@ for a in b {
     if a {
       continue
     }
-	form = ((a+b)*c.d--e/f)
+    {
+	  form = ((a+b)*c.d--e/f)
+    }
     break
 }
 str = "hello {name}!"
 str = this.b?.c
-list = [ 1, "two", true, nil, b+c*d, { x: 42 } ]
+lst = [1, "two", true, nil, b+c*d, dict(x: 42)]
+mip = dict (a:1, b:"two", c:[3,3,3])
 ---
 (decl
   (id a)
@@ -72,24 +75,26 @@ list = [ 1, "two", true, nil, b+c*d, { x: 42 } ]
         )
       )
     )
-    (assign
-      (id form)
-      (-
-        (*
-          (+
-            (id a)
-            (id b)
+    (block
+      (assign
+        (id form)
+        (-
+          (*
+            (+
+              (id a)
+              (id b)
+            )
+            (property
+              (id c)
+              (id d)
+            )
           )
-          (property
-            (id c)
-            (id d)
+          (/
+            (neg
+              (id e)
+            )
+            (id f)
           )
-        )
-        (/
-          (neg
-            (id e)
-          )
-          (id f)
         )
       )
     )
@@ -117,7 +122,7 @@ list = [ 1, "two", true, nil, b+c*d, { x: 42 } ]
   )
 )
 (assign
-  (id list)
+  (id lst)
   (list
     1
     "two"
@@ -130,7 +135,7 @@ list = [ 1, "two", true, nil, b+c*d, { x: 42 } ]
         (id d)
       )
     )
-    (object
+    (dict
       (kv
         (id x)
         42
@@ -138,3 +143,25 @@ list = [ 1, "two", true, nil, b+c*d, { x: 42 } ]
     )
   )
 )
+(assign
+  (id mip)
+  (dict
+    (kv
+      (id a)
+      1
+    )
+    (kv
+      (id b)
+      "two"
+    )
+    (kv
+      (id c)
+      (list
+        3
+        3
+        3
+      )
+    )
+  )
+)
+
