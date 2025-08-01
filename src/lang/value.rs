@@ -1,10 +1,10 @@
-use super::{Context, FuncBuiltIn, FunctionDef, ProgramError};
-use std::fmt::Display;
+use super::{BuiltInFunc, Context, FunctionDef, ProgramError};
+use std::borrow::Cow;
 
 #[derive(PartialEq, Debug, Clone)]
 pub enum Value {
     Func(FunctionDef),
-    FuncBuiltIn(FuncBuiltIn),
+    BuiltInFunc(BuiltInFunc),
     Str(String),
     Integer(isize),
     Float(f64),
@@ -16,58 +16,76 @@ impl Value {
     pub fn eval(&self, _: &mut Context) -> Result<Value, ProgramError> {
         Ok(self.clone())
     }
-}
 
-impl Display for Value {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Value::Func(_) => write!(f, "@func@"),
-            Value::FuncBuiltIn(_) => write!(f, "@func-builtin@"),
-            Value::Str(v) => write!(f, "{v}"),
-            Value::Integer(v) => write!(f, "{v}"),
-            Value::Float(v) => write!(f, "{v}"),
+    pub fn as_string(&self) -> Result<Cow<str>, ProgramError> {
+        Ok(match self {
+            Value::Func(_) => {
+                return Err(ProgramError::ConversionError(
+                    "Cannot convert a function to a string.".to_string(),
+                ));
+            }
+            Value::BuiltInFunc(_) => {
+                return Err(ProgramError::ConversionError(
+                    "Cannot convert a function to a string.".to_string(),
+                ));
+            }
+            Value::Str(v) => Cow::Borrowed(&v),
+            Value::Integer(v) => Cow::Owned(format!("{v}")),
+            Value::Float(v) => Cow::Owned(format!("{v}")),
             Value::Bool(v) => match v {
-                true => write!(f, "true"),
-                false => write!(f, "false"),
+                true => Cow::Borrowed("true"),
+                false => Cow::Borrowed("false"),
             },
-            Value::Nil => write!(f, "nil"),
-        }
+            Value::Nil => Cow::Borrowed("nil"),
+        })
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::lang::Block;
+    use crate::lang::BuiltInFunc;
+    use crate::lang::FunctionDef;
     use crate::lang::Value;
 
+    #[track_caller]
+    fn do_test_as_string(val: Value, expected: &str) {
+        assert_eq!(format!("{}", val.as_string().unwrap()), expected);
+    }
     #[test]
     fn test_value_display() {
         // strings
-        assert_eq!(
-            format!("{}", Value::Str("the-string".to_string())),
-            "the-string"
-        );
-        assert_eq!(
-            format!("{}", Value::Str("the-s\"tring".to_string())),
-            "the-s\"tring"
-        );
+        do_test_as_string(Value::Str("the-string".to_string()), "the-string");
+        do_test_as_string(Value::Str("the-s\"tring".to_string()), "the-s\"tring");
 
         // integers
-        assert_eq!(format!("{}", Value::Integer(000)), "0");
-        assert_eq!(format!("{}", Value::Integer(10000)), "10000");
-        assert_eq!(format!("{}", Value::Integer(-10000)), "-10000");
+        do_test_as_string(Value::Integer(000), "0");
+        do_test_as_string(Value::Integer(10000), "10000");
+        do_test_as_string(Value::Integer(-10000), "-10000");
 
         // floats
-        assert_eq!(format!("{}", Value::Float(000.00)), "0");
-        assert_eq!(format!("{}", Value::Float(10000.0)), "10000");
-        assert_eq!(format!("{}", Value::Float(-10000.0)), "-10000");
-        assert_eq!(format!("{}", Value::Float(10000.012340)), "10000.01234");
-        assert_eq!(format!("{}", Value::Float(-10000.012340)), "-10000.01234");
+        do_test_as_string(Value::Float(000.00), "0");
+        do_test_as_string(Value::Float(10000.0), "10000");
+        do_test_as_string(Value::Float(-10000.0), "-10000");
+        do_test_as_string(Value::Float(10000.012340), "10000.01234");
+        do_test_as_string(Value::Float(-10000.012340), "-10000.01234");
 
         // bool
-        assert_eq!(format!("{}", Value::Bool(true)), "true");
-        assert_eq!(format!("{}", Value::Bool(false)), "false");
+        do_test_as_string(Value::Bool(true), "true");
+        do_test_as_string(Value::Bool(false), "false");
 
         // nil
-        assert_eq!(format!("{}", Value::Nil), "nil");
+        do_test_as_string(Value::Nil, "nil");
+
+        assert!(Value::BuiltInFunc(BuiltInFunc::Print).as_string().is_err());
+        assert!(
+            Value::Func(FunctionDef {
+                name: None,
+                params: Vec::new(),
+                body: Block { stmts: Vec::new() }
+            })
+            .as_string()
+            .is_err()
+        );
     }
 }

@@ -39,7 +39,9 @@ impl Program {
 }
 
 #[derive(PartialEq, Debug)]
-pub enum ProgramError {}
+pub enum ProgramError {
+    ConversionError(String),
+}
 
 #[derive(PartialEq, Debug, Clone)]
 pub enum AstNode {
@@ -167,7 +169,7 @@ impl Identifier {
     }
     pub fn eval(&self, ctxt: &mut Context) -> Result<Value, ProgramError> {
         if self.name == "print" {
-            Ok(Value::FuncBuiltIn(FuncBuiltIn::Print))
+            Ok(Value::BuiltInFunc(BuiltInFunc::Print))
         } else {
             Ok(ctxt.get(self))
         }
@@ -217,11 +219,8 @@ impl InterpolatedStr {
             let mut res = String::new();
             for p in &self.parts {
                 let val = p.eval(ctxt)?;
-                match val {
-                    Value::Func(_) => todo!("error"),
-                    Value::FuncBuiltIn(_) => todo!("error"),
-                    v => res.push_str(&format!("{v}")),
-                }
+                let s = val.as_string()?;
+                res.push_str(&format!("{s}"));
             }
             Ok(Value::Str(res))
         }
@@ -314,16 +313,16 @@ impl FunctionDef {
 }
 
 #[derive(PartialEq, Debug, Clone)]
-pub enum FuncBuiltIn {
+pub enum BuiltInFunc {
     Print,
 }
 
-impl FuncBuiltIn {
+impl BuiltInFunc {
     pub fn call(&self, _ctxt: &mut Context, params: Vec<Value>) -> Result<Value, ProgramError> {
         match self {
-            FuncBuiltIn::Print => {
+            BuiltInFunc::Print => {
                 for p in params {
-                    println!("got {p}");
+                    println!("got {}", p.as_string()?);
                 }
                 Ok(Value::Nil)
             }
@@ -358,7 +357,7 @@ impl FunctionCall {
         // func.call(ctxt, args)
         match maybe_func {
             Value::Func(func) => func.call(ctxt, args),
-            Value::FuncBuiltIn(func) => func.call(ctxt, args),
+            Value::BuiltInFunc(func) => func.call(ctxt, args),
             _ => {
                 todo!()
             }

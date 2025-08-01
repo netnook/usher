@@ -304,7 +304,7 @@ impl Value {
         write_indent(w, indent);
         match self {
             Value::Func(_) => panic!("func value should not occur in testing"),
-            Value::FuncBuiltIn(_) => panic!("funcbuiltin value should not occur in testing"),
+            Value::BuiltInFunc(_) => panic!("funcbuiltin value should not occur in testing"),
             Value::Str(s) => {
                 w.write_all(b"\"").unwrap();
                 w.write_all(s.as_bytes()).unwrap();
