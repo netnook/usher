@@ -289,6 +289,15 @@ mod tests {
                 body: $body,
             }
         }};
+        (n=$name:expr, $body:expr) => {{
+            use crate::lang::FunctionDef;
+            use crate::lang::Identifier;
+            FunctionDef {
+                name: Some(Identifier::new($name.to_string())),
+                params: Vec::new(),
+                body: $body,
+            }
+        }};
         ($body:expr) => {{
             use crate::lang::FunctionDef;
             FunctionDef {

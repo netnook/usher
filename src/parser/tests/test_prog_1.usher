@@ -22,16 +22,18 @@ end
 lst = [1, "two", true, nil, b+c*d, dict(x: 42)]
 mip = dict (a:1, b:"two", c:[3,3,3])
 
-# function foo(a, b, c:77) {
-#   return 42
-# }
-
 var foo = function() {
   return 42
 }
 var foo = function(a, b, c:77) {
   return 42
 }
+
+function foo(a: 1*2) {
+   return 42
+}
+
+# foo("22", c:"ccc")
 ---
 (decl
   (id a)
@@ -202,6 +204,22 @@ end
       (return
         42
       )
+    )
+  )
+)
+(fn
+  (name foo)
+  (params
+    (a
+      (*
+        1
+        2
+      )
+    )
+  )
+  (block
+    (return
+      42
     )
   )
 )
