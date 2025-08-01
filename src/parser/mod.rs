@@ -15,6 +15,7 @@ mod return_stmt;
 mod stmt;
 mod string;
 mod utils;
+mod validation;
 
 use crate::lang::Program;
 use error::{ParseError, build_parse_error};
@@ -221,7 +222,7 @@ mod tests {
     pub(crate) use _ret;
 
     macro_rules! _if {
-        ($(_cond($cond:expr, $block:expr)),+) => {{
+        ($(cond($cond:expr => $block:expr)),+) => {{
             use crate::lang::ConditionalBlock;
             use crate::lang::IfElseStmt;
             let conditional_blocks = vec![
@@ -237,8 +238,8 @@ mod tests {
                 else_block: None,
             }
         }};
-        ($(_cond($cond:expr, $block:expr)),+ , _else($else_block:expr)) => {{
-            let stmt =_if!($(_cond($cond, $block)),*);
+        ($(cond($cond:expr => $block:expr)),+ , else($else_block:expr)) => {{
+            let stmt =_if!($(cond($cond => $block)),*);
             IfElseStmt {
                 conditional_blocks : stmt.conditional_blocks ,
                 else_block: $else_block.into(),
@@ -279,23 +280,32 @@ mod tests {
     pub(crate) use _prog;
 
     macro_rules! _func {
-        (p=[$($param:expr),*] , $body:expr) => {{
-            use crate::lang::FunctionDef;
+        (name($name:expr), $($rest:tt)*) => {{
             use crate::lang::Identifier;
-            let params = vec![$($param),*];
-            FunctionDef {
-                name: None,
-                params,
-                body: $body,
-            }
-        }};
-        (n=$name:expr, $body:expr) => {{
-            use crate::lang::FunctionDef;
-            use crate::lang::Identifier;
+            let f = _func!($($rest)*);
             FunctionDef {
                 name: Some(Identifier::new($name.to_string())),
-                params: Vec::new(),
-                body: $body,
+                ..f
+            }
+        }};
+        (param($($pp:tt)*), $($rest:tt)*) => {{
+            use crate::lang::Identifier;
+            let mut f = _func!($($rest)*);
+            f.params.insert(0, _func!(@param $($pp)*));
+            f
+        }};
+        (@param $name:expr, $val:expr) => {{
+            use crate::lang::Param;
+            Param {
+                name: Identifier::new($name.to_string()),
+                value: Some($val.into()),
+            }
+        }};
+        (@param $name:expr) => {{
+            use crate::lang::Param;
+            Param {
+                name: Identifier::new($name.to_string()),
+                value: None,
             }
         }};
         ($body:expr) => {{
@@ -308,24 +318,6 @@ mod tests {
         }};
     }
     pub(crate) use _func;
-
-    macro_rules! _param {
-        ($name:expr => $value:expr) => {{
-            use crate::lang::Param;
-            Param {
-                name: Identifier::new($name.to_string()),
-                value: Some($value.into()),
-            }
-        }};
-        ($name:expr) => {{
-            use crate::lang::Param;
-            Param {
-                name: Identifier::new($name.to_string()),
-                value: None,
-            }
-        }};
-    }
-    pub(crate) use _param;
 
     #[track_caller]
     pub(crate) fn do_test_parser_ok<'a, F, T>(

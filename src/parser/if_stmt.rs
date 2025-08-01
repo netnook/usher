@@ -98,48 +98,48 @@ mod tests {
 
     #[test]
     fn test_if() {
-        do_test_if_ok(r" if x { 1 } ", _if!(_cond(id("x"), _block![i(1)])), -1);
+        do_test_if_ok(r" if x { 1 } ", _if!(cond(id("x") => _block![i(1)])), -1);
         do_test_if_ok(
             " if x { 1 } else if y { 2 } ",
-            _if!(_cond(id("x"), _block![i(1)]), _cond(id("y"), _block![i(2)])),
+            _if!(cond(id("x") => _block![i(1)]), cond(id("y") => _block![i(2)])),
             -1,
         );
         do_test_if_ok(
             " if x { 1 } else { 2 } ",
-            _if!(_cond(id("x"), _block![i(1)]), _else(_block![i(2)])),
+            _if!(cond(id("x") => _block![i(1)]), else(_block![i(2)])),
             -1,
         );
         do_test_if_ok(
             " if x { 1 } else if y { 2 } else { 3 } ",
             _if!(
-                _cond(id("x"), _block![i(1)]),
-                _cond(id("y"), _block![i(2)]),
-                _else(_block![i(3)])
+                cond(id("x") => _block![i(1)]),
+                cond(id("y") => _block![i(2)]),
+                else(_block![i(3)])
             ),
             -1,
         );
         do_test_if_ok(
             " if x { 1 } else if y { 2 } else if z { 3 } else { 4 } ",
             _if!(
-                _cond(id("x"), _block![i(1)]),
-                _cond(id("y"), _block![i(2)]),
-                _cond(id("z"), _block![i(3)]),
-                _else(_block![i(4)])
+                cond(id("x") => _block![i(1)]),
+                cond(id("y") => _block![i(2)]),
+                cond(id("z") => _block![i(3)]),
+                else(_block![i(4)])
             ),
             -1,
         );
         do_test_if_ok(
             " if x{1}else if y{2}else{3} ",
             _if!(
-                _cond(id("x"), _block![i(1)]),
-                _cond(id("y"), _block![i(2)]),
-                _else(_block![i(3)])
+                cond(id("x") => _block![i(1)]),
+                cond(id("y") => _block![i(2)]),
+                else(_block![i(3)])
             ),
             -1,
         );
         do_test_if_ok(
             " if x { 1 } else { 2 } else { 3 } ",
-            _if!(_cond(id("x"), _block![i(1)]), _else(_block![i(2)])),
+            _if!(cond(id("x") => _block![i(1)]), else(_block![i(2)])),
             -12,
         );
         do_test_if_err(

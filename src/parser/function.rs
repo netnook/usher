@@ -114,35 +114,40 @@ mod tests {
         do_test_expr_ok(r" function(){} ", _func!(_block![]), -1);
         do_test_expr_ok(r" function ( ) { } ", _func!(_block![]), -1);
 
-        do_test_expr_ok(r" function foo(){} ", _func!(n = "foo", _block![]), -1);
-        do_test_expr_ok(r" function bar ( ) { } ", _func!(n = "bar", _block![]), -1);
+        do_test_expr_ok(r" function foo(){} ", _func!(name("foo"), _block![]), -1);
         do_test_expr_ok(
-            " function(a) { 1 } ",
-            _func!(p = [_param!("a")], _block![i(1)]),
+            r" function bar ( ) { } ",
+            _func!(name("bar"), _block![]),
             -1,
         );
+        do_test_expr_ok(" function(a) { 1 } ", _func!(param("a"), _block![i(1)]), -1);
         do_test_expr_ok(
             " function(a:1) { 1 } ",
-            _func!(p = [_param!("a"=> i(1))], _block![i(1)]),
+            _func!(param("a", i(1)), _block![i(1)]),
             -1,
         );
         do_test_expr_ok(
             " function(a:1, b) { 1 } ",
-            _func!(p = [_param!("a"=>i(1)), _param!("b")], _block![i(1)]),
+            _func!(param("a", i(1)), param("b"), _block![i(1)]),
             -1,
         );
         do_test_expr_ok(
             " function (a,b, cd) { 1 } ",
-            _func!(
-                p = [_param!("a"), _param!("b"), _param!("cd")],
-                _block![i(1)]
-            ),
+            _func!(param("a"), param("b"), param("cd"), _block![i(1)]),
             -1,
         );
         do_test_expr_ok(
             " function (a,#foo\nb   #foo\n, cd  #foo\n) #foo\n { 1 } ",
+            _func!(param("a"), param("b"), param("cd"), _block![i(1)]),
+            -1,
+        );
+        do_test_expr_ok(
+            " function  meme (a,#foo\nb :8  #foo\n, cd  #foo\n) #foo\n { 1 } ",
             _func!(
-                p = [_param!("a"), _param!("b"), _param!("cd")],
+                name("meme"),
+                param("a"),
+                param("b", i(8)),
+                param("cd"),
                 _block![i(1)]
             ),
             -1,

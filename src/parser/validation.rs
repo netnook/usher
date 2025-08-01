@@ -1,5 +1,6 @@
 use enumset::{EnumSet, EnumSetType};
 
+#[allow(dead_code)]
 type FlagSet = EnumSet<Flags>;
 
 #[derive(EnumSetType, Debug)]

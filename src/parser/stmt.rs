@@ -216,7 +216,7 @@ pub(super) mod tests {
     fn test_stmt() {
         do_test_stmt_ok(
             " if true { 2 } ",
-            _if!(_cond(b(true), _block![i(2)])).into(),
+            _if!(cond(b(true) => _block![i(2)])).into(),
             -1,
         );
         do_test_stmt_ok(
