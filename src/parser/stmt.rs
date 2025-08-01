@@ -133,7 +133,7 @@ impl<'a> Parser<'a> {
 }
 
 #[cfg(test)]
-mod tests {
+pub(super) mod tests {
     use super::*;
     use crate::parser::tests::*;
 
@@ -208,7 +208,7 @@ mod tests {
     }
 
     #[track_caller]
-    fn do_test_stmt_ok(input: &'static str, expected: AstNode, expected_end: isize) {
+    pub(crate) fn do_test_stmt_ok(input: &'static str, expected: AstNode, expected_end: isize) {
         do_test_parser_ok(Parser::stmt, input, Some(expected), expected_end);
     }
 

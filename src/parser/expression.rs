@@ -13,9 +13,6 @@ pub(crate) const EXPECTED_IDENT_ON_KV_LHS: &str = "Expected identifier on LHS of
 impl<'a> Parser<'a> {
     /// Consume an expression or nothing.
     pub(super) fn expression(&mut self) -> ParseResult<Option<AstNode>> {
-        if let Some(v) = self.function_expr()? {
-            return Ok(Some(v));
-        }
         if let Some(v) = self.key_value_expression()? {
             return Ok(Some(v));
         }
@@ -282,7 +279,7 @@ impl<'a> Parser<'a> {
             Some(b"dict") => return Ok(Some(AstNode::DictBuilder(self.dict()?))),
             Some(b"true") => return Ok(Some(AstNode::Value(Value::Bool(true)))),
             Some(b"false") => return Ok(Some(AstNode::Value(Value::Bool(false)))),
-            // FIXME: move anonymous function to here, then have top level validator
+            Some(b"function") => return Ok(Some(AstNode::FunctionDef(self.function_def()?))),
             // to error if function def added to something, for example
             _ => {
                 self.pos = start;

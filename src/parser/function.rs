@@ -110,7 +110,7 @@ mod tests {
     };
 
     #[test]
-    fn test_anon_func() {
+    fn test_func() {
         do_test_expr_ok(r" function(){} ", _func!(_block![]), -1);
         do_test_expr_ok(r" function ( ) { } ", _func!(_block![]), -1);
 
@@ -151,5 +151,23 @@ mod tests {
         do_test_expr_err(" function #foo\n () { } ", 10, EXPECTED_OPEN_PARENS);
         do_test_expr_err(r#" function("a") { } "#, 10, EXPECTED_PARAM_IDENT);
         do_test_expr_err(r#" function("a":42) { } "#, 10, EXPECTED_IDENT_ON_KV_LHS);
+
+        // FIXME: validation - the following should not be allowed
+        // do_test_expr_err(" 3 + function() { true }", 5, "foo");
+
+        // do_test_stmt_ok(
+        //     " var a = function() { true } ",
+        //     _func!(
+        //         p = [_param!("a"), _param!("b"), _param!("cd")],
+        //         _block![i(1)]
+        //     )
+        //     .into(),
+        //     -1,
+        // );
+        // do_test_stmt_err(
+        //     " var a = function named() { true }",
+        //     18,
+        //     "named not allowed in assingment",
+        // );
     }
 }
