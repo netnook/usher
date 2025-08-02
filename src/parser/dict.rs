@@ -98,10 +98,10 @@ mod tests {
     #[test]
     fn test_dict_ok() {
         let expect = DictBuilder::new(vec![
-            kv(id("a"), i(1)),
-            kv(id("b"), nil()),
-            kv(id("c"), b(true)),
-            kv(id("the_d"), s("bar")),
+            kv(id!("a"), i(1)),
+            kv(id!("b"), nil()),
+            kv(id!("c"), b(true)),
+            kv(id!("the_d"), s("bar")),
         ]);
         do_test_expr_ok(
             r#" dict(a:1,b:nil,c:true,the_d:"bar") "#,
@@ -120,14 +120,14 @@ mod tests {
             r#" dict( a: dict( aa:1, ab:2, ac: dict()), b:3) "#,
             DictBuilder::new(vec![
                 kv(
-                    id("a"),
+                    id!("a"),
                     DictBuilder::new(vec![
-                        kv(id("aa"), i(1)),
-                        kv(id("ab"), i(2)),
-                        kv(id("ac"), DictBuilder::new(Vec::new())),
+                        kv(id!("aa"), i(1)),
+                        kv(id!("ab"), i(2)),
+                        kv(id!("ac"), DictBuilder::new(Vec::new())),
                     ]),
                 ),
-                kv(id("b"), i(3)),
+                kv(id!("b"), i(3)),
             ]),
             -1,
         );

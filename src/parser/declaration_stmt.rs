@@ -67,12 +67,12 @@ mod tests {
 
     #[test]
     fn test_var() {
-        do_test_var_ok(" var a=x+2 ", var(id("a"), add(id("x"), i(2))), -1);
-        do_test_var_ok(" var a = x + 2 ", var(id("a"), add(id("x"), i(2))), -1);
-        do_test_var_ok(" var a = x + 2 ", var(id("a"), add(id("x"), i(2))), -1);
+        do_test_var_ok(" var a=x+2 ", var(id!("a"), add(id!("x"), i(2))), -1);
+        do_test_var_ok(" var a = x + 2 ", var(id!("a"), add(id!("x"), i(2))), -1);
+        do_test_var_ok(" var a = x + 2 ", var(id!("a"), add(id!("x"), i(2))), -1);
         do_test_var_ok(
             " var # comment \n a = # comment \n x + 2 ",
-            var(id("a"), add(id("x"), i(2))),
+            var(id!("a"), add(id!("x"), i(2))),
             -1,
         );
 
@@ -82,5 +82,18 @@ mod tests {
         do_test_var_err(" var a = ; 1 ", 9, EXPECTED_EXPRESSION);
         do_test_var_err(" var print = 1 ", 5, NAME_RESERVED);
         do_test_var_err(" var else = 1 ", 5, KEYWORD_RESERVED);
+
+        do_test_parser_exact(
+            Parser::stmt,
+            " var a=x+2 ",
+            var(id!("a", 5), add(id!("x", 7), i(2))).into(),
+            -1,
+        );
+        do_test_parser_exact(
+            Parser::stmt,
+            " var # comment \n a = # comment \n x + 2 ",
+            var(id!("a", 17), add(id!("x", 33), i(2))).into(),
+            -1,
+        );
     }
 }

@@ -39,8 +39,9 @@ impl Program {
 }
 
 #[derive(PartialEq, Debug)]
-pub enum ProgramError {
-    ConversionError(String),
+pub struct ProgramError {
+    pub(crate) msg: String,
+    pub(crate) pos: usize,
 }
 
 #[derive(PartialEq, Debug, Clone)]
@@ -93,6 +94,31 @@ impl AstNode {
             // AstNode::Assignment(assignment) => todo!(),
             // AstNode::KeyValue(key_value) => todo!(),
             n => todo!("eval not implemented for {n:?}"),
+        }
+    }
+
+    pub fn pos(&self) -> usize {
+        match self {
+            AstNode::Identifier(v) => v.pos,
+            // AstNode::Declaration(v) => v.eval(ctxt),
+            // AstNode::Value(v) => v.eval(ctxt),
+            // AstNode::FunctionCall(v) => v.eval(ctxt),
+            // AstNode::InterpolatedStr(v) => v.eval(ctxt),
+            // AstNode::ListBuilder(list_builder) => todo!(),
+            // AstNode::DictBuilder(dict_builder) => todo!(),
+            // AstNode::PropertyOf(property_of) => todo!(),
+            // AstNode::IndexOf(index_of) => todo!(),
+            // AstNode::UnaryOp(unary_op) => todo!(),
+            // AstNode::BinaryOp(binary_op) => todo!(),
+            // AstNode::ChainCatch(chain_catch) => todo!(),
+            // AstNode::Block(block) => todo!(),
+            // AstNode::IfElseStmt(if_else_stmt) => todo!(),
+            // AstNode::ForStmt(for_stmt) => todo!(),
+            // AstNode::FunctionDef(function_def) => todo!(),
+            // AstNode::ReturnStmt(return_stmt) => todo!(),
+            // AstNode::Assignment(assignment) => todo!(),
+            // AstNode::KeyValue(key_value) => todo!(),
+            n => todo!("pos() not implemented for {n:?}"),
         }
     }
 }
@@ -161,11 +187,12 @@ impl From<ReturnStmt> for AstNode {
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct Identifier {
     pub(crate) name: String,
+    pub(crate) pos: usize,
 }
 
 impl Identifier {
-    pub(crate) fn new(name: String) -> Self {
-        Self { name }
+    pub(crate) fn new(name: String, pos: usize) -> Self {
+        Self { name, pos }
     }
     pub fn eval(&self, ctxt: &mut Context) -> Result<Value, ProgramError> {
         if self.name == "print" {
@@ -219,7 +246,10 @@ impl InterpolatedStr {
             let mut res = String::new();
             for p in &self.parts {
                 let val = p.eval(ctxt)?;
-                let s = val.as_string()?;
+                let s = val.as_string().map_err(|e| ProgramError {
+                    msg: format!("Error interpolating string: {}", e.msg),
+                    pos: p.pos(),
+                })?;
                 res.push_str(&format!("{s}"));
             }
             Ok(Value::Str(res))

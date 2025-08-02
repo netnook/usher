@@ -45,7 +45,8 @@ mod tests {
         let mut parser = Parser::new(input);
         parser.pos = 1;
 
-        let actual = parser.program().expect("parser should succeed");
+        let actual = parser.program().expect("parser should succeed").print();
+        let expected = expected.print();
 
         assert_eq!(actual, expected, "assert actual (left) == expected (right)");
 
@@ -85,7 +86,7 @@ mod tests {
         do_test_program_ok("  1 \n 2 \n 3 ", _prog![i(1), i(2), i(3)]);
         do_test_program_ok(" \n 1 \n 2 \n 3 \n ", _prog![i(1), i(2), i(3)]);
         do_test_program_ok(" #foo\n 1 #bar\n #baz \n 2 ", _prog![i(1), i(2)]);
-        do_test_program_ok(" var a = 1 ", _prog![var(id("a"), i(1))]);
+        do_test_program_ok(" var a = 1 ", _prog![var(id!("a"), i(1))]);
 
         do_test_program_err(" 1 2 ", 3, EXPECTED_NEW_LINE_AFTER_STMT);
         do_test_program_err(" 1 \n ; ", 5, UNEXPECTED_CHAR);

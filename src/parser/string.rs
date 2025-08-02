@@ -134,10 +134,10 @@ mod tests {
         do_test_strings(r#"_"true"_"#, s("true"), -1);
         do_test_strings(r#"_"true"_"#, s("true"), -1);
 
-        do_test_strings(r#"_"{ foo }"_"#, _interp![id("foo")], -1);
+        do_test_strings(r#"_"{ foo }"_"#, _interp![id!("foo")], -1);
         do_test_strings(
             r#"_"ab{ foo -45 }cd{ 35 }"_"#,
-            _interp![s("ab"), sub(id("foo"), i(45)), s("cd"), i(35)],
+            _interp![s("ab"), sub(id!("foo"), i(45)), s("cd"), i(35)],
             -1,
         );
 

@@ -11,7 +11,7 @@ impl Program {
         let mut buf = BufWriter::new(Vec::new());
 
         for s in &self.stmts {
-            s.print(&mut buf, 0);
+            s.do_print(&mut buf, 0);
         }
 
         let bytes = buf.into_inner().expect("ok");
@@ -21,7 +21,17 @@ impl Program {
 }
 
 impl AstNode {
-    fn print(&self, w: &mut impl Write, indent: usize) {
+    pub(crate) fn print(&self) -> String {
+        let mut buf = BufWriter::new(Vec::new());
+
+        self.do_print(&mut buf, 0);
+
+        let bytes = buf.into_inner().expect("ok");
+
+        String::from_utf8(bytes).expect("utf-8 ok")
+    }
+
+    fn do_print(&self, w: &mut impl Write, indent: usize) {
         match self {
             AstNode::This => write_indented(w, indent, "this"),
             AstNode::Identifier(v) => v.print(w, indent),
@@ -63,7 +73,7 @@ impl Declaration {
     fn print(&self, w: &mut impl Write, indent: usize) {
         write_open(w, indent, "decl");
         self.ident.print(w, indent + 1);
-        self.value.print(w, indent + 1);
+        self.value.do_print(w, indent + 1);
         write_close(w, indent);
     }
 }
@@ -71,8 +81,8 @@ impl Declaration {
 impl Assignment {
     fn print(&self, w: &mut impl Write, indent: usize) {
         write_open(w, indent, "assign");
-        self.lhs.print(w, indent + 1);
-        self.rhs.print(w, indent + 1);
+        self.lhs.do_print(w, indent + 1);
+        self.rhs.do_print(w, indent + 1);
         write_close(w, indent);
     }
 }
@@ -81,7 +91,7 @@ impl KeyValue {
     fn print(&self, w: &mut impl Write, indent: usize) {
         write_open(w, indent, "kv");
         self.key.print(w, indent + 1);
-        self.value.print(w, indent + 1);
+        self.value.do_print(w, indent + 1);
         write_close(w, indent);
     }
 }
@@ -102,7 +112,7 @@ impl IfElseStmt {
 impl ConditionalBlock {
     fn print(&self, w: &mut impl Write, indent: usize) {
         write_open(w, indent, "conditional");
-        self.condition.print(w, indent + 1);
+        self.condition.do_print(w, indent + 1);
         self.block.print(w, indent + 1);
         write_close(w, indent);
     }
@@ -119,7 +129,7 @@ impl ForStmt {
                 w.write_all(b"-\n").unwrap();
             }
         }
-        self.loop_expr.print(w, indent + 1);
+        self.loop_expr.do_print(w, indent + 1);
         self.block.print(w, indent + 1);
         write_close(w, indent);
     }
@@ -148,7 +158,7 @@ impl Param {
         match &self.value {
             Some(value) => {
                 write_open(w, indent, &self.name.name);
-                value.print(w, indent + 1);
+                value.do_print(w, indent + 1);
                 write_close(w, indent);
             }
             None => write_indented(w, indent, &self.name.name),
@@ -160,7 +170,7 @@ impl FunctionCall {
     fn print(&self, w: &mut impl Write, indent: usize) {
         write_open(w, indent, "call");
         write_open(w, indent + 1, "on");
-        self.on.print(w, indent + 2);
+        self.on.do_print(w, indent + 2);
         write_close(w, indent + 1);
 
         if !self.args.is_empty() {
@@ -180,10 +190,10 @@ impl Arg {
         match &self.name {
             Some(name) => {
                 write_open(w, indent, &name.name);
-                self.value.print(w, indent + 1);
+                self.value.do_print(w, indent + 1);
                 write_close(w, indent);
             }
-            None => self.value.print(w, indent),
+            None => self.value.do_print(w, indent),
         }
     }
 }
@@ -191,7 +201,7 @@ impl ReturnStmt {
     fn print(&self, w: &mut impl Write, indent: usize) {
         if let Some(value) = &self.value {
             write_open(w, indent, "return");
-            value.print(w, indent + 1);
+            value.do_print(w, indent + 1);
             write_close(w, indent);
         } else {
             write_indented(w, indent, "return");
@@ -203,7 +213,7 @@ impl Block {
     fn print(&self, w: &mut impl Write, indent: usize) {
         write_open(w, indent, "block");
         for cb in &self.stmts {
-            cb.print(w, indent + 1);
+            cb.do_print(w, indent + 1);
         }
         write_close(w, indent);
     }
@@ -211,7 +221,7 @@ impl Block {
 impl ChainCatch {
     fn print(&self, w: &mut impl Write, indent: usize) {
         write_open(w, indent, "?");
-        self.inner.print(w, indent + 1);
+        self.inner.do_print(w, indent + 1);
         write_close(w, indent);
     }
 }
@@ -222,7 +232,7 @@ impl UnaryOp {
             UnaryOpCode::Negative => "neg",
         };
         write_open(w, indent, s);
-        self.on.print(w, indent + 1);
+        self.on.do_print(w, indent + 1);
         write_close(w, indent);
     }
 }
@@ -245,8 +255,8 @@ impl BinaryOp {
             BinaryOpCode::Or => "||",
         };
         write_open(w, indent, s);
-        self.lhs.print(w, indent + 1);
-        self.rhs.print(w, indent + 1);
+        self.lhs.do_print(w, indent + 1);
+        self.rhs.do_print(w, indent + 1);
         write_close(w, indent);
     }
 }
@@ -254,7 +264,7 @@ impl BinaryOp {
 impl PropertyOf {
     fn print(&self, w: &mut impl Write, indent: usize) {
         write_open(w, indent, "property");
-        self.from.print(w, indent + 1);
+        self.from.do_print(w, indent + 1);
         self.property.print(w, indent + 1);
         write_close(w, indent);
     }
@@ -263,8 +273,8 @@ impl PropertyOf {
 impl IndexOf {
     fn print(&self, w: &mut impl Write, indent: usize) {
         write_open(w, indent, "index");
-        self.from.print(w, indent + 1);
-        self.index.print(w, indent + 1);
+        self.from.do_print(w, indent + 1);
+        self.index.do_print(w, indent + 1);
         write_close(w, indent);
     }
 }
@@ -273,7 +283,7 @@ impl ListBuilder {
     fn print(&self, w: &mut impl Write, indent: usize) {
         write_open(w, indent, "list");
         for e in &self.entries {
-            e.print(w, indent + 1);
+            e.do_print(w, indent + 1);
         }
         write_close(w, indent);
     }
@@ -293,7 +303,7 @@ impl InterpolatedStr {
     fn print(&self, w: &mut impl Write, indent: usize) {
         write_open(w, indent, "interpolate");
         for cb in &self.parts {
-            cb.print(w, indent + 1);
+            cb.do_print(w, indent + 1);
         }
         write_close(w, indent);
     }

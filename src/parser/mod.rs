@@ -72,7 +72,7 @@ impl<'a> Parser<'a> {
 #[cfg(test)]
 mod tests {
     mod nested_types;
-    mod printing;
+    pub mod printing;
     mod programs;
 
     use super::SyntaxError;
@@ -100,9 +100,18 @@ mod tests {
     pub(crate) fn this() -> AstNode {
         AstNode::This
     }
-    pub(crate) fn id(s: &str) -> Identifier {
-        Identifier::new(s.to_string())
+    macro_rules! id {
+        ($val:expr) => {{
+            use crate::lang::Identifier;
+            Identifier::new($val.to_string(), 999)
+        }};
+        ($val:expr, $pos:expr) => {{
+            use crate::lang::Identifier;
+            Identifier::new($val.to_string(), $pos)
+        }};
     }
+    pub(crate) use id;
+
     pub(crate) fn kv(key: impl Into<Identifier>, value: impl Into<AstNode>) -> KeyValue {
         KeyValue {
             key: key.into(),
@@ -112,7 +121,7 @@ mod tests {
     pub(crate) fn prop_of(from: impl Into<AstNode>, prop: &str) -> AstNode {
         AstNode::PropertyOf(PropertyOf {
             from: from.into().into(),
-            property: id(prop),
+            property: id!(prop),
         })
     }
     pub(crate) fn index_of(from: impl Into<AstNode>, index: impl Into<AstNode>) -> AstNode {
@@ -287,7 +296,7 @@ mod tests {
             use crate::lang::Identifier;
             let f = _func!($($rest)*);
             FunctionDef {
-                name: Some(Identifier::new($name.to_string())),
+                name: Some(Identifier::new($name.to_string(), 0)),
                 ..f
             }
         }};
@@ -300,14 +309,14 @@ mod tests {
         (@param $name:expr, $val:expr) => {{
             use crate::lang::Param;
             Param {
-                name: Identifier::new($name.to_string()),
+                name: Identifier::new($name.to_string(), 0),
                 value: Some($val.into()),
             }
         }};
         (@param $name:expr) => {{
             use crate::lang::Param;
             Param {
-                name: Identifier::new($name.to_string()),
+                name: Identifier::new($name.to_string(), 0),
                 value: None,
             }
         }};
@@ -361,7 +370,47 @@ mod tests {
     pub(crate) use _call;
 
     #[track_caller]
-    pub(crate) fn do_test_parser_ok<'a, F, T>(
+    pub(crate) fn do_test_parser_ok<'a, F>(
+        func: F,
+        input: &'static str,
+        expected: Option<AstNode>,
+        expected_end: isize,
+    ) where
+        F: FnOnce(&mut Parser<'a>) -> Result<Option<AstNode>, SyntaxError>,
+        // T: PartialEq<T> + std::fmt::Debug,
+    {
+        let mut parser = Parser::new(input);
+        parser.pos = 1;
+
+        // let a = expected.unwrap();
+        // a.print();
+        // print(n)
+
+        let actual = func(&mut parser)
+            .expect("parser should succeed")
+            .map(|a| a.print());
+        let expected = expected.map(|e| e.print());
+
+        assert_eq!(actual, expected, "assert actual (left) == expected (right)");
+
+        if expected_end > 0 {
+            assert_eq!(
+                parser.pos, expected_end as usize,
+                "assert actual_end ({}) == expected_end ({expected_end})",
+                parser.pos
+            );
+        } else {
+            let actual_remain = input.len() - parser.pos;
+            let expected_remain = -expected_end as usize;
+            assert_eq!(
+                actual_remain, expected_remain,
+                "assert actual_remain ({actual_remain}) == expected_remaining ({expected_remain})"
+            );
+        }
+    }
+
+    #[track_caller]
+    pub(crate) fn do_test_parser_ok_t<'a, F, T>(
         func: F,
         input: &'static str,
         expected: Option<T>,
@@ -394,7 +443,7 @@ mod tests {
     }
 
     #[track_caller]
-    pub(crate) fn do_test_parser_some<'a, F, T>(
+    pub(crate) fn do_test_parser_exact<'a, F, T>(
         func: F,
         input: &'static str,
         expected: T,
@@ -403,16 +452,71 @@ mod tests {
         F: FnOnce(&mut Parser<'a>) -> Result<Option<T>, SyntaxError>,
         T: PartialEq<T> + std::fmt::Debug,
     {
+        let mut parser = Parser::new(input);
+        parser.pos = 1;
+
+        let actual = func(&mut parser)
+            .expect("parser should succeed")
+            .expect("with some");
+
+        assert_eq!(actual, expected, "assert actual (left) == expected (right)");
+
+        if expected_end > 0 {
+            assert_eq!(
+                parser.pos, expected_end as usize,
+                "assert actual_end ({}) == expected_end ({expected_end})",
+                parser.pos
+            );
+        } else {
+            let actual_remain = input.len() - parser.pos;
+            let expected_remain = -expected_end as usize;
+            assert_eq!(
+                actual_remain, expected_remain,
+                "assert actual_remain ({actual_remain}) == expected_remaining ({expected_remain})"
+            );
+        }
+    }
+
+    #[track_caller]
+    pub(crate) fn do_test_parser_some<'a, F>(
+        func: F,
+        input: &'static str,
+        expected: AstNode,
+        expected_end: isize,
+    ) where
+        F: FnOnce(&mut Parser<'a>) -> Result<Option<AstNode>, SyntaxError>,
+    {
         do_test_parser_ok(func, input, Some(expected), expected_end);
     }
 
     #[track_caller]
-    pub(crate) fn do_test_parser_none<'a, F, T>(func: F, input: &'static str)
+    pub(crate) fn do_test_parser_some_t<'a, F, T>(
+        func: F,
+        input: &'static str,
+        expected: T,
+        expected_end: isize,
+    ) where
+        F: FnOnce(&mut Parser<'a>) -> Result<Option<T>, SyntaxError>,
+        T: PartialEq<T> + std::fmt::Debug,
+    {
+        do_test_parser_ok_t(func, input, Some(expected), expected_end);
+    }
+
+    #[track_caller]
+    pub(crate) fn do_test_parser_none<'a, F>(func: F, input: &'static str)
+    where
+        F: FnOnce(&mut Parser<'a>) -> Result<Option<AstNode>, SyntaxError>,
+    {
+        do_test_parser_ok(func, input, None, 1);
+    }
+
+    #[track_caller]
+    pub(crate) fn do_test_parser_none_t<'a, F, T>(func: F, input: &'static str)
     where
         F: FnOnce(&mut Parser<'a>) -> Result<Option<T>, SyntaxError>,
         T: PartialEq<T> + std::fmt::Debug,
     {
-        do_test_parser_ok(func, input, None, 1);
+        do_test_parser_ok_t(func, input, None, 1);
     }
 
     #[track_caller]

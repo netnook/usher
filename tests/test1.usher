@@ -1,2 +1,5 @@
 var name = "world"
 print("hello {name}!")
+
+
+print("hello {print}!")

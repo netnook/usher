@@ -20,16 +20,18 @@ impl Value {
     pub fn as_string(&self) -> Result<Cow<str>, ProgramError> {
         Ok(match self {
             Value::Func(_) => {
-                return Err(ProgramError::ConversionError(
-                    "Cannot convert a function to a string.".to_string(),
-                ));
+                return Err(ProgramError {
+                    msg: "Cannot convert a function to a string.".to_string(),
+                    pos: 0,
+                });
             }
             Value::BuiltInFunc(_) => {
-                return Err(ProgramError::ConversionError(
-                    "Cannot convert a function to a string.".to_string(),
-                ));
+                return Err(ProgramError {
+                    msg: "Cannot convert a function to a string.".to_string(),
+                    pos: 0,
+                });
             }
-            Value::Str(v) => Cow::Borrowed(&v),
+            Value::Str(v) => Cow::Borrowed(v),
             Value::Integer(v) => Cow::Owned(format!("{v}")),
             Value::Float(v) => Cow::Owned(format!("{v}")),
             Value::Bool(v) => match v {
