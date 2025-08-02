@@ -3,6 +3,8 @@ mod value;
 use std::collections::HashMap;
 pub use value::Value;
 
+use crate::find_source_position;
+
 #[derive(Debug, Clone)]
 pub struct Context {
     pub vars: HashMap<Identifier, Value>,
@@ -24,12 +26,27 @@ impl Context {
 }
 
 #[derive(PartialEq, Debug, Clone)]
-pub struct Program {
+pub struct Program<'a> {
+    pub source: &'a str,
     pub stmts: Vec<AstNode>,
 }
 
-impl Program {
+impl<'a> Program<'a> {
     pub(crate) fn run(&self) -> Result<(), ProgramError> {
+        match self.do_run() {
+            Ok(v) => Ok(v),
+            Err(e) => {
+                let info = find_source_position(self.source, e.pos);
+                Err(ProgramError {
+                    msg: e.msg,
+                    line_no: info.0.line,
+                    char_no: info.0.char,
+                    line: info.1.to_string(),
+                })
+            }
+        }
+    }
+    fn do_run(&self) -> Result<(), InternalProgramError> {
         let mut ctxt = Context::new();
         for stmt in &self.stmts {
             stmt.eval(&mut ctxt)?;
@@ -40,6 +57,14 @@ impl Program {
 
 #[derive(PartialEq, Debug)]
 pub struct ProgramError {
+    pub(crate) msg: String,
+    pub(crate) line_no: usize,
+    pub(crate) char_no: usize,
+    pub(crate) line: String,
+}
+
+#[derive(PartialEq, Debug)]
+pub struct InternalProgramError {
     pub(crate) msg: String,
     pub(crate) pos: usize,
 }
@@ -72,13 +97,14 @@ pub enum AstNode {
 }
 
 impl AstNode {
-    pub fn eval(&self, ctxt: &mut Context) -> Result<Value, ProgramError> {
+    pub fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
         match self {
             AstNode::Declaration(v) => v.eval(ctxt),
             AstNode::Value(v) => v.eval(ctxt),
             AstNode::FunctionCall(v) => v.eval(ctxt),
             AstNode::Identifier(v) => v.eval(ctxt),
             AstNode::InterpolatedStr(v) => v.eval(ctxt),
+            // FIXME: finish eval
             // AstNode::ListBuilder(list_builder) => todo!(),
             // AstNode::DictBuilder(dict_builder) => todo!(),
             // AstNode::PropertyOf(property_of) => todo!(),
@@ -100,6 +126,7 @@ impl AstNode {
     pub fn pos(&self) -> usize {
         match self {
             AstNode::Identifier(v) => v.pos,
+            // FIXME: finish pos
             // AstNode::Declaration(v) => v.eval(ctxt),
             // AstNode::Value(v) => v.eval(ctxt),
             // AstNode::FunctionCall(v) => v.eval(ctxt),
@@ -194,7 +221,7 @@ impl Identifier {
     pub(crate) fn new(name: String, pos: usize) -> Self {
         Self { name, pos }
     }
-    pub fn eval(&self, ctxt: &mut Context) -> Result<Value, ProgramError> {
+    pub fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
         if self.name == "print" {
             Ok(Value::BuiltInFunc(BuiltInFunc::Print))
         } else {
@@ -239,14 +266,14 @@ pub struct InterpolatedStr {
 }
 
 impl InterpolatedStr {
-    pub fn eval(&self, ctxt: &mut Context) -> Result<Value, ProgramError> {
+    pub fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
         if self.parts.len() == 1 {
             self.parts.first().expect("should be there").eval(ctxt)
         } else {
             let mut res = String::new();
             for p in &self.parts {
                 let val = p.eval(ctxt)?;
-                let s = val.as_string().map_err(|e| ProgramError {
+                let s = val.as_string().map_err(|e| InternalProgramError {
                     msg: format!("Error interpolating string: {}", e.msg),
                     pos: p.pos(),
                 })?;
@@ -334,7 +361,11 @@ pub struct FunctionDef {
 }
 
 impl FunctionDef {
-    pub fn call(&self, ctxt: &mut Context, params: Vec<Value>) -> Result<Value, ProgramError> {
+    pub fn call(
+        &self,
+        ctxt: &mut Context,
+        params: Vec<Value>,
+    ) -> Result<Value, InternalProgramError> {
         let _ = params;
         let _ = ctxt;
         let _ = Value::Func(self.clone());
@@ -348,7 +379,11 @@ pub enum BuiltInFunc {
 }
 
 impl BuiltInFunc {
-    pub fn call(&self, _ctxt: &mut Context, params: Vec<Value>) -> Result<Value, ProgramError> {
+    pub fn call(
+        &self,
+        _ctxt: &mut Context,
+        params: Vec<Value>,
+    ) -> Result<Value, InternalProgramError> {
         match self {
             BuiltInFunc::Print => {
                 for p in params {
@@ -373,7 +408,7 @@ pub struct FunctionCall {
 }
 
 impl FunctionCall {
-    pub fn eval(&self, ctxt: &mut Context) -> Result<Value, ProgramError> {
+    pub fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
         // get the function
         let maybe_func = self.on.eval(ctxt)?;
 
@@ -402,7 +437,7 @@ pub struct Arg {
 }
 
 impl Arg {
-    pub fn eval(&self, ctxt: &mut Context) -> Result<Value, ProgramError> {
+    pub fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
         if self.name.is_some() {
             todo!("named arg not handleld");
         }
@@ -422,7 +457,7 @@ pub struct Declaration {
 }
 
 impl Declaration {
-    pub fn eval(&self, ctxt: &mut Context) -> Result<Value, ProgramError> {
+    pub fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
         let value = self.value.eval(ctxt)?;
         ctxt.set(&self.ident, value);
         Ok(Value::Nil)

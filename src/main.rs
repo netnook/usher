@@ -1,3 +1,4 @@
+use parser::error::find_source_position;
 use std::fs;
 
 mod lang;
@@ -51,7 +52,13 @@ fn main() {
     match prog.run() {
         Ok(_) => {}
         Err(e) => {
-            eprintln!("Program error: {e:?}");
+            eprintln!(
+                "Program error at line {}, char {}: {}",
+                e.line_no, e.char_no, e.msg
+            );
+            eprintln!();
+            eprintln!("> {}", e.line);
+            eprintln!("> {}^", " ".repeat(e.char_no));
             std::process::exit(1)
         }
     }

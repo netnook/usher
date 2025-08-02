@@ -2,7 +2,7 @@ mod chars;
 mod comment;
 mod declaration_stmt;
 mod dict;
-mod error;
+pub mod error;
 mod expression;
 mod for_stmt;
 mod function;
@@ -32,12 +32,12 @@ pub(crate) const RESERVED_NAMES: [&str; 3] = ["print", "error", "std"];
 pub fn parse(input: &str) -> Result<Program, ParseError> {
     let mut p = Parser::new(input);
 
-    let p = match p.program() {
+    let program = match p.program() {
         Ok(p) => p,
         Err(se) => return Err(build_parse_error(input, se)),
     };
 
-    Ok(p)
+    Ok(program)
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -56,6 +56,7 @@ type ParseResult<T> = Result<T, SyntaxError>;
 
 #[derive(Debug)]
 pub struct Parser<'a> {
+    input_str: &'a str,
     input: &'a [u8],
     pos: usize,
 }
@@ -63,6 +64,7 @@ pub struct Parser<'a> {
 impl<'a> Parser<'a> {
     fn new(input: &'a str) -> Self {
         Self {
+            input_str: input,
             input: input.as_bytes(),
             pos: 0,
         }
@@ -285,6 +287,7 @@ mod tests {
         ($($stmt:expr),+) => {{
             use crate::lang::Program;
             Program{
+                source: "",
                 stmts:vec![$($stmt.into()),+]
             }
         }};

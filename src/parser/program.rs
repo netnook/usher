@@ -6,7 +6,7 @@ pub(crate) const UNEXPECTED_CHAR: &str = "Unexpected character.";
 
 impl<'a> Parser<'a> {
     // stmt*
-    pub(super) fn program(&mut self) -> ParseResult<Program> {
+    pub(super) fn program(&mut self) -> ParseResult<Program<'a>> {
         let mut stmts = Vec::new();
 
         let mut first = true;
@@ -30,7 +30,10 @@ impl<'a> Parser<'a> {
             stmts.push(stmt);
         }
 
-        Ok(Program { stmts })
+        Ok(Program {
+            source: self.input_str,
+            stmts,
+        })
     }
 }
 

@@ -1,4 +1,4 @@
-use super::{BuiltInFunc, Context, FunctionDef, ProgramError};
+use super::{BuiltInFunc, Context, FunctionDef, InternalProgramError};
 use std::borrow::Cow;
 
 #[derive(PartialEq, Debug, Clone)]
@@ -13,20 +13,20 @@ pub enum Value {
 }
 
 impl Value {
-    pub fn eval(&self, _: &mut Context) -> Result<Value, ProgramError> {
+    pub fn eval(&self, _: &mut Context) -> Result<Value, InternalProgramError> {
         Ok(self.clone())
     }
 
-    pub fn as_string(&self) -> Result<Cow<str>, ProgramError> {
+    pub fn as_string(&self) -> Result<Cow<str>, InternalProgramError> {
         Ok(match self {
             Value::Func(_) => {
-                return Err(ProgramError {
+                return Err(InternalProgramError {
                     msg: "Cannot convert a function to a string.".to_string(),
                     pos: 0,
                 });
             }
             Value::BuiltInFunc(_) => {
-                return Err(ProgramError {
+                return Err(InternalProgramError {
                     msg: "Cannot convert a function to a string.".to_string(),
                     pos: 0,
                 });

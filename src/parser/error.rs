@@ -8,7 +8,23 @@ pub struct ParseError<'a> {
     pub msg: &'static str,
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub struct SourcePos {
+    pub line: usize,
+    pub char: usize,
+}
+
 pub(super) fn build_parse_error(source: &str, se: SyntaxError) -> ParseError {
+    let info = find_source_position(source, se.pos);
+    ParseError {
+        line_no: info.0.line,
+        char_no: info.0.char,
+        line: info.1,
+        msg: se.msg,
+    }
+}
+
+pub(crate) fn find_source_position(source: &str, pos: usize) -> (SourcePos, &str) {
     let mut counter = 0;
 
     let mut line_no = 0;
@@ -22,7 +38,7 @@ pub(super) fn build_parse_error(source: &str, se: SyntaxError) -> ParseError {
 
         let c = *c;
 
-        if counter <= se.pos {
+        if counter <= pos {
             if c == b'\r' {
                 line_no += 1;
                 char_no = 0;
@@ -43,13 +59,13 @@ pub(super) fn build_parse_error(source: &str, se: SyntaxError) -> ParseError {
 
         last = c;
     }
-
-    ParseError {
-        line_no,
-        char_no,
-        line: &source[line_start..line_end],
-        msg: se.msg,
-    }
+    (
+        SourcePos {
+            line: line_no,
+            char: char_no,
+        },
+        &source[line_start..line_end],
+    )
 }
 
 #[cfg(test)]

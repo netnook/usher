@@ -6,7 +6,7 @@ use crate::lang::{
 };
 use std::io::{BufWriter, Write};
 
-impl Program {
+impl<'a> Program<'a> {
     pub(crate) fn print(&self) -> String {
         let mut buf = BufWriter::new(Vec::new());
 
