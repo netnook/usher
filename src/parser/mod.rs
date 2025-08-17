@@ -105,11 +105,13 @@ mod tests {
     macro_rules! id {
         ($val:expr) => {{
             use crate::lang::Identifier;
-            Identifier::new($val.to_string(), 999)
+            use crate::lang::Pos;
+            Identifier::new($val.to_string(), Pos::new(999, 9999))
         }};
         ($val:expr, $pos:expr) => {{
             use crate::lang::Identifier;
-            Identifier::new($val.to_string(), $pos)
+            use crate::lang::Pos;
+            Identifier::new($val.to_string(), Pos::new($pos, $val.len()))
         }};
     }
     pub(crate) use id;
@@ -296,10 +298,11 @@ mod tests {
 
     macro_rules! _func {
         (name($name:expr), $($rest:tt)*) => {{
+            use crate::lang::Pos;
             use crate::lang::Identifier;
             let f = _func!($($rest)*);
             FunctionDef {
-                name: Some(Identifier::new($name.to_string(), 0)),
+                name: Some(Identifier::new($name.to_string(), Pos::new(0,0))),
                 ..f
             }
         }};
@@ -311,15 +314,17 @@ mod tests {
         }};
         (@param $name:expr, $val:expr) => {{
             use crate::lang::Param;
+            use crate::lang::Pos;
             Param {
-                name: Identifier::new($name.to_string(), 0),
+                name: Identifier::new($name.to_string(), Pos::new(0,0)),
                 value: Some($val.into()),
             }
         }};
         (@param $name:expr) => {{
             use crate::lang::Param;
+            use crate::lang::Pos;
             Param {
-                name: Identifier::new($name.to_string(), 0),
+                name: Identifier::new($name.to_string(),Pos::new(0,0)),
                 value: None,
             }
         }};

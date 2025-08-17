@@ -1,7 +1,7 @@
 use super::{ParseResult, Parser, SyntaxError};
 use crate::lang::{
     Arg, AstNode, BinaryOp, BinaryOpCode, ChainCatch, FunctionCall, Identifier, IndexOf, KeyValue,
-    PropertyOf, UnaryOp, UnaryOpCode, Value,
+    Pos, PropertyOf, UnaryOp, UnaryOpCode, Value,
 };
 
 pub(crate) const EXPECTED_EXPRESSION: &str = "Expected expression.";
@@ -297,7 +297,7 @@ impl<'a> Parser<'a> {
             Some(id) => {
                 return Ok(Some(AstNode::Identifier(Identifier::new(
                     id.to_string(),
-                    start,
+                    Pos::new(start, id.len()),
                 ))));
             }
             // FIXME error if function def added to something, for example
@@ -363,7 +363,10 @@ impl<'a> Parser<'a> {
             return Err(SyntaxError::new(self.pos, EXPECTED_IDENTIFIER));
         };
 
-        Ok(Some(Identifier::new(ident.to_string(), marker)))
+        Ok(Some(Identifier::new(
+            ident.to_string(),
+            Pos::new(marker, 0),
+        )))
     }
 
     fn index_of(&mut self) -> ParseResult<Option<AstNode>> {

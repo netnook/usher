@@ -7,7 +7,7 @@ use crate::find_source_position;
 
 #[derive(Debug, Clone)]
 pub struct Context {
-    pub vars: HashMap<Identifier, Value>,
+    pub vars: HashMap<String, Value>,
 }
 
 impl Context {
@@ -18,10 +18,10 @@ impl Context {
     }
 
     pub fn set(&mut self, ident: &Identifier, value: Value) {
-        self.vars.insert(ident.clone(), value);
+        self.vars.insert(ident.name.clone(), value);
     }
     pub fn get(&mut self, ident: &Identifier) -> Value {
-        self.vars.get(ident).cloned().unwrap_or(Value::Nil)
+        self.vars.get(&ident.name).cloned().unwrap_or(Value::Nil)
     }
 }
 
@@ -36,7 +36,7 @@ impl<'a> Program<'a> {
         match self.do_run() {
             Ok(v) => Ok(v),
             Err(e) => {
-                let info = find_source_position(self.source, e.pos);
+                let info = find_source_position(self.source, e.pos.start);
                 Err(ProgramError {
                     msg: e.msg,
                     line_no: info.0.line,
@@ -66,7 +66,7 @@ pub struct ProgramError {
 #[derive(PartialEq, Debug)]
 pub struct InternalProgramError {
     pub(crate) msg: String,
-    pub(crate) pos: usize,
+    pub(crate) pos: Pos,
 }
 
 #[derive(PartialEq, Debug, Clone)]
@@ -123,9 +123,9 @@ impl AstNode {
         }
     }
 
-    pub fn pos(&self) -> usize {
+    pub fn pos(&self) -> &Pos {
         match self {
-            AstNode::Identifier(v) => v.pos,
+            AstNode::Identifier(v) => &v.pos,
             // FIXME: finish pos
             // AstNode::Declaration(v) => v.eval(ctxt),
             // AstNode::Value(v) => v.eval(ctxt),
@@ -211,14 +211,26 @@ impl From<ReturnStmt> for AstNode {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct Pos {
+    pub(crate) start: usize,
+    pub(crate) len: usize,
+}
+
+impl Pos {
+    pub(crate) fn new(start: usize, len: usize) -> Self {
+        Self { start, len }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Identifier {
     pub(crate) name: String,
-    pub(crate) pos: usize,
+    pub(crate) pos: Pos,
 }
 
 impl Identifier {
-    pub(crate) fn new(name: String, pos: usize) -> Self {
+    pub(crate) fn new(name: String, pos: Pos) -> Self {
         Self { name, pos }
     }
     pub fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
@@ -275,7 +287,7 @@ impl InterpolatedStr {
                 let val = p.eval(ctxt)?;
                 let s = val.as_string().map_err(|e| InternalProgramError {
                     msg: format!("Error interpolating string: {}", e.msg),
-                    pos: p.pos(),
+                    pos: p.pos().clone(),
                 })?;
                 res.push_str(&format!("{s}"));
             }

@@ -2,7 +2,7 @@ use super::{
     KEYWORDS, ParseResult, Parser, RESERVED_NAMES, SyntaxError,
     chars::{is_alpha, is_alphanumeric},
 };
-use crate::lang::Identifier;
+use crate::lang::{Identifier, Pos};
 
 pub(super) const KEYWORD_RESERVED: &str = "Keywords may not be used as identifier.";
 pub(super) const NAME_RESERVED: &str = "Reserved name cannot be used for declarations.";
@@ -28,7 +28,10 @@ impl<'a> Parser<'a> {
             return Err(SyntaxError::new(start, NAME_RESERVED));
         }
 
-        Ok(Some(Identifier::new(ident.to_string(), start)))
+        Ok(Some(Identifier::new(
+            ident.to_string(),
+            Pos::new(start, ident.len()),
+        )))
     }
 
     /// Consume a identifier if next on input and return it.

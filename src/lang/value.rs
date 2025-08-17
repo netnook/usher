@@ -1,4 +1,4 @@
-use super::{BuiltInFunc, Context, FunctionDef, InternalProgramError};
+use super::{BuiltInFunc, Context, FunctionDef, InternalProgramError, Pos};
 use std::borrow::Cow;
 
 #[derive(PartialEq, Debug, Clone)]
@@ -22,13 +22,15 @@ impl Value {
             Value::Func(_) => {
                 return Err(InternalProgramError {
                     msg: "Cannot convert a function to a string.".to_string(),
-                    pos: 0,
+                    // FIXME: correct pos
+                    pos: Pos::new(0, 0),
                 });
             }
             Value::BuiltInFunc(_) => {
                 return Err(InternalProgramError {
                     msg: "Cannot convert a function to a string.".to_string(),
-                    pos: 0,
+                    // FIXME: correct pos
+                    pos: Pos::new(0, 0),
                 });
             }
             Value::Str(v) => Cow::Borrowed(v),

@@ -85,14 +85,14 @@ mod tests {
 
         do_test_parser_exact(
             Parser::stmt,
-            " var a=x+2 ",
-            var(id!("a", 5), add(id!("x", 7), i(2))).into(),
+            " var a=xx+2 ",
+            var(id!("a", 5), add(id!("xx", 7), i(2))).into(),
             -1,
         );
         do_test_parser_exact(
             Parser::stmt,
-            " var # comment \n a = # comment \n x + 2 ",
-            var(id!("a", 17), add(id!("x", 33), i(2))).into(),
+            " var # comment \n a = # comment \n xyz + 2 ",
+            var(id!("a", 17), add(id!("xyz", 33), i(2))).into(),
             -1,
         );
     }
