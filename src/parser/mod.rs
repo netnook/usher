@@ -81,24 +81,92 @@ mod tests {
     use crate::{
         lang::{
             Assignment, AstNode, BinaryOp, BinaryOpCode, Block, ChainCatch, Declaration, ForStmt,
-            Identifier, IndexOf, KeyValue, PropertyOf, UnaryOp, UnaryOpCode, Value,
+            Identifier, IndexOf, KeyValue, PropertyOf, UnaryOp, UnaryOpCode,
         },
         parser::Parser,
     };
     use pretty_assertions::assert_eq;
 
-    pub(crate) fn s(v: &str) -> Value {
-        Value::Str(v.to_string())
+    macro_rules! s {
+        ($val:expr) => {{
+            use crate::lang::Literal;
+            use crate::lang::Pos;
+            use crate::lang::Value;
+            Literal::new(Value::Str($val.to_string()), Pos::new(999, 9999))
+        }};
+        ($val:expr, $pos:expr, $len:expr) => {{
+            use crate::lang::Literal;
+            use crate::lang::Pos;
+            use crate::lang::Value;
+            Literal::new(Value::Str($val.to_string()), Pos::new($pos, $len))
+        }};
     }
-    pub(crate) fn i(v: isize) -> Value {
-        Value::Integer(v)
+    pub(crate) use s;
+
+    macro_rules! i {
+        ($val:expr) => {{
+            use crate::lang::Literal;
+            use crate::lang::Pos;
+            use crate::lang::Value;
+            Literal::new(Value::Integer($val), Pos::new(999, 9999))
+        }};
+        ($val:expr, $pos:expr, $len:expr) => {{
+            use crate::lang::Literal;
+            use crate::lang::Pos;
+            use crate::lang::Value;
+            Literal::new(Value::Integer($val), Pos::new($pos, $len))
+        }};
     }
-    pub(crate) fn b(v: bool) -> Value {
-        Value::Bool(v)
+    pub(crate) use i;
+
+    macro_rules! f {
+        ($val:expr) => {{
+            use crate::lang::Literal;
+            use crate::lang::Pos;
+            use crate::lang::Value;
+            Literal::new(Value::Float($val), Pos::new(999, 9999))
+        }};
+        ($val:expr, $pos:expr, $len:expr) => {{
+            use crate::lang::Literal;
+            use crate::lang::Pos;
+            use crate::lang::Value;
+            Literal::new(Value::Float($val), Pos::new($pos, $len))
+        }};
     }
-    pub(crate) fn nil() -> Value {
-        Value::Nil
+    pub(crate) use f;
+
+    macro_rules! b {
+        ($val:expr) => {{
+            use crate::lang::Literal;
+            use crate::lang::Pos;
+            use crate::lang::Value;
+            Literal::new(Value::Bool($val), Pos::new(999, 9999))
+        }};
+        ($val:expr, $pos:expr, $len:expr) => {{
+            use crate::lang::Literal;
+            use crate::lang::Pos;
+            use crate::lang::Value;
+            Literal::new(Value::Bool($val), Pos::new($pos, $len))
+        }};
     }
+    pub(crate) use b;
+
+    macro_rules! nil {
+        () => {{
+            use crate::lang::Literal;
+            use crate::lang::Pos;
+            use crate::lang::Value;
+            Literal::new(Value::Nil, Pos::new(999, 9999))
+        }};
+        ($pos:expr, $len:expr) => {{
+            use crate::lang::Literal;
+            use crate::lang::Pos;
+            use crate::lang::Value;
+            Literal::new(Value::Nil, Pos::new($pos, $len))
+        }};
+    }
+    pub(crate) use nil;
+
     pub(crate) fn this() -> AstNode {
         AstNode::This
     }

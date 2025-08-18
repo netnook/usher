@@ -1,7 +1,7 @@
 use super::{ParseResult, Parser, SyntaxError};
 use crate::lang::{
     Arg, AstNode, BinaryOp, BinaryOpCode, ChainCatch, FunctionCall, Identifier, IndexOf, KeyValue,
-    Pos, PropertyOf, UnaryOp, UnaryOpCode, Value,
+    Literal, Pos, PropertyOf, UnaryOp, UnaryOpCode, Value,
 };
 
 pub(crate) const EXPECTED_EXPRESSION: &str = "Expected expression.";
@@ -289,10 +289,25 @@ impl<'a> Parser<'a> {
         let start = self.pos;
         match self.unchecked_identifier() {
             Some("this") => return Ok(Some(AstNode::This)),
-            Some("nil") => return Ok(Some(AstNode::Value(Value::Nil))),
+            Some("nil") => {
+                return Ok(Some(AstNode::Literal(Literal::new(
+                    Value::Nil,
+                    Pos::new(start, 3),
+                ))));
+            }
             Some("dict") => return Ok(Some(AstNode::DictBuilder(self.dict()?))),
-            Some("true") => return Ok(Some(AstNode::Value(Value::Bool(true)))),
-            Some("false") => return Ok(Some(AstNode::Value(Value::Bool(false)))),
+            Some("true") => {
+                return Ok(Some(AstNode::Literal(Literal::new(
+                    Value::Bool(true),
+                    Pos::new(start, 4),
+                ))));
+            }
+            Some("false") => {
+                return Ok(Some(AstNode::Literal(Literal::new(
+                    Value::Bool(false),
+                    Pos::new(start, 5),
+                ))));
+            }
             Some("function") => return Ok(Some(AstNode::FunctionDef(self.function_def()?))),
             Some(id) => {
                 return Ok(Some(AstNode::Identifier(Identifier::new(
@@ -313,10 +328,10 @@ impl<'a> Parser<'a> {
             return Ok(Some(v));
         }
         if let Some(v) = self.float() {
-            return Ok(Some(AstNode::Value(v)));
+            return Ok(Some(AstNode::Literal(v)));
         }
         if let Some(v) = self.integer() {
-            return Ok(Some(AstNode::Value(v)));
+            return Ok(Some(AstNode::Literal(v)));
         }
         if let Some(v) = self.parens_expression()? {
             return Ok(Some(v));
@@ -497,7 +512,7 @@ pub mod tests {
     fn test_expr_ok() {
         do_test_expr_ok(" foo ", id!("foo"), -1);
         do_test_expr_ok(" foo.bar ", prop_of(id!("foo"), "bar"), -1);
-        do_test_expr_ok(" foo[\"bar\"] ", index_of(id!("foo"), s("bar")), -1);
+        do_test_expr_ok(" foo[\"bar\"] ", index_of(id!("foo"), s!("bar")), -1);
         do_test_expr_ok(" foo[bar] ", index_of(id!("foo"), id!("bar")), -1);
         do_test_expr_ok(" foo() ", _call!(id!("foo"),), -1);
         do_test_expr_ok(
@@ -505,8 +520,8 @@ pub mod tests {
             _call!(
                 prop_of(id!("foo"), "bar"),
                 arg(id!("a")),
-                arg(s("33")),
-                arg(id!("c"), mul(i(7), i(2))),
+                arg(s!("33")),
+                arg(id!("c"), mul(i!(7), i!(2))),
             ),
             -1,
         );
@@ -517,9 +532,9 @@ pub mod tests {
             index_of(
                 chain_catch(index_of(
                     prop_of(index_of(prop_of(id!("aa"), "bb"), id!("cc")), "dd"),
-                    s("ee"),
+                    s!("ee"),
                 )),
-                i(66),
+                i!(66),
             ),
             -1,
         );
@@ -528,9 +543,9 @@ pub mod tests {
             index_of(
                 chain_catch(index_of(
                     prop_of(index_of(prop_of(id!("aa"), "bb"), id!("cc")), "dd"),
-                    s("ee"),
+                    s!("ee"),
                 )),
-                i(66),
+                i!(66),
             ),
             -2,
         );
@@ -539,9 +554,9 @@ pub mod tests {
             index_of(
                 chain_catch(index_of(
                     prop_of(index_of(prop_of(id!("aa"), "bb"), id!("cc")), "dd"),
-                    s("ee"),
+                    s!("ee"),
                 )),
-                i(66),
+                i!(66),
             ),
             -2,
         );
@@ -553,8 +568,8 @@ pub mod tests {
             _call!(
                 prop_of(id!("foo"), "bar"),
                 arg(id!("a")),
-                arg(i(7)),
-                arg(id!("c"), mul(i(7), i(2))),
+                arg(i!(7)),
+                arg(id!("c"), mul(i!(7), i!(2))),
             ),
             -1,
         );
@@ -642,23 +657,26 @@ pub mod tests {
         do_test_expr_ok(" a # comment \n && b ", id!("a"), 2);
         do_test_expr_ok(" a <= b == c ", less_equal(id!("a"), id!("b")), 7);
 
-        do_test_expr_ok(" (1>2)+3 ", add(greater(i(1), i(2)), i(3)), -1);
-        do_test_expr_ok(" 1>2+3 ", greater(i(1), add(i(2), i(3))), -1);
+        do_test_expr_ok(" (1>2)+3 ", add(greater(i!(1), i!(2)), i!(3)), -1);
+        do_test_expr_ok(" 1>2+3 ", greater(i!(1), add(i!(2), i!(3))), -1);
 
         do_test_expr_ok(
             r#" foo?.bar["baz" + 7] + 32 * 7 >= b.c * (x + y % z) || (3>4)+7 "#,
             or(
                 greater_equal(
                     add(
-                        index_of(prop_of(chain_catch(id!("foo")), "bar"), add(s("baz"), i(7))),
-                        mul(i(32), i(7)),
+                        index_of(
+                            prop_of(chain_catch(id!("foo")), "bar"),
+                            add(s!("baz"), i!(7)),
+                        ),
+                        mul(i!(32), i!(7)),
                     ),
                     mul(
                         prop_of(id!("b"), "c"),
                         add(id!("x"), modulo(id!("y"), id!("z"))),
                     ),
                 ),
-                add(greater(i(3), i(4)), i(7)),
+                add(greater(i!(3), i!(4)), i!(7)),
             ),
             -1,
         );
@@ -673,9 +691,9 @@ pub mod tests {
 
     #[test]
     fn test_parens_expr_ok() {
-        do_test_expr_ok(" (1) ", i(1), -1);
-        do_test_expr_ok(" (((1))) ", i(1), -1);
-        do_test_expr_ok(" (((1)))", i(1), 0);
+        do_test_expr_ok(" (1) ", i!(1), -1);
+        do_test_expr_ok(" (((1))) ", i!(1), -1);
+        do_test_expr_ok(" (((1)))", i!(1), 0);
     }
 
     #[test]
@@ -701,17 +719,18 @@ pub mod tests {
 
     #[test]
     fn test_nil() {
-        do_test_expr_ok(" nil ", nil(), -1);
-        do_test_expr_ok(" nil", nil(), 0);
+        do_test_expr_ok(" nil ", nil!(), -1);
+        do_test_expr_ok(" nil", nil!(), 0);
 
+        do_test_parser_exact(Parser::expression, " nil ", nil!(1, 3).into(), -1);
         do_test_parser_exact(Parser::expression, " nil2 ", id!("nil2", 1).into(), -1);
     }
 
     #[test]
     fn test_boolean() {
-        do_test_expr_ok(" true ", b(true), -1);
-        do_test_expr_ok(" false ", b(false), -1);
-        do_test_expr_ok(" true", b(true), 0);
+        do_test_parser_exact(Parser::expression, " true ", b!(true, 1, 4).into(), -1);
+        do_test_parser_exact(Parser::expression, " false ", b!(false, 1, 5).into(), -1);
+        do_test_parser_exact(Parser::expression, " true", b!(true, 1, 4).into(), 0);
 
         do_test_expr_ok(" tru ", id!("tru"), -1);
         do_test_expr_ok(" falsey", id!("falsey"), 0);

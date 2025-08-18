@@ -67,12 +67,12 @@ mod tests {
 
     #[test]
     fn test_var() {
-        do_test_var_ok(" var a=x+2 ", var(id!("a"), add(id!("x"), i(2))), -1);
-        do_test_var_ok(" var a = x + 2 ", var(id!("a"), add(id!("x"), i(2))), -1);
-        do_test_var_ok(" var a = x + 2 ", var(id!("a"), add(id!("x"), i(2))), -1);
+        do_test_var_ok(" var a=x+2 ", var(id!("a"), add(id!("x"), i!(2))), -1);
+        do_test_var_ok(" var a = x + 2 ", var(id!("a"), add(id!("x"), i!(2))), -1);
+        do_test_var_ok(" var a = x + 2 ", var(id!("a"), add(id!("x"), i!(2))), -1);
         do_test_var_ok(
             " var # comment \n a = # comment \n x + 2 ",
-            var(id!("a"), add(id!("x"), i(2))),
+            var(id!("a"), add(id!("x"), i!(2))),
             -1,
         );
 
@@ -86,13 +86,13 @@ mod tests {
         do_test_parser_exact(
             Parser::stmt,
             " var a=xx+2 ",
-            var(id!("a", 5), add(id!("xx", 7), i(2))).into(),
+            var(id!("a", 5), add(id!("xx", 7), i!(2, 10, 1))).into(),
             -1,
         );
         do_test_parser_exact(
             Parser::stmt,
-            " var # comment \n a = # comment \n xyz + 2 ",
-            var(id!("a", 17), add(id!("xyz", 33), i(2))).into(),
+            " var # comment \n a = # comment \n xyz + 23 ",
+            var(id!("a", 17), add(id!("xyz", 33), i!(23, 39, 2))).into(),
             -1,
         );
     }

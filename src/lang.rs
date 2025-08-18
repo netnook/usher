@@ -73,7 +73,7 @@ pub struct InternalProgramError {
 pub enum AstNode {
     This,
     Identifier(Identifier),
-    Value(Value),
+    Literal(Literal),
     InterpolatedStr(InterpolatedStr),
     ListBuilder(ListBuilder),
     DictBuilder(DictBuilder),
@@ -100,7 +100,7 @@ impl AstNode {
     pub fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
         match self {
             AstNode::Declaration(v) => v.eval(ctxt),
-            AstNode::Value(v) => v.eval(ctxt),
+            AstNode::Literal(v) => v.eval(ctxt),
             AstNode::FunctionCall(v) => v.eval(ctxt),
             AstNode::Identifier(v) => v.eval(ctxt),
             AstNode::InterpolatedStr(v) => v.eval(ctxt),
@@ -126,9 +126,9 @@ impl AstNode {
     pub fn pos(&self) -> &Pos {
         match self {
             AstNode::Identifier(v) => &v.pos,
+            AstNode::Literal(v) => &v.pos,
             // FIXME: finish pos
             // AstNode::Declaration(v) => v.eval(ctxt),
-            // AstNode::Value(v) => v.eval(ctxt),
             // AstNode::FunctionCall(v) => v.eval(ctxt),
             // AstNode::InterpolatedStr(v) => v.eval(ctxt),
             // AstNode::ListBuilder(list_builder) => todo!(),
@@ -156,9 +156,9 @@ impl From<Identifier> for AstNode {
     }
 }
 
-impl From<Value> for AstNode {
-    fn from(value: Value) -> Self {
-        Self::Value(value)
+impl From<Literal> for AstNode {
+    fn from(value: Literal) -> Self {
+        Self::Literal(value)
     }
 }
 
@@ -220,6 +220,21 @@ pub struct Pos {
 impl Pos {
     pub(crate) fn new(start: usize, len: usize) -> Self {
         Self { start, len }
+    }
+}
+
+#[derive(PartialEq, Debug, Clone)]
+pub struct Literal {
+    pub(crate) val: Value,
+    pub(crate) pos: Pos,
+}
+
+impl Literal {
+    pub fn new(val: Value, pos: Pos) -> Self {
+        Self { val, pos }
+    }
+    pub fn eval(&self, _: &mut Context) -> Result<Value, InternalProgramError> {
+        Ok(self.val.clone())
     }
 }
 

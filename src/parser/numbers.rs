@@ -1,10 +1,10 @@
 use super::{Parser, chars::is_digit};
-use crate::lang::Value;
+use crate::lang::{Literal, Pos, Value};
 
 impl<'a> Parser<'a> {
     /// Consume an integer if next on input and return it.
     /// Otherwise consume nothing and return `None`
-    pub(super) fn integer(&mut self) -> Option<Value> {
+    pub(super) fn integer(&mut self) -> Option<Literal> {
         let start = self.pos;
 
         self.char(b'-'); // optional
@@ -17,12 +17,15 @@ impl<'a> Parser<'a> {
 
         let v = v.parse().expect("parsed str to int should never fail");
 
-        Some(Value::Integer(v))
+        Some(Literal::new(
+            Value::Integer(v),
+            Pos::new(start, self.pos - start),
+        ))
     }
 
     /// Consume a float if next on input and return it.
     /// Otherwise consume nothing and return `None`
-    pub(super) fn float(&mut self) -> Option<Value> {
+    pub(super) fn float(&mut self) -> Option<Literal> {
         let start = self.pos;
 
         self.char(b'-'); // optional -> ignore error
@@ -40,30 +43,34 @@ impl<'a> Parser<'a> {
 
         let v = v.parse().expect("str to float");
 
-        Some(Value::Float(v))
+        Some(Literal::new(
+            Value::Float(v),
+            Pos::new(start, self.pos - start),
+        ))
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::tests::{do_test_opt_parser_none, do_test_opt_parser_some, i};
+    use crate::parser::tests::{do_test_opt_parser_none, do_test_opt_parser_some, f, i};
 
     #[test]
     fn test_integers() {
-        do_test_opt_parser_some(Parser::integer, "_1_", i(1), 1);
-        do_test_opt_parser_some(Parser::integer, "_1", i(1), 0);
-        do_test_opt_parser_some(Parser::integer, "_-1_", i(-1), 1);
-        do_test_opt_parser_some(Parser::integer, "_0_", i(0), 1);
-        do_test_opt_parser_some(Parser::integer, "_1289_", i(1289), 1);
-        do_test_opt_parser_some(Parser::integer, "_-1289_", i(-1289), 1);
-        do_test_opt_parser_some(Parser::integer, "_-0_", i(0), 1);
-        do_test_opt_parser_some(Parser::integer, "_000_", i(0), 1);
-        do_test_opt_parser_some(Parser::integer, "_007_", i(7), 1);
-        do_test_opt_parser_some(Parser::integer, "_-007_", i(-7), 1);
+        // FIXME check exact/location matach
+        do_test_opt_parser_some(Parser::integer, "_1_", i!(1, 1, 1), 1);
+        do_test_opt_parser_some(Parser::integer, "_1", i!(1, 1, 1), 0);
+        do_test_opt_parser_some(Parser::integer, "_-1_", i!(-1, 1, 2), 1);
+        do_test_opt_parser_some(Parser::integer, "_0_", i!(0, 1, 1), 1);
+        do_test_opt_parser_some(Parser::integer, "_1289_", i!(1289, 1, 4), 1);
+        do_test_opt_parser_some(Parser::integer, "_-1289_", i!(-1289, 1, 5), 1);
+        do_test_opt_parser_some(Parser::integer, "_-0_", i!(0, 1, 2), 1);
+        do_test_opt_parser_some(Parser::integer, "_000_", i!(0, 1, 3), 1);
+        do_test_opt_parser_some(Parser::integer, "_007_", i!(7, 1, 3), 1);
+        do_test_opt_parser_some(Parser::integer, "_-007_", i!(-7, 1, 4), 1);
 
-        do_test_opt_parser_some(Parser::integer, "_1.1_", i(1), 3);
-        do_test_opt_parser_some(Parser::integer, "_-1.1_", i(-1), 3);
+        do_test_opt_parser_some(Parser::integer, "_1.1_", i!(1, 1, 1), 3);
+        do_test_opt_parser_some(Parser::integer, "_-1.1_", i!(-1, 1, 2), 3);
 
         do_test_opt_parser_none(Parser::integer, "_-x.0_");
         do_test_opt_parser_none(Parser::integer, "_x");
@@ -72,15 +79,15 @@ mod tests {
 
     #[test]
     fn test_floats() {
-        do_test_opt_parser_some(Parser::float, "_1.0_", Value::Float(1.0), 1);
-        do_test_opt_parser_some(Parser::float, "_-1.0_", Value::Float(-1.0), 1);
-        do_test_opt_parser_some(Parser::float, "_0._", Value::Float(0.0), 1);
-        do_test_opt_parser_some(Parser::float, "_1289.0_", Value::Float(1289.0), 1);
-        do_test_opt_parser_some(Parser::float, "_-1289.0_", Value::Float(-1289.0), 1);
-        do_test_opt_parser_some(Parser::float, "_-0.000_", Value::Float(0.0), 1);
-        do_test_opt_parser_some(Parser::float, "_000.00_", Value::Float(0.0), 1);
-        do_test_opt_parser_some(Parser::float, "_007.123099_", Value::Float(7.123099), 1);
-        do_test_opt_parser_some(Parser::float, "_-007.123099_", Value::Float(-7.123099), 1);
+        do_test_opt_parser_some(Parser::float, "_1.0_", f!(1.0, 1, 3), 1);
+        do_test_opt_parser_some(Parser::float, "_-1.0_", f!(-1.0, 1, 4), 1);
+        do_test_opt_parser_some(Parser::float, "_0._", f!(0.0, 1, 2), 1);
+        do_test_opt_parser_some(Parser::float, "_1289.0_", f!(1289.0, 1, 6), 1);
+        do_test_opt_parser_some(Parser::float, "_-1289.0_", f!(-1289.0, 1, 7), 1);
+        do_test_opt_parser_some(Parser::float, "_-0.000_", f!(0.0, 1, 6), 1);
+        do_test_opt_parser_some(Parser::float, "_000.00_", f!(0.0, 1, 6), 1);
+        do_test_opt_parser_some(Parser::float, "_007.123099_", f!(7.123099, 1, 10), 1);
+        do_test_opt_parser_some(Parser::float, "_-007.123099_", f!(-7.123099, 1, 11), 1);
 
         do_test_opt_parser_none(Parser::float, "_10_");
         do_test_opt_parser_none(Parser::float, "_1");

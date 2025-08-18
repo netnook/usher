@@ -18,7 +18,7 @@ impl<'a> Parser<'a> {
 #[cfg(test)]
 mod tests {
     use crate::{
-        lang::Value,
+        lang::{Literal, Pos, Value},
         parser::{Parser, SyntaxError},
     };
 
@@ -29,7 +29,7 @@ mod tests {
 
         assert_eq!(
             p.req(Parser::string, "the-error"),
-            Ok(Value::Str("xxx".to_string()).into())
+            Ok(Literal::new(Value::Str("xxx".to_string()), Pos::new(1, 5)).into())
         );
         assert_eq!(p.pos, 6);
     }

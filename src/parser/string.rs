@@ -1,5 +1,5 @@
 use super::{ParseResult, Parser, SyntaxError};
-use crate::lang::{AstNode, InterpolatedStr, Value};
+use crate::lang::{AstNode, InterpolatedStr, Literal, Pos, Value};
 
 pub(super) const MISSING_END_QUOTE: &str = "Missing closing double quote to end string.";
 pub(super) const CRLF_IN_STRING_NOT_ALLOWED: &str = "Invalid characters CR or LF in string.";
@@ -20,38 +20,32 @@ impl<'a> Parser<'a> {
         };
 
         let mut interpolator_result = Vec::new();
-        let mut simple_result = String::new();
+        let mut literal = String::new();
+        let mut literal_start = self.pos;
 
         loop {
-            let from = self.pos;
+            let loop_start = self.pos;
 
             let (_count, peek) = self.repeat_and_peek(|c| {
                 c != b'\n' && c != b'\r' && c != b'\"' && c != b'\\' && c != b'{'
             });
-
-            if peek == b'"' {
-                let tmp = String::from_utf8_lossy(&self.input[from..self.pos]);
-                simple_result.push_str(&tmp);
-                self.pos += 1;
-                break;
-            }
 
             if peek == b'\r' || peek == b'\n' {
                 return Err(SyntaxError::new(self.pos, CRLF_IN_STRING_NOT_ALLOWED));
             }
 
             if peek == b'\\' {
-                let tmp = String::from_utf8_lossy(&self.input[from..self.pos]);
-                simple_result.push_str(&tmp);
+                let tmp = String::from_utf8_lossy(&self.input[loop_start..self.pos]);
+                literal.push_str(&tmp);
                 self.pos += 1;
 
                 match self.peek() {
-                    b'"' => simple_result.push('"'),
-                    b'\\' => simple_result.push('\\'),
-                    b'r' => simple_result.push('\r'),
-                    b'n' => simple_result.push('\n'),
-                    b'{' => simple_result.push('{'),
-                    b'}' => simple_result.push('}'),
+                    b'"' => literal.push('"'),
+                    b'\\' => literal.push('\\'),
+                    b'r' => literal.push('\r'),
+                    b'n' => literal.push('\n'),
+                    b'{' => literal.push('{'),
+                    b'}' => literal.push('}'),
                     _ => {
                         return Err(SyntaxError::new(self.pos - 1, INVALID_ESCAPE));
                     }
@@ -61,17 +55,41 @@ impl<'a> Parser<'a> {
                 continue;
             }
 
+            if peek == b'"' {
+                let tmp = String::from_utf8_lossy(&self.input[loop_start..self.pos]);
+                literal.push_str(&tmp);
+                self.pos += 1;
+
+                if interpolator_result.is_empty() {
+                    return Ok(Some(AstNode::Literal(Literal::new(
+                        Value::Str(literal),
+                        Pos::new(start, self.pos - start),
+                    ))));
+                } else {
+                    if !literal.is_empty() {
+                        interpolator_result.push(AstNode::Literal(Literal::new(
+                            Value::Str(literal),
+                            Pos::new(literal_start, self.pos - 1 - literal_start),
+                        )));
+                    }
+                    return Ok(Some(AstNode::InterpolatedStr(InterpolatedStr {
+                        parts: interpolator_result,
+                    })));
+                }
+            }
+
             if peek == b'{' {
                 let part_start = self.pos;
 
-                let tmp = String::from_utf8_lossy(&self.input[from..self.pos]);
-                simple_result.push_str(&tmp);
-                self.pos += 1;
-
-                if !simple_result.is_empty() {
-                    interpolator_result.push(Value::Str(simple_result).into());
-                    simple_result = String::new();
+                if part_start > literal_start {
+                    let tmp = String::from_utf8_lossy(&self.input[literal_start..self.pos]);
+                    literal.push_str(&tmp);
+                    interpolator_result.push(AstNode::Literal(Literal::new(
+                        Value::Str(literal),
+                        Pos::new(literal_start, self.pos - literal_start),
+                    )));
                 }
+                self.pos += 1;
 
                 self.linespace();
                 let savepoint = self.pos;
@@ -86,21 +104,14 @@ impl<'a> Parser<'a> {
                 if !self.char(b'}') {
                     return Err(SyntaxError::new(part_start, MISSING_MATCHING_CLOSING_BRACE));
                 }
+
+                literal = String::new();
+                literal_start = self.pos;
+
                 continue;
             }
 
             return Err(SyntaxError::new(start, MISSING_END_QUOTE));
-        }
-
-        if interpolator_result.is_empty() {
-            Ok(Some(Value::Str(simple_result).into()))
-        } else {
-            if !simple_result.is_empty() {
-                interpolator_result.push(Value::Str(simple_result).into());
-            }
-            Ok(Some(AstNode::InterpolatedStr(InterpolatedStr {
-                parts: interpolator_result,
-            })))
         }
     }
 }
@@ -125,19 +136,19 @@ mod tests {
 
     #[test]
     fn test_strings() {
-        do_test_strings(r#"_""_"#, s(""), -1);
-        do_test_strings(r#"_"one"_"#, s("one"), -1);
-        do_test_strings(r#"_"one two"_"#, s("one two"), -1);
-        do_test_strings(r#"_"\"aa\"\\\r\nbb\""_"#, s("\"aa\"\\\r\nbb\""), -1);
-        do_test_strings(r#"_"\"aa\"\\\r\nb\{\}b\""_"#, s("\"aa\"\\\r\nb{}b\""), -1);
+        do_test_strings(r#"_""_"#, s!(""), -1);
+        do_test_strings(r#"_"one"_"#, s!("one"), -1);
+        do_test_strings(r#"_"one two"_"#, s!("one two"), -1);
+        do_test_strings(r#"_"\"aa\"\\\r\nbb\""_"#, s!("\"aa\"\\\r\nbb\""), -1);
+        do_test_strings(r#"_"\"aa\"\\\r\nb\{\}b\""_"#, s!("\"aa\"\\\r\nb{}b\""), -1);
 
-        do_test_strings(r#"_"true"_"#, s("true"), -1);
-        do_test_strings(r#"_"true"_"#, s("true"), -1);
+        do_test_strings(r#"_"true"_"#, s!("true"), -1);
+        do_test_strings(r#"_"true"_"#, s!("true"), -1);
 
         do_test_strings(r#"_"{ foo }"_"#, _interp![id!("foo")], -1);
         do_test_strings(
             r#"_"ab{ foo -45 }cd{ 35 }"_"#,
-            _interp![s("ab"), sub(id!("foo"), i(45)), s("cd"), i(35)],
+            _interp![s!("ab"), sub(id!("foo"), i!(45)), s!("cd"), i!(35)],
             -1,
         );
 
@@ -148,5 +159,18 @@ mod tests {
         do_test_strings_err(r#"_"aa\xaa""#, 4, INVALID_ESCAPE);
         do_test_strings_err(r#"_"aa{aa"_"#, 4, MISSING_MATCHING_CLOSING_BRACE);
         do_test_strings_err(r#"_"aa{,}"_"#, 5, INVALID_EXPRESSION);
+
+        do_test_parser_exact(Parser::string, r#"_"one"_"#, s!("one", 1, 5).into(), -1);
+        do_test_parser_exact(
+            Parser::string,
+            r#"_"ab{ foo -45 }cde{ 35 }"_"#,
+            _interp![
+                s!("ab", 2, 2),
+                sub(id!("foo", 6), i!(45, 11, 2)),
+                s!("cde", 15, 3),
+                i!(35, 20, 2)
+            ],
+            -1,
+        );
     }
 }

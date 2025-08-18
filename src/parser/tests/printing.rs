@@ -1,8 +1,8 @@
 use crate::lang::{
     Arg, Assignment, AstNode, BinaryOp, BinaryOpCode, Block, ChainCatch, ConditionalBlock,
     Declaration, DictBuilder, ForStmt, FunctionCall, FunctionDef, Identifier, IfElseStmt, IndexOf,
-    InterpolatedStr, KeyValue, ListBuilder, Param, Program, PropertyOf, ReturnStmt, UnaryOp,
-    UnaryOpCode, Value,
+    InterpolatedStr, KeyValue, ListBuilder, Literal, Param, Program, PropertyOf, ReturnStmt,
+    UnaryOp, UnaryOpCode, Value,
 };
 use std::io::{BufWriter, Write};
 
@@ -35,7 +35,7 @@ impl AstNode {
         match self {
             AstNode::This => write_indented(w, indent, "this"),
             AstNode::Identifier(v) => v.print(w, indent),
-            AstNode::Value(v) => v.print(w, indent),
+            AstNode::Literal(v) => v.print(w, indent),
             AstNode::InterpolatedStr(v) => v.print(w, indent),
             AstNode::ListBuilder(v) => v.print(w, indent),
             AstNode::DictBuilder(v) => v.print(w, indent),
@@ -306,6 +306,12 @@ impl InterpolatedStr {
             cb.do_print(w, indent + 1);
         }
         write_close(w, indent);
+    }
+}
+
+impl Literal {
+    fn print(&self, w: &mut impl Write, indent: usize) {
+        self.val.print(w, indent);
     }
 }
 

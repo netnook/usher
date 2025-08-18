@@ -76,7 +76,7 @@ mod tests {
 
     #[test]
     fn test_list_ok() {
-        let expect = ListBuilder::new(vec![i(1).into(), i(2).into(), i(3).into(), i(4).into()]);
+        let expect = ListBuilder::new(vec![i!(1).into(), i!(2).into(), i!(3).into(), i!(4).into()]);
         do_test_expr_ok(" [1,2,3,4] ", expect.clone(), -1);
         do_test_expr_ok(" [1,2,3,4,] ", expect.clone(), -1);
         do_test_expr_ok(" [ 1 , 2 , 3 , 4 ] ", expect.clone(), -1);
@@ -94,10 +94,10 @@ mod tests {
         );
 
         let expect = ListBuilder::new(vec![
-            i(1).into(),
-            nil().into(),
-            b(false).into(),
-            s("foo").into(),
+            i!(1).into(),
+            nil!().into(),
+            b!(false).into(),
+            s!("foo").into(),
         ]);
         do_test_expr_ok(r#" [1,nil,false,"foo"] "#, expect.clone(), -1);
         do_test_expr_ok(r#" [1, nil, false, "foo"] "#, expect.clone(), -1);
@@ -110,10 +110,10 @@ mod tests {
         do_test_expr_ok(
             " [[1, 1], 2, [3, 3, 3,], 4,] ",
             ListBuilder::new(vec![
-                ListBuilder::new(vec![i(1).into(), i(1).into()]).into(),
-                i(2).into(),
-                ListBuilder::new(vec![i(3).into(), i(3).into(), i(3).into()]).into(),
-                i(4).into(),
+                ListBuilder::new(vec![i!(1).into(), i!(1).into()]).into(),
+                i!(2).into(),
+                ListBuilder::new(vec![i!(3).into(), i!(3).into(), i!(3).into()]).into(),
+                i!(4).into(),
             ]),
             -1,
         );

@@ -1,4 +1,4 @@
-use super::{BuiltInFunc, Context, FunctionDef, InternalProgramError, Pos};
+use super::{BuiltInFunc, FunctionDef, InternalProgramError, Pos};
 use std::borrow::Cow;
 
 #[derive(PartialEq, Debug, Clone)]
@@ -13,10 +13,6 @@ pub enum Value {
 }
 
 impl Value {
-    pub fn eval(&self, _: &mut Context) -> Result<Value, InternalProgramError> {
-        Ok(self.clone())
-    }
-
     pub fn as_string(&self) -> Result<Cow<str>, InternalProgramError> {
         Ok(match self {
             Value::Func(_) => {
