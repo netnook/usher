@@ -76,6 +76,7 @@ mod tests {
     mod nested_types;
     pub mod printing;
     mod programs;
+    mod spans;
 
     use super::SyntaxError;
     use crate::{
@@ -90,15 +91,15 @@ mod tests {
     macro_rules! s {
         ($val:expr) => {{
             use crate::lang::Literal;
-            use crate::lang::Pos;
+            use crate::lang::Span;
             use crate::lang::Value;
-            Literal::new(Value::Str($val.to_string()), Pos::new(999, 9999))
+            Literal::new(Value::Str($val.to_string()), Span::new(999, 9999))
         }};
         ($val:expr, $pos:expr, $len:expr) => {{
             use crate::lang::Literal;
-            use crate::lang::Pos;
+            use crate::lang::Span;
             use crate::lang::Value;
-            Literal::new(Value::Str($val.to_string()), Pos::new($pos, $len))
+            Literal::new(Value::Str($val.to_string()), Span::new($pos, $len))
         }};
     }
     pub(crate) use s;
@@ -106,15 +107,15 @@ mod tests {
     macro_rules! i {
         ($val:expr) => {{
             use crate::lang::Literal;
-            use crate::lang::Pos;
+            use crate::lang::Span;
             use crate::lang::Value;
-            Literal::new(Value::Integer($val), Pos::new(999, 9999))
+            Literal::new(Value::Integer($val), Span::new(999, 9999))
         }};
         ($val:expr, $pos:expr, $len:expr) => {{
             use crate::lang::Literal;
-            use crate::lang::Pos;
+            use crate::lang::Span;
             use crate::lang::Value;
-            Literal::new(Value::Integer($val), Pos::new($pos, $len))
+            Literal::new(Value::Integer($val), Span::new($pos, $len))
         }};
     }
     pub(crate) use i;
@@ -122,15 +123,15 @@ mod tests {
     macro_rules! f {
         ($val:expr) => {{
             use crate::lang::Literal;
-            use crate::lang::Pos;
+            use crate::lang::Span;
             use crate::lang::Value;
-            Literal::new(Value::Float($val), Pos::new(999, 9999))
+            Literal::new(Value::Float($val), Span::new(999, 9999))
         }};
         ($val:expr, $pos:expr, $len:expr) => {{
             use crate::lang::Literal;
-            use crate::lang::Pos;
+            use crate::lang::Span;
             use crate::lang::Value;
-            Literal::new(Value::Float($val), Pos::new($pos, $len))
+            Literal::new(Value::Float($val), Span::new($pos, $len))
         }};
     }
     pub(crate) use f;
@@ -138,15 +139,15 @@ mod tests {
     macro_rules! b {
         ($val:expr) => {{
             use crate::lang::Literal;
-            use crate::lang::Pos;
+            use crate::lang::Span;
             use crate::lang::Value;
-            Literal::new(Value::Bool($val), Pos::new(999, 9999))
+            Literal::new(Value::Bool($val), Span::new(999, 9999))
         }};
         ($val:expr, $pos:expr, $len:expr) => {{
             use crate::lang::Literal;
-            use crate::lang::Pos;
+            use crate::lang::Span;
             use crate::lang::Value;
-            Literal::new(Value::Bool($val), Pos::new($pos, $len))
+            Literal::new(Value::Bool($val), Span::new($pos, $len))
         }};
     }
     pub(crate) use b;
@@ -154,15 +155,15 @@ mod tests {
     macro_rules! nil {
         () => {{
             use crate::lang::Literal;
-            use crate::lang::Pos;
+            use crate::lang::Span;
             use crate::lang::Value;
-            Literal::new(Value::Nil, Pos::new(999, 9999))
+            Literal::new(Value::Nil, Span::new(999, 9999))
         }};
         ($pos:expr, $len:expr) => {{
             use crate::lang::Literal;
-            use crate::lang::Pos;
+            use crate::lang::Span;
             use crate::lang::Value;
-            Literal::new(Value::Nil, Pos::new($pos, $len))
+            Literal::new(Value::Nil, Span::new($pos, $len))
         }};
     }
     pub(crate) use nil;
@@ -173,13 +174,13 @@ mod tests {
     macro_rules! id {
         ($val:expr) => {{
             use crate::lang::Identifier;
-            use crate::lang::Pos;
-            Identifier::new($val.to_string(), Pos::new(999, 9999))
+            use crate::lang::Span;
+            Identifier::new($val.to_string(), Span::new(999, 9999))
         }};
         ($val:expr, $pos:expr) => {{
             use crate::lang::Identifier;
-            use crate::lang::Pos;
-            Identifier::new($val.to_string(), Pos::new($pos, $val.len()))
+            use crate::lang::Span;
+            Identifier::new($val.to_string(), Span::new($pos, $val.len()))
         }};
     }
     pub(crate) use id;
@@ -366,11 +367,11 @@ mod tests {
 
     macro_rules! _func {
         (name($name:expr), $($rest:tt)*) => {{
-            use crate::lang::Pos;
+            use crate::lang::Span;
             use crate::lang::Identifier;
             let f = _func!($($rest)*);
             FunctionDef {
-                name: Some(Identifier::new($name.to_string(), Pos::new(0,0))),
+                name: Some(Identifier::new($name.to_string(), Span::new(0,0))),
                 ..f
             }
         }};
@@ -382,17 +383,17 @@ mod tests {
         }};
         (@param $name:expr, $val:expr) => {{
             use crate::lang::Param;
-            use crate::lang::Pos;
+            use crate::lang::Span;
             Param {
-                name: Identifier::new($name.to_string(), Pos::new(0,0)),
+                name: Identifier::new($name.to_string(), Span::new(0,0)),
                 value: Some($val.into()),
             }
         }};
         (@param $name:expr) => {{
             use crate::lang::Param;
-            use crate::lang::Pos;
+            use crate::lang::Span;
             Param {
-                name: Identifier::new($name.to_string(),Pos::new(0,0)),
+                name: Identifier::new($name.to_string(),Span::new(0,0)),
                 value: None,
             }
         }};
@@ -499,41 +500,6 @@ mod tests {
         parser.pos = 1;
 
         let actual = func(&mut parser).expect("parser should succeed");
-
-        assert_eq!(actual, expected, "assert actual (left) == expected (right)");
-
-        if expected_end > 0 {
-            assert_eq!(
-                parser.pos, expected_end as usize,
-                "assert actual_end ({}) == expected_end ({expected_end})",
-                parser.pos
-            );
-        } else {
-            let actual_remain = input.len() - parser.pos;
-            let expected_remain = -expected_end as usize;
-            assert_eq!(
-                actual_remain, expected_remain,
-                "assert actual_remain ({actual_remain}) == expected_remaining ({expected_remain})"
-            );
-        }
-    }
-
-    #[track_caller]
-    pub(crate) fn do_test_parser_exact<'a, F, T>(
-        func: F,
-        input: &'static str,
-        expected: T,
-        expected_end: isize,
-    ) where
-        F: FnOnce(&mut Parser<'a>) -> Result<Option<T>, SyntaxError>,
-        T: PartialEq<T> + std::fmt::Debug,
-    {
-        let mut parser = Parser::new(input);
-        parser.pos = 1;
-
-        let actual = func(&mut parser)
-            .expect("parser should succeed")
-            .expect("with some");
 
         assert_eq!(actual, expected, "assert actual (left) == expected (right)");
 

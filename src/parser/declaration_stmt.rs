@@ -82,18 +82,5 @@ mod tests {
         do_test_var_err(" var a = ; 1 ", 9, EXPECTED_EXPRESSION);
         do_test_var_err(" var print = 1 ", 5, NAME_RESERVED);
         do_test_var_err(" var else = 1 ", 5, KEYWORD_RESERVED);
-
-        do_test_parser_exact(
-            Parser::stmt,
-            " var a=xx+2 ",
-            var(id!("a", 5), add(id!("xx", 7), i!(2, 10, 1))).into(),
-            -1,
-        );
-        do_test_parser_exact(
-            Parser::stmt,
-            " var # comment \n a = # comment \n xyz + 23 ",
-            var(id!("a", 17), add(id!("xyz", 33), i!(23, 39, 2))).into(),
-            -1,
-        );
     }
 }

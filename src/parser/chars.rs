@@ -127,6 +127,12 @@ impl<'a> Parser<'a> {
         *self.input.get(self.pos).unwrap_or(&0)
     }
 
+    /// Peek at next char matching it to the specified CharTest.
+    pub(super) fn peek_and_test(&mut self, test: CharTest) -> bool {
+        let next = self.peek();
+        test(next)
+    }
+
     pub(super) fn is_eoi(&self) -> bool {
         self.pos >= self.input.len()
     }

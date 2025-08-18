@@ -2,7 +2,7 @@ use super::{
     KEYWORDS, ParseResult, Parser, RESERVED_NAMES, SyntaxError,
     chars::{is_alpha, is_alphanumeric},
 };
-use crate::lang::{Identifier, Pos};
+use crate::lang::{Identifier, Span};
 
 pub(super) const KEYWORD_RESERVED: &str = "Keywords may not be used as identifier.";
 pub(super) const NAME_RESERVED: &str = "Reserved name cannot be used for declarations.";
@@ -30,7 +30,7 @@ impl<'a> Parser<'a> {
 
         Ok(Some(Identifier::new(
             ident.to_string(),
-            Pos::new(start, ident.len()),
+            Span::new(start, ident.len()),
         )))
     }
 

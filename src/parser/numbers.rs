@@ -1,5 +1,5 @@
 use super::{Parser, chars::is_digit};
-use crate::lang::{Literal, Pos, Value};
+use crate::lang::{Literal, Span, Value};
 
 impl<'a> Parser<'a> {
     /// Consume an integer if next on input and return it.
@@ -19,7 +19,7 @@ impl<'a> Parser<'a> {
 
         Some(Literal::new(
             Value::Integer(v),
-            Pos::new(start, self.pos - start),
+            Span::new(start, self.pos - start),
         ))
     }
 
@@ -45,7 +45,7 @@ impl<'a> Parser<'a> {
 
         Some(Literal::new(
             Value::Float(v),
-            Pos::new(start, self.pos - start),
+            Span::new(start, self.pos - start),
         ))
     }
 }

@@ -1,5 +1,5 @@
 use super::{ParseResult, Parser, SyntaxError};
-use crate::lang::{AstNode, InterpolatedStr, Literal, Pos, Value};
+use crate::lang::{AstNode, InterpolatedStr, Literal, Span, Value};
 
 pub(super) const MISSING_END_QUOTE: &str = "Missing closing double quote to end string.";
 pub(super) const CRLF_IN_STRING_NOT_ALLOWED: &str = "Invalid characters CR or LF in string.";
@@ -63,13 +63,13 @@ impl<'a> Parser<'a> {
                 if interpolator_result.is_empty() {
                     return Ok(Some(AstNode::Literal(Literal::new(
                         Value::Str(literal),
-                        Pos::new(start, self.pos - start),
+                        Span::new(start, self.pos - start),
                     ))));
                 } else {
                     if !literal.is_empty() {
                         interpolator_result.push(AstNode::Literal(Literal::new(
                             Value::Str(literal),
-                            Pos::new(literal_start, self.pos - 1 - literal_start),
+                            Span::new(literal_start, self.pos - 1 - literal_start),
                         )));
                     }
                     return Ok(Some(AstNode::InterpolatedStr(InterpolatedStr {
@@ -86,7 +86,7 @@ impl<'a> Parser<'a> {
                     literal.push_str(&tmp);
                     interpolator_result.push(AstNode::Literal(Literal::new(
                         Value::Str(literal),
-                        Pos::new(literal_start, self.pos - literal_start),
+                        Span::new(literal_start, self.pos - literal_start),
                     )));
                 }
                 self.pos += 1;
@@ -159,18 +159,5 @@ mod tests {
         do_test_strings_err(r#"_"aa\xaa""#, 4, INVALID_ESCAPE);
         do_test_strings_err(r#"_"aa{aa"_"#, 4, MISSING_MATCHING_CLOSING_BRACE);
         do_test_strings_err(r#"_"aa{,}"_"#, 5, INVALID_EXPRESSION);
-
-        do_test_parser_exact(Parser::string, r#"_"one"_"#, s!("one", 1, 5).into(), -1);
-        do_test_parser_exact(
-            Parser::string,
-            r#"_"ab{ foo -45 }cde{ 35 }"_"#,
-            _interp![
-                s!("ab", 2, 2),
-                sub(id!("foo", 6), i!(45, 11, 2)),
-                s!("cde", 15, 3),
-                i!(35, 20, 2)
-            ],
-            -1,
-        );
     }
 }

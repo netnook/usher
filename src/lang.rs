@@ -66,7 +66,7 @@ pub struct ProgramError {
 #[derive(PartialEq, Debug)]
 pub struct InternalProgramError {
     pub(crate) msg: String,
-    pub(crate) pos: Pos,
+    pub(crate) pos: Span,
 }
 
 #[derive(PartialEq, Debug, Clone)]
@@ -123,10 +123,10 @@ impl AstNode {
         }
     }
 
-    pub fn pos(&self) -> &Pos {
+    pub fn span(&self) -> &Span {
         match self {
-            AstNode::Identifier(v) => &v.pos,
-            AstNode::Literal(v) => &v.pos,
+            AstNode::Identifier(v) => &v.span,
+            AstNode::Literal(v) => &v.span,
             // FIXME: finish pos
             // AstNode::Declaration(v) => v.eval(ctxt),
             // AstNode::FunctionCall(v) => v.eval(ctxt),
@@ -145,7 +145,7 @@ impl AstNode {
             // AstNode::ReturnStmt(return_stmt) => todo!(),
             // AstNode::Assignment(assignment) => todo!(),
             // AstNode::KeyValue(key_value) => todo!(),
-            n => todo!("pos() not implemented for {n:?}"),
+            n => todo!("span() not implemented for {n:?}"),
         }
     }
 }
@@ -212,12 +212,12 @@ impl From<ReturnStmt> for AstNode {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub struct Pos {
+pub struct Span {
     pub(crate) start: usize,
     pub(crate) len: usize,
 }
 
-impl Pos {
+impl Span {
     pub(crate) fn new(start: usize, len: usize) -> Self {
         Self { start, len }
     }
@@ -226,12 +226,12 @@ impl Pos {
 #[derive(PartialEq, Debug, Clone)]
 pub struct Literal {
     pub(crate) val: Value,
-    pub(crate) pos: Pos,
+    pub(crate) span: Span,
 }
 
 impl Literal {
-    pub fn new(val: Value, pos: Pos) -> Self {
-        Self { val, pos }
+    pub fn new(val: Value, span: Span) -> Self {
+        Self { val, span }
     }
     pub fn eval(&self, _: &mut Context) -> Result<Value, InternalProgramError> {
         Ok(self.val.clone())
@@ -241,12 +241,12 @@ impl Literal {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Identifier {
     pub(crate) name: String,
-    pub(crate) pos: Pos,
+    pub(crate) span: Span,
 }
 
 impl Identifier {
-    pub(crate) fn new(name: String, pos: Pos) -> Self {
-        Self { name, pos }
+    pub(crate) fn new(name: String, span: Span) -> Self {
+        Self { name, span }
     }
     pub fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
         if self.name == "print" {
@@ -302,7 +302,7 @@ impl InterpolatedStr {
                 let val = p.eval(ctxt)?;
                 let s = val.as_string().map_err(|e| InternalProgramError {
                     msg: format!("Error interpolating string: {}", e.msg),
-                    pos: p.pos().clone(),
+                    pos: p.span().clone(),
                 })?;
                 res.push_str(&format!("{s}"));
             }

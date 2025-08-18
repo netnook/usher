@@ -1,7 +1,7 @@
-use super::{ParseResult, Parser, SyntaxError};
+use super::{ParseResult, Parser, SyntaxError, chars::is_digit};
 use crate::lang::{
     Arg, AstNode, BinaryOp, BinaryOpCode, ChainCatch, FunctionCall, Identifier, IndexOf, KeyValue,
-    Literal, Pos, PropertyOf, UnaryOp, UnaryOpCode, Value,
+    Literal, PropertyOf, Span, UnaryOp, UnaryOpCode, Value,
 };
 
 pub(crate) const EXPECTED_EXPRESSION: &str = "Expected expression.";
@@ -210,6 +210,10 @@ impl<'a> Parser<'a> {
                 continue;
             };
             if self.char(b'-') {
+                if self.peek_and_test(is_digit) {
+                    self.pos -= 1;
+                    break;
+                }
                 prefixes.push(UnaryOpCode::Negative);
                 continue;
             };
@@ -292,27 +296,27 @@ impl<'a> Parser<'a> {
             Some("nil") => {
                 return Ok(Some(AstNode::Literal(Literal::new(
                     Value::Nil,
-                    Pos::new(start, 3),
+                    Span::new(start, 3),
                 ))));
             }
             Some("dict") => return Ok(Some(AstNode::DictBuilder(self.dict()?))),
             Some("true") => {
                 return Ok(Some(AstNode::Literal(Literal::new(
                     Value::Bool(true),
-                    Pos::new(start, 4),
+                    Span::new(start, 4),
                 ))));
             }
             Some("false") => {
                 return Ok(Some(AstNode::Literal(Literal::new(
                     Value::Bool(false),
-                    Pos::new(start, 5),
+                    Span::new(start, 5),
                 ))));
             }
             Some("function") => return Ok(Some(AstNode::FunctionDef(self.function_def()?))),
             Some(id) => {
                 return Ok(Some(AstNode::Identifier(Identifier::new(
                     id.to_string(),
-                    Pos::new(start, id.len()),
+                    Span::new(start, id.len()),
                 ))));
             }
             // FIXME error if function def added to something, for example
@@ -380,7 +384,7 @@ impl<'a> Parser<'a> {
 
         Ok(Some(Identifier::new(
             ident.to_string(),
-            Pos::new(marker, 0),
+            Span::new(marker, 0),
         )))
     }
 
@@ -721,17 +725,18 @@ pub mod tests {
     fn test_nil() {
         do_test_expr_ok(" nil ", nil!(), -1);
         do_test_expr_ok(" nil", nil!(), 0);
+    }
 
-        do_test_parser_exact(Parser::expression, " nil ", nil!(1, 3).into(), -1);
-        do_test_parser_exact(Parser::expression, " nil2 ", id!("nil2", 1).into(), -1);
+    #[test]
+    fn test_numbers() {
+        do_test_expr_ok(" 1234 ", i!(1234), -1);
+        do_test_expr_ok(" -1234 ", i!(-1234), -1);
+        do_test_expr_ok(" 12.34 ", f!(12.34), -1);
+        do_test_expr_ok(" -12.34 ", f!(-12.34), -1);
     }
 
     #[test]
     fn test_boolean() {
-        do_test_parser_exact(Parser::expression, " true ", b!(true, 1, 4).into(), -1);
-        do_test_parser_exact(Parser::expression, " false ", b!(false, 1, 5).into(), -1);
-        do_test_parser_exact(Parser::expression, " true", b!(true, 1, 4).into(), 0);
-
         do_test_expr_ok(" tru ", id!("tru"), -1);
         do_test_expr_ok(" falsey", id!("falsey"), 0);
         do_test_parser_none(Parser::expression, " ");
