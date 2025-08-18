@@ -61,9 +61,9 @@ mod tests {
     #[test]
     fn test_return() {
         do_test_return_ok(r" return ", _ret!(), -1);
-        do_test_return_ok(" return 42 ", _ret!(i!(42)), -1);
-        do_test_return_ok(" return 42 + 3 ", _ret!(add(i!(42), i!(3))), -1);
-        do_test_return_ok(" return 42 \n +3 ", _ret!(i!(42)), 10);
+        do_test_return_ok(" return 42 ", _ret!(i(42)), -1);
+        do_test_return_ok(" return 42 + 3 ", _ret!(add(i(42), i(3))), -1);
+        do_test_return_ok(" return 42 \n +3 ", _ret!(i(42)), 10);
         do_test_return_err(" return { 42 } ", 8, UNEXPECTED_TOKEN);
     }
 }

@@ -65,10 +65,10 @@ mod tests {
     #[test]
     fn test_identifiers() {
         let f = Parser::declaration_identifier;
-        do_test_parser_some_t(f, "-one_TwO33_-", id!("one_TwO33_", 1), -1);
-        do_test_parser_some_t(f, "-one_TwO33_ ", id!("one_TwO33_", 1), -1);
-        do_test_parser_some_t(f, "-one_TwO33_", id!("one_TwO33_", 1), 0);
-        do_test_parser_some_t(f, "-o-", id!("o", 1), -1);
+        do_test_parser_some_t(f, "-one_TwO33_-", id("one_TwO33_").span(1, 10), -1);
+        do_test_parser_some_t(f, "-one_TwO33_ ", id("one_TwO33_").span(1, 10), -1);
+        do_test_parser_some_t(f, "-one_TwO33_", id("one_TwO33_").span(1, 10), 0);
+        do_test_parser_some_t(f, "-o-", id("o").span(1, 1), -1);
 
         do_test_parser_none_t(f, "-1-");
         do_test_parser_none_t(f, "-_-");

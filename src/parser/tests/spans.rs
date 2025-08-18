@@ -38,10 +38,10 @@ fn test_string_spans() {
         Parser::string,
         r#"_"ab{ foo -45 }cde{ 35 }"_"#,
         _interp![
-            s!("ab", 2, 2),
-            sub(id!("foo", 6), i!(45, 11, 2)),
-            s!("cde", 15, 3),
-            i!(35, 20, 2)
+            s("ab").span(2, 2),
+            sub(id("foo").span(6, 3), i(45).span(11, 2)).span(10, 1),
+            s("cde").span(15, 3),
+            i(35).span(20, 2)
         ],
         -1,
     );
@@ -51,41 +51,79 @@ fn test_string_spans() {
 fn test_stmt_spans() {
     do_test_parser_exact(
         Parser::stmt,
-        " var a=xx+2 ",
-        var(id!("a", 5), add(id!("xx", 7), i!(2, 10, 1))).into(),
+        " var a=xx>=2 ",
+        var(
+            id("a").span(5, 1),
+            greater_equal(id("xx").span(7, 2), i(2).span(11, 1)).span(9, 2),
+        )
+        .into(),
         -1,
     );
     do_test_parser_exact(
         Parser::stmt,
         " var # comment \n a = # comment \n xyz + 23 ",
-        var(id!("a", 17), add(id!("xyz", 33), i!(23, 39, 2))).into(),
+        var(
+            id("a").span(17, 1),
+            add(id("xyz").span(33, 3), i(23).span(39, 2)).span(37, 1),
+        )
+        .into(),
         -1,
     );
 }
 
 #[test]
 fn test_literal_spans() {
-    do_test_parser_exact(Parser::expression, " 1234 ", i!(1234, 1, 4).into(), -1);
-    do_test_parser_exact(Parser::expression, " -1234 ", i!(-1234, 1, 5).into(), -1);
-    do_test_parser_exact(Parser::expression, " 12.34 ", f!(12.34, 1, 5).into(), -1);
-    do_test_parser_exact(Parser::expression, " -12.34 ", f!(-12.34, 1, 6).into(), -1);
-    do_test_parser_exact(Parser::expression, " 12. ", f!(12.0, 1, 3).into(), -1);
-    do_test_parser_exact(Parser::expression, " -12. ", f!(-12.0, 1, 4).into(), -1);
+    do_test_parser_exact(Parser::expression, " 1234 ", i(1234).span(1, 4).into(), -1);
+    do_test_parser_exact(
+        Parser::expression,
+        " -1234 ",
+        i(-1234).span(1, 5).into(),
+        -1,
+    );
+    do_test_parser_exact(
+        Parser::expression,
+        " 12.34 ",
+        f(12.34).span(1, 5).into(),
+        -1,
+    );
+    do_test_parser_exact(
+        Parser::expression,
+        " -12.34 ",
+        f(-12.34).span(1, 6).into(),
+        -1,
+    );
+    do_test_parser_exact(Parser::expression, " 12. ", f(12.0).span(1, 3).into(), -1);
+    do_test_parser_exact(Parser::expression, " -12. ", f(-12.0).span(1, 4).into(), -1);
     do_test_parser_exact(
         Parser::expression,
         " \"xy\\\"z\" ",
-        s!("xy\"z", 1, 7).into(),
+        s("xy\"z").span(1, 7).into(),
         -1,
     );
-    do_test_parser_exact(Parser::expression, " true ", b!(true, 1, 4).into(), -1);
-    do_test_parser_exact(Parser::expression, " false ", b!(false, 1, 5).into(), -1);
-    do_test_parser_exact(Parser::expression, " true", b!(true, 1, 4).into(), 0);
+    do_test_parser_exact(Parser::expression, " true ", b(true).span(1, 4).into(), -1);
+    do_test_parser_exact(
+        Parser::expression,
+        " false ",
+        b(false).span(1, 5).into(),
+        -1,
+    );
+    do_test_parser_exact(Parser::expression, " true", b(true).span(1, 4).into(), 0);
 
-    do_test_parser_exact(Parser::expression, " nil2 ", id!("nil2", 1).into(), -1);
+    do_test_parser_exact(
+        Parser::expression,
+        " nil2 ",
+        id("nil2").span(1, 4).into(),
+        -1,
+    );
 }
 
 #[test]
 fn test_nil_spans() {
-    do_test_parser_exact(Parser::expression, " nil ", nil!(1, 3).into(), -1);
-    do_test_parser_exact(Parser::expression, " nil2 ", id!("nil2", 1).into(), -1);
+    do_test_parser_exact(Parser::expression, " nil ", nil().span(1, 3).into(), -1);
+    do_test_parser_exact(
+        Parser::expression,
+        " nil2 ",
+        id("nil2").span(1, 4).into(),
+        -1,
+    );
 }

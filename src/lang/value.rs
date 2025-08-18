@@ -19,14 +19,14 @@ impl Value {
                 return Err(InternalProgramError {
                     msg: "Cannot convert a function to a string.".to_string(),
                     // FIXME: correct pos
-                    pos: Span::new(0, 0),
+                    span: Span::new(0, 0),
                 });
             }
             Value::BuiltInFunc(_) => {
                 return Err(InternalProgramError {
                     msg: "Cannot convert a function to a string.".to_string(),
                     // FIXME: correct pos
-                    pos: Span::new(0, 0),
+                    span: Span::new(0, 0),
                 });
             }
             Value::Str(v) => Cow::Borrowed(v),

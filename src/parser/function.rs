@@ -120,29 +120,25 @@ mod tests {
             _func!(name("bar"), _block![]),
             -1,
         );
-        do_test_expr_ok(
-            " function(a) { 1 } ",
-            _func!(param("a"), _block![i!(1)]),
-            -1,
-        );
+        do_test_expr_ok(" function(a) { 1 } ", _func!(param("a"), _block![i(1)]), -1);
         do_test_expr_ok(
             " function(a:1) { 1 } ",
-            _func!(param("a", i!(1)), _block![i!(1)]),
+            _func!(param("a", i(1)), _block![i(1)]),
             -1,
         );
         do_test_expr_ok(
             " function(a:1, b) { 1 } ",
-            _func!(param("a", i!(1)), param("b"), _block![i!(1)]),
+            _func!(param("a", i(1)), param("b"), _block![i(1)]),
             -1,
         );
         do_test_expr_ok(
             " function (a,b, cd) { 1 } ",
-            _func!(param("a"), param("b"), param("cd"), _block![i!(1)]),
+            _func!(param("a"), param("b"), param("cd"), _block![i(1)]),
             -1,
         );
         do_test_expr_ok(
             " function (a,#foo\nb   #foo\n, cd  #foo\n) #foo\n { 1 } ",
-            _func!(param("a"), param("b"), param("cd"), _block![i!(1)]),
+            _func!(param("a"), param("b"), param("cd"), _block![i(1)]),
             -1,
         );
         do_test_expr_ok(
@@ -150,9 +146,9 @@ mod tests {
             _func!(
                 name("meme"),
                 param("a"),
-                param("b", i!(8)),
+                param("b", i(8)),
                 param("cd"),
-                _block![i!(1)]
+                _block![i(1)]
             ),
             -1,
         );

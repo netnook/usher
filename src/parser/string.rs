@@ -136,19 +136,19 @@ mod tests {
 
     #[test]
     fn test_strings() {
-        do_test_strings(r#"_""_"#, s!(""), -1);
-        do_test_strings(r#"_"one"_"#, s!("one"), -1);
-        do_test_strings(r#"_"one two"_"#, s!("one two"), -1);
-        do_test_strings(r#"_"\"aa\"\\\r\nbb\""_"#, s!("\"aa\"\\\r\nbb\""), -1);
-        do_test_strings(r#"_"\"aa\"\\\r\nb\{\}b\""_"#, s!("\"aa\"\\\r\nb{}b\""), -1);
+        do_test_strings(r#"_""_"#, s(""), -1);
+        do_test_strings(r#"_"one"_"#, s("one"), -1);
+        do_test_strings(r#"_"one two"_"#, s("one two"), -1);
+        do_test_strings(r#"_"\"aa\"\\\r\nbb\""_"#, s("\"aa\"\\\r\nbb\""), -1);
+        do_test_strings(r#"_"\"aa\"\\\r\nb\{\}b\""_"#, s("\"aa\"\\\r\nb{}b\""), -1);
 
-        do_test_strings(r#"_"true"_"#, s!("true"), -1);
-        do_test_strings(r#"_"true"_"#, s!("true"), -1);
+        do_test_strings(r#"_"true"_"#, s("true"), -1);
+        do_test_strings(r#"_"true"_"#, s("true"), -1);
 
-        do_test_strings(r#"_"{ foo }"_"#, _interp![id!("foo")], -1);
+        do_test_strings(r#"_"{ foo }"_"#, _interp![id("foo")], -1);
         do_test_strings(
             r#"_"ab{ foo -45 }cd{ 35 }"_"#,
-            _interp![s!("ab"), sub(id!("foo"), i!(45)), s!("cd"), i!(35)],
+            _interp![s("ab"), sub(id("foo"), i(45)), s("cd"), i(35)],
             -1,
         );
 

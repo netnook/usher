@@ -36,7 +36,7 @@ impl<'a> Program<'a> {
         match self.do_run() {
             Ok(v) => Ok(v),
             Err(e) => {
-                let info = find_source_position(self.source, e.pos.start);
+                let info = find_source_position(self.source, e.span.start);
                 Err(ProgramError {
                     msg: e.msg,
                     line_no: info.0.line,
@@ -66,7 +66,7 @@ pub struct ProgramError {
 #[derive(PartialEq, Debug)]
 pub struct InternalProgramError {
     pub(crate) msg: String,
-    pub(crate) pos: Span,
+    pub(crate) span: Span,
 }
 
 #[derive(PartialEq, Debug, Clone)]
@@ -104,13 +104,13 @@ impl AstNode {
             AstNode::FunctionCall(v) => v.eval(ctxt),
             AstNode::Identifier(v) => v.eval(ctxt),
             AstNode::InterpolatedStr(v) => v.eval(ctxt),
+            AstNode::BinaryOp(v) => v.eval(ctxt),
             // FIXME: finish eval
             // AstNode::ListBuilder(list_builder) => todo!(),
             // AstNode::DictBuilder(dict_builder) => todo!(),
             // AstNode::PropertyOf(property_of) => todo!(),
             // AstNode::IndexOf(index_of) => todo!(),
             // AstNode::UnaryOp(unary_op) => todo!(),
-            // AstNode::BinaryOp(binary_op) => todo!(),
             // AstNode::ChainCatch(chain_catch) => todo!(),
             // AstNode::Block(block) => todo!(),
             // AstNode::IfElseStmt(if_else_stmt) => todo!(),
@@ -210,6 +210,11 @@ impl From<ReturnStmt> for AstNode {
         Self::ReturnStmt(value)
     }
 }
+impl From<BinaryOp> for AstNode {
+    fn from(value: BinaryOp) -> Self {
+        Self::BinaryOp(value)
+    }
+}
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Span {
@@ -220,6 +225,9 @@ pub struct Span {
 impl Span {
     pub(crate) fn new(start: usize, len: usize) -> Self {
         Self { start, len }
+    }
+    pub(crate) fn start_end(start: usize, end: usize) -> Self {
+        Self::new(start, end - start)
     }
 }
 
@@ -268,6 +276,37 @@ pub struct BinaryOp {
     pub(crate) op: BinaryOpCode,
     pub(crate) lhs: Box<AstNode>,
     pub(crate) rhs: Box<AstNode>,
+    pub(crate) span: Span,
+}
+
+impl BinaryOp {
+    pub fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
+        match self.op {
+            BinaryOpCode::And => todo!(),
+            BinaryOpCode::Or => todo!(),
+            _ => {}
+        };
+
+        let lhs = self.lhs.eval(ctxt)?;
+        let rhs = self.rhs.eval(ctxt)?;
+
+        match (lhs, rhs) {
+            (Value::Integer(lhs), Value::Integer(rhs)) => Ok(match self.op {
+                BinaryOpCode::Add => Value::Integer(lhs + rhs),
+                BinaryOpCode::Sub => Value::Integer(lhs - rhs),
+                BinaryOpCode::Mul => Value::Integer(lhs + rhs),
+                BinaryOpCode::Div => Value::Integer(lhs / rhs),
+                _ => todo!(),
+            }),
+            (Value::Integer(_), _) => Err(InternalProgramError {
+                msg: "Incompatible lhs and rhs of operation".to_string(),
+                span: self.span.clone(),
+            }),
+            (lhs, rhs) => todo!("not implemented for lhs={lhs:?} and rhs={rhs:?}"),
+        }
+
+        // FIXME: finish eval impl of BinaryOp
+    }
 }
 
 #[derive(PartialEq, Debug, Clone)]
@@ -302,7 +341,7 @@ impl InterpolatedStr {
                 let val = p.eval(ctxt)?;
                 let s = val.as_string().map_err(|e| InternalProgramError {
                     msg: format!("Error interpolating string: {}", e.msg),
-                    pos: p.span().clone(),
+                    span: p.span().clone(),
                 })?;
                 res.push_str(&format!("{s}"));
             }

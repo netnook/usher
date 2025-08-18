@@ -67,12 +67,12 @@ mod tests {
 
     #[test]
     fn test_var() {
-        do_test_var_ok(" var a=x+2 ", var(id!("a"), add(id!("x"), i!(2))), -1);
-        do_test_var_ok(" var a = x + 2 ", var(id!("a"), add(id!("x"), i!(2))), -1);
-        do_test_var_ok(" var a = x + 2 ", var(id!("a"), add(id!("x"), i!(2))), -1);
+        do_test_var_ok(" var a=x+2 ", var(id("a"), add(id("x"), i(2))), -1);
+        do_test_var_ok(" var a = x + 2 ", var(id("a"), add(id("x"), i(2))), -1);
+        do_test_var_ok(" var a = x + 2 ", var(id("a"), add(id("x"), i(2))), -1);
         do_test_var_ok(
             " var # comment \n a = # comment \n x + 2 ",
-            var(id!("a"), add(id!("x"), i!(2))),
+            var(id("a"), add(id("x"), i(2))),
             -1,
         );
 

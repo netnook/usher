@@ -49,6 +49,8 @@ fn main() {
         }
     };
 
+    // println!("{prog:#?}");
+
     match prog.run() {
         Ok(_) => {}
         Err(e) => {

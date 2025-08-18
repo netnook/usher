@@ -82,108 +82,33 @@ mod tests {
     use crate::{
         lang::{
             Assignment, AstNode, BinaryOp, BinaryOpCode, Block, ChainCatch, Declaration, ForStmt,
-            Identifier, IndexOf, KeyValue, PropertyOf, UnaryOp, UnaryOpCode,
+            Identifier, IndexOf, KeyValue, Literal, PropertyOf, Span, UnaryOp, UnaryOpCode, Value,
         },
         parser::Parser,
     };
     use pretty_assertions::assert_eq;
 
-    macro_rules! s {
-        ($val:expr) => {{
-            use crate::lang::Literal;
-            use crate::lang::Span;
-            use crate::lang::Value;
-            Literal::new(Value::Str($val.to_string()), Span::new(999, 9999))
-        }};
-        ($val:expr, $pos:expr, $len:expr) => {{
-            use crate::lang::Literal;
-            use crate::lang::Span;
-            use crate::lang::Value;
-            Literal::new(Value::Str($val.to_string()), Span::new($pos, $len))
-        }};
+    pub fn s(val: &str) -> Literal {
+        Literal::new(Value::Str(val.to_string()), Span::new(999, 9999))
     }
-    pub(crate) use s;
-
-    macro_rules! i {
-        ($val:expr) => {{
-            use crate::lang::Literal;
-            use crate::lang::Span;
-            use crate::lang::Value;
-            Literal::new(Value::Integer($val), Span::new(999, 9999))
-        }};
-        ($val:expr, $pos:expr, $len:expr) => {{
-            use crate::lang::Literal;
-            use crate::lang::Span;
-            use crate::lang::Value;
-            Literal::new(Value::Integer($val), Span::new($pos, $len))
-        }};
+    pub fn i(val: isize) -> Literal {
+        Literal::new(Value::Integer(val), Span::new(999, 9999))
     }
-    pub(crate) use i;
-
-    macro_rules! f {
-        ($val:expr) => {{
-            use crate::lang::Literal;
-            use crate::lang::Span;
-            use crate::lang::Value;
-            Literal::new(Value::Float($val), Span::new(999, 9999))
-        }};
-        ($val:expr, $pos:expr, $len:expr) => {{
-            use crate::lang::Literal;
-            use crate::lang::Span;
-            use crate::lang::Value;
-            Literal::new(Value::Float($val), Span::new($pos, $len))
-        }};
+    pub fn f(val: f64) -> Literal {
+        Literal::new(Value::Float(val), Span::new(999, 9999))
     }
-    pub(crate) use f;
-
-    macro_rules! b {
-        ($val:expr) => {{
-            use crate::lang::Literal;
-            use crate::lang::Span;
-            use crate::lang::Value;
-            Literal::new(Value::Bool($val), Span::new(999, 9999))
-        }};
-        ($val:expr, $pos:expr, $len:expr) => {{
-            use crate::lang::Literal;
-            use crate::lang::Span;
-            use crate::lang::Value;
-            Literal::new(Value::Bool($val), Span::new($pos, $len))
-        }};
+    pub fn b(val: bool) -> Literal {
+        Literal::new(Value::Bool(val), Span::new(999, 9999))
     }
-    pub(crate) use b;
-
-    macro_rules! nil {
-        () => {{
-            use crate::lang::Literal;
-            use crate::lang::Span;
-            use crate::lang::Value;
-            Literal::new(Value::Nil, Span::new(999, 9999))
-        }};
-        ($pos:expr, $len:expr) => {{
-            use crate::lang::Literal;
-            use crate::lang::Span;
-            use crate::lang::Value;
-            Literal::new(Value::Nil, Span::new($pos, $len))
-        }};
+    pub fn nil() -> Literal {
+        Literal::new(Value::Nil, Span::new(999, 9999))
     }
-    pub(crate) use nil;
-
     pub(crate) fn this() -> AstNode {
         AstNode::This
     }
-    macro_rules! id {
-        ($val:expr) => {{
-            use crate::lang::Identifier;
-            use crate::lang::Span;
-            Identifier::new($val.to_string(), Span::new(999, 9999))
-        }};
-        ($val:expr, $pos:expr) => {{
-            use crate::lang::Identifier;
-            use crate::lang::Span;
-            Identifier::new($val.to_string(), Span::new($pos, $val.len()))
-        }};
+    pub fn id(val: &str) -> Identifier {
+        Identifier::new(val.to_string(), Span::new(999, 9999))
     }
-    pub(crate) use id;
 
     pub(crate) fn kv(key: impl Into<Identifier>, value: impl Into<AstNode>) -> KeyValue {
         KeyValue {
@@ -194,7 +119,7 @@ mod tests {
     pub(crate) fn prop_of(from: impl Into<AstNode>, prop: &str) -> AstNode {
         AstNode::PropertyOf(PropertyOf {
             from: from.into().into(),
-            property: id!(prop),
+            property: id(prop),
         })
     }
     pub(crate) fn index_of(from: impl Into<AstNode>, index: impl Into<AstNode>) -> AstNode {
@@ -220,55 +145,56 @@ mod tests {
             on: on.into().into(),
         })
     }
-    pub(crate) fn add(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> AstNode {
+    pub(crate) fn add(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> BinaryOp {
         binary(BinaryOpCode::Add, lhs, rhs)
     }
-    pub(crate) fn sub(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> AstNode {
+    pub(crate) fn sub(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> BinaryOp {
         binary(BinaryOpCode::Sub, lhs, rhs)
     }
-    pub(crate) fn mul(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> AstNode {
+    pub(crate) fn mul(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> BinaryOp {
         binary(BinaryOpCode::Mul, lhs, rhs)
     }
-    pub(crate) fn div(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> AstNode {
+    pub(crate) fn div(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> BinaryOp {
         binary(BinaryOpCode::Div, lhs, rhs)
     }
-    pub(crate) fn modulo(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> AstNode {
+    pub(crate) fn modulo(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> BinaryOp {
         binary(BinaryOpCode::Mod, lhs, rhs)
     }
-    pub(crate) fn equal(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> AstNode {
+    pub(crate) fn equal(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> BinaryOp {
         binary(BinaryOpCode::Equal, lhs, rhs)
     }
-    pub(crate) fn not_equal(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> AstNode {
+    pub(crate) fn not_equal(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> BinaryOp {
         binary(BinaryOpCode::NotEqual, lhs, rhs)
     }
-    pub(crate) fn greater(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> AstNode {
+    pub(crate) fn greater(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> BinaryOp {
         binary(BinaryOpCode::Greater, lhs, rhs)
     }
-    pub(crate) fn greater_equal(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> AstNode {
+    pub(crate) fn greater_equal(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> BinaryOp {
         binary(BinaryOpCode::GreaterOrEqual, lhs, rhs)
     }
-    pub(crate) fn less(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> AstNode {
+    pub(crate) fn less(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> BinaryOp {
         binary(BinaryOpCode::Less, lhs, rhs)
     }
-    pub(crate) fn less_equal(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> AstNode {
+    pub(crate) fn less_equal(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> BinaryOp {
         binary(BinaryOpCode::LessOrEqual, lhs, rhs)
     }
-    pub(crate) fn and(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> AstNode {
+    pub(crate) fn and(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> BinaryOp {
         binary(BinaryOpCode::And, lhs, rhs)
     }
-    pub(crate) fn or(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> AstNode {
+    pub(crate) fn or(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> BinaryOp {
         binary(BinaryOpCode::Or, lhs, rhs)
     }
     pub(crate) fn binary(
         op: BinaryOpCode,
         lhs: impl Into<AstNode>,
         rhs: impl Into<AstNode>,
-    ) -> AstNode {
-        AstNode::BinaryOp(BinaryOp {
+    ) -> BinaryOp {
+        BinaryOp {
             op,
             lhs: lhs.into().into(),
             rhs: rhs.into().into(),
-        })
+            span: Span::new(999, 9999),
+        }
     }
 
     pub(crate) fn var(ident: Identifier, value: impl Into<AstNode>) -> Declaration {
@@ -631,4 +557,19 @@ mod tests {
     {
         do_test_opt_parser(func, input, None, input.len() - 1);
     }
+
+    macro_rules! with_span {
+        ($type:ident) => {
+            impl $type {
+                pub fn span(mut self, start: usize, len: usize) -> Self {
+                    self.span = Span::new(start, len);
+                    self
+                }
+            }
+        };
+    }
+
+    with_span!(BinaryOp);
+    with_span!(Literal);
+    with_span!(Identifier);
 }

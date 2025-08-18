@@ -154,11 +154,11 @@ pub(super) mod tests {
 
     #[test]
     fn test_block() {
-        do_test_block_ok(" {1} ", _block![i!(1)], -1);
-        do_test_block_ok(" { 1 } ", _block![i!(1)], -1);
-        do_test_block_ok(" { 1 \n 2 \n 3 } ", _block![i!(1), i!(2), i!(3)], -1);
-        do_test_block_ok(" { \n 1 \n 2 \n 3 \n } ", _block![i!(1), i!(2), i!(3)], -1);
-        do_test_block_ok(" { #foo\n 1 #bar\n #baz \n 2 } ", _block![i!(1), i!(2)], -1);
+        do_test_block_ok(" {1} ", _block![i(1)], -1);
+        do_test_block_ok(" { 1 } ", _block![i(1)], -1);
+        do_test_block_ok(" { 1 \n 2 \n 3 } ", _block![i(1), i(2), i(3)], -1);
+        do_test_block_ok(" { \n 1 \n 2 \n 3 \n } ", _block![i(1), i(2), i(3)], -1);
+        do_test_block_ok(" { #foo\n 1 #bar\n #baz \n 2 } ", _block![i(1), i(2)], -1);
 
         do_test_block_err(" { 1 ", 1, MISSING_BLOCK_END);
         do_test_block_err(" { 1 2 } ", 5, EXPECTED_NEW_LINE_AFTER_STMT);
@@ -177,13 +177,13 @@ pub(super) mod tests {
 
     #[test]
     fn test_assignment_or_expr() {
-        do_test_assign_or_expr_ok(" a ", id!("a").into(), -1);
-        do_test_assign_or_expr_ok(" a = 1 + 2 ", assign(id!("a"), add(i!(1), i!(2))), -1);
+        do_test_assign_or_expr_ok(" a ", id("a").into(), -1);
+        do_test_assign_or_expr_ok(" a = 1 + 2 ", assign(id("a"), add(i(1), i(2))), -1);
         do_test_assign_or_expr_ok(
             " a[3].b.c = 1 + 2 ",
             assign(
-                prop_of(prop_of(index_of(id!("a"), i!(3)), "b"), "c"),
-                add(i!(1), i!(2)),
+                prop_of(prop_of(index_of(id("a"), i(3)), "b"), "c"),
+                add(i(1), i(2)),
             ),
             -1,
         );
@@ -218,22 +218,22 @@ pub(super) mod tests {
     fn test_stmt() {
         do_test_stmt_ok(
             " if true { 2 } ",
-            _if!(cond(b!(true) => _block![i!(2)])).into(),
+            _if!(cond(b(true) => _block![i(2)])).into(),
             -1,
         );
         do_test_stmt_ok(
             " for a in b { 2 } ",
-            _for(id!("a"), None, id!("b"), _block![i!(2)]).into(),
+            _for(id("a"), None, id("b"), _block![i(2)]).into(),
             -1,
         );
-        do_test_stmt_ok(" var a = 1 ", var(id!("a"), i!(1)).into(), -1);
-        do_test_stmt_ok(" a = 1 ", assign(id!("a"), i!(1)), -1);
-        do_test_stmt_ok(" a + 2 ", add(id!("a"), i!(2)), -1);
+        do_test_stmt_ok(" var a = 1 ", var(id("a"), i(1)).into(), -1);
+        do_test_stmt_ok(" a = 1 ", assign(id("a"), i(1)), -1);
+        do_test_stmt_ok(" a + 2 ", add(id("a"), i(2)).into(), -1);
 
         // check that vars starting with keywords are not mistaken for those keywords
-        do_test_stmt_ok(" iffy + 2 ", add(id!("iffy"), i!(2)), -1);
-        do_test_stmt_ok(" for_me + 2 ", add(id!("for_me"), i!(2)), -1);
-        do_test_stmt_ok(" vario + 2 ", add(id!("vario"), i!(2)), -1);
+        do_test_stmt_ok(" iffy + 2 ", add(id("iffy"), i(2)).into(), -1);
+        do_test_stmt_ok(" for_me + 2 ", add(id("for_me"), i(2)).into(), -1);
+        do_test_stmt_ok(" vario + 2 ", add(id("vario"), i(2)).into(), -1);
         do_test_stmt_ok(" break ", AstNode::Break, -1);
         do_test_stmt_ok(" continue ", AstNode::Continue, -1);
         do_test_stmt_ok(" end ", AstNode::End, -1);
