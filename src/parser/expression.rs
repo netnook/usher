@@ -261,10 +261,11 @@ impl<'a> Parser<'a> {
             let savepoint = self.pos;
             self.linespace();
 
-            if let Some(property) = self.property_of()? {
+            if let Some((property, span)) = self.property_of()? {
                 node = AstNode::PropertyOf(PropertyOf {
                     from: node.into(),
                     property,
+                    span,
                 });
                 continue;
             }
@@ -311,7 +312,7 @@ impl<'a> Parser<'a> {
                     Span::new(start, 3),
                 ))));
             }
-            Some("dict") => return Ok(Some(AstNode::DictBuilder(self.dict()?))),
+            Some("dict") => return Ok(Some(AstNode::DictBuilder(self.dict(start)?))),
             Some("true") => {
                 return Ok(Some(AstNode::Literal(Literal::new(
                     Value::Bool(true),
@@ -382,7 +383,8 @@ impl<'a> Parser<'a> {
         Ok(Some(expr))
     }
 
-    fn property_of(&mut self) -> ParseResult<Option<Identifier>> {
+    fn property_of(&mut self) -> ParseResult<Option<(Identifier, Span)>> {
+        let start = self.pos;
         if !self.char(b'.') {
             return Ok(None);
         }
@@ -394,9 +396,9 @@ impl<'a> Parser<'a> {
             return Err(SyntaxError::new(self.pos, EXPECTED_IDENTIFIER));
         };
 
-        Ok(Some(Identifier::new(
-            ident.to_string(),
-            Span::new(marker, 0),
+        Ok(Some((
+            Identifier::new(ident.to_string(), Span::new(marker, ident.len())),
+            Span::start_end(start, self.pos),
         )))
     }
 

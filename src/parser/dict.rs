@@ -1,5 +1,5 @@
 use super::{ParseResult, Parser, SyntaxError};
-use crate::lang::{AstNode, DictBuilder};
+use crate::lang::{AstNode, DictBuilder, Span};
 
 pub(crate) const MISSING_CLOSE: &str = "Missing closing ')'.";
 pub(crate) const EXPECTED_OPEN: &str = "Expected opening '('.";
@@ -13,7 +13,7 @@ impl<'a> Parser<'a> {
     ///
     /// Already passed "dict" when called
     /// "(" kv*  ")"
-    pub(super) fn dict(&mut self) -> ParseResult<DictBuilder> {
+    pub(super) fn dict(&mut self, start: usize) -> ParseResult<DictBuilder> {
         self.linespace();
         if !self.char(b'(') {
             return Err(SyntaxError {
@@ -79,7 +79,10 @@ impl<'a> Parser<'a> {
             });
         }
 
-        Ok(DictBuilder::new(entries))
+        Ok(DictBuilder {
+            entries,
+            span: Span::start_end(start, self.pos),
+        })
     }
 }
 
@@ -97,7 +100,7 @@ mod tests {
 
     #[test]
     fn test_dict_ok() {
-        let expect = DictBuilder::new(vec![
+        let expect = dict(vec![
             kv(id("a"), i(1)),
             kv(id("b"), nil()),
             kv(id("c"), b(true)),
@@ -113,18 +116,18 @@ mod tests {
             expect.clone(),
             -1,
         );
-        do_test_expr_ok(r#" dict() "#, DictBuilder::new(Vec::new()), -1);
-        do_test_expr_ok(r#" dict(   ) "#, DictBuilder::new(Vec::new()), -1);
+        do_test_expr_ok(r#" dict() "#, dict(Vec::new()), -1);
+        do_test_expr_ok(r#" dict(   ) "#, dict(Vec::new()), -1);
 
         do_test_expr_ok(
             r#" dict( a: dict( aa:1, ab:2, ac: dict()), b:3) "#,
-            DictBuilder::new(vec![
+            dict(vec![
                 kv(
                     id("a"),
-                    DictBuilder::new(vec![
+                    dict(vec![
                         kv(id("aa"), i(1)),
                         kv(id("ab"), i(2)),
-                        kv(id("ac"), DictBuilder::new(Vec::new())),
+                        kv(id("ac"), dict(Vec::new())),
                     ]),
                 ),
                 kv(id("b"), i(3)),

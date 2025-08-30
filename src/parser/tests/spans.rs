@@ -48,6 +48,21 @@ fn test_string_spans() {
 }
 
 #[test]
+fn test_dict_spans() {
+    do_test_parser_exact(
+        Parser::expression,
+        r#" dict(a:1,b : 22 ) "#,
+        dict(vec![
+            kv(id("a").spanned(6, 1), i(1).spanned(8, 1)),
+            kv(id("b").spanned(10, 1), i(22).spanned(14, 2)),
+        ])
+        .spanned(1, 17)
+        .into(),
+        -1,
+    );
+}
+
+#[test]
 fn test_stmt_spanneds() {
     do_test_parser_exact(
         Parser::stmt,
@@ -81,6 +96,17 @@ fn test_stmt_spanneds() {
             .spanned(13, 2))
             .spanned(9, 1),
         )
+        .into(),
+        -1,
+    );
+    do_test_parser_exact(
+        Parser::stmt,
+        " abc.def.ghi ",
+        prop_of(
+            prop_of(id("abc").spanned(1, 3), id("def").spanned(5, 3)).spanned(4, 4),
+            id("ghi").spanned(9, 3),
+        )
+        .spanned(8, 4)
         .into(),
         -1,
     );

@@ -1,8 +1,10 @@
 mod binary_op;
+mod dict;
 mod unary_op;
 mod value;
 
 pub use binary_op::{BinaryOp, BinaryOpCode};
+pub use dict::{DictBuilder, PropertyOf};
 use std::collections::HashMap;
 pub use unary_op::{UnaryOp, UnaryOpCode};
 pub use value::Value;
@@ -110,10 +112,10 @@ impl AstNode {
             AstNode::InterpolatedStr(v) => v.eval(ctxt),
             AstNode::BinaryOp(v) => v.eval(ctxt),
             AstNode::UnaryOp(v) => v.eval(ctxt),
+            AstNode::DictBuilder(v) => v.eval(ctxt),
+            AstNode::PropertyOf(v) => v.eval(ctxt),
             // FIXME: finish eval
             // AstNode::ListBuilder(list_builder) => todo!(),
-            // AstNode::DictBuilder(dict_builder) => todo!(),
-            // AstNode::PropertyOf(property_of) => todo!(),
             // AstNode::IndexOf(index_of) => todo!(),
             // AstNode::ChainCatch(chain_catch) => todo!(),
             // AstNode::Block(block) => todo!(),
@@ -132,6 +134,7 @@ impl AstNode {
             AstNode::Identifier(v) => v.span,
             AstNode::Literal(v) => v.span,
             AstNode::BinaryOp(v) => v.span(),
+            AstNode::UnaryOp(v) => v.span(),
             // FIXME: finish pos
             // AstNode::Declaration(v) => v.eval(ctxt),
             // AstNode::FunctionCall(v) => v.eval(ctxt),
@@ -140,7 +143,6 @@ impl AstNode {
             // AstNode::DictBuilder(dict_builder) => todo!(),
             // AstNode::PropertyOf(property_of) => todo!(),
             // AstNode::IndexOf(index_of) => todo!(),
-            // AstNode::UnaryOp(unary_op) => todo!(),
             // AstNode::ChainCatch(chain_catch) => todo!(),
             // AstNode::Block(block) => todo!(),
             // AstNode::IfElseStmt(if_else_stmt) => todo!(),
@@ -224,6 +226,16 @@ impl From<UnaryOp> for AstNode {
         Self::UnaryOp(value)
     }
 }
+impl From<PropertyOf> for AstNode {
+    fn from(value: PropertyOf) -> Self {
+        Self::PropertyOf(value)
+    }
+}
+impl From<IndexOf> for AstNode {
+    fn from(value: IndexOf) -> Self {
+        Self::IndexOf(value)
+    }
+}
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct Span {
@@ -290,12 +302,6 @@ pub struct ChainCatch {
 }
 
 #[derive(PartialEq, Debug, Clone)]
-pub struct PropertyOf {
-    pub(crate) from: Box<AstNode>,
-    pub(crate) property: Identifier,
-}
-
-#[derive(PartialEq, Debug, Clone)]
 pub struct IndexOf {
     pub(crate) from: Box<AstNode>,
     pub(crate) index: Box<AstNode>,
@@ -331,17 +337,6 @@ pub struct ListBuilder {
 
 impl ListBuilder {
     pub(crate) fn new(entries: Vec<AstNode>) -> Self {
-        Self { entries }
-    }
-}
-
-#[derive(PartialEq, Debug, Clone)]
-pub struct DictBuilder {
-    pub(crate) entries: Vec<KeyValue>,
-}
-
-impl DictBuilder {
-    pub(crate) fn new(entries: Vec<KeyValue>) -> Self {
         Self { entries }
     }
 }

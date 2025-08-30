@@ -336,6 +336,14 @@ impl Value {
             Value::Bool(v) => {
                 w.write_all(format!("{v}").as_bytes()).unwrap();
             }
+            Value::Dict(v) => {
+                w.write_all("dict(".as_bytes()).unwrap();
+                for (k, v) in &v.content {
+                    write_indented(w, indent + 1, &format!("{k}:"));
+                    v.print(w, indent + 1);
+                }
+                write_indented(w, indent, ")");
+            }
             Value::Nil => {
                 w.write_all("nil".as_bytes()).unwrap();
             }

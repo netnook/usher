@@ -1,7 +1,7 @@
 use super::{b, do_test_parser_some, i, id, kv, nil, s};
 use crate::{
-    lang::{DictBuilder, ListBuilder},
-    parser::Parser,
+    lang::ListBuilder,
+    parser::{Parser, tests::dict},
 };
 
 #[test]
@@ -9,10 +9,10 @@ fn test_nested() {
     do_test_parser_some(
         Parser::expression,
         r#" dict(a:dict(a:false, b:"xxx",) , b:nil, c:[1, 2, 3,], the_d:"bar") "#,
-        DictBuilder::new(vec![
+        dict(vec![
             kv(
                 id("a"),
-                DictBuilder::new(vec![kv(id("a"), b(false)), kv(id("b"), s("xxx"))]),
+                dict(vec![kv(id("a"), b(false)), kv(id("b"), s("xxx"))]),
             ),
             kv(id("b"), nil()),
             kv(
@@ -27,7 +27,7 @@ fn test_nested() {
     do_test_parser_some(
         Parser::expression,
         r#" [dict(a:"one")] "#,
-        ListBuilder::new(vec![DictBuilder::new(vec![kv(id("a"), s("one"))]).into()]).into(),
+        ListBuilder::new(vec![dict(vec![kv(id("a"), s("one"))]).into()]).into(),
         -1,
     );
 }

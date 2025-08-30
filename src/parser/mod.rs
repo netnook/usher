@@ -81,8 +81,9 @@ pub mod tests {
     use super::SyntaxError;
     use crate::{
         lang::{
-            Assignment, AstNode, BinaryOp, BinaryOpCode, Block, ChainCatch, Declaration, ForStmt,
-            Identifier, IndexOf, KeyValue, Literal, PropertyOf, Span, UnaryOp, UnaryOpCode, Value,
+            Assignment, AstNode, BinaryOp, BinaryOpCode, Block, ChainCatch, Declaration,
+            DictBuilder, ForStmt, Identifier, IndexOf, KeyValue, Literal, PropertyOf, Span,
+            UnaryOp, UnaryOpCode, Value,
         },
         parser::Parser,
     };
@@ -116,11 +117,18 @@ pub mod tests {
             value: value.into().into(),
         }
     }
-    pub(crate) fn prop_of(from: impl Into<AstNode>, prop: &str) -> AstNode {
-        AstNode::PropertyOf(PropertyOf {
+    pub(crate) fn dict(entries: Vec<KeyValue>) -> DictBuilder {
+        DictBuilder {
+            entries,
+            span: Span::new(999, 9999),
+        }
+    }
+    pub(crate) fn prop_of(from: impl Into<AstNode>, prop: impl Into<Identifier>) -> PropertyOf {
+        PropertyOf {
             from: from.into().into(),
-            property: id(prop),
-        })
+            property: prop.into(),
+            span: Span::new(999, 9999),
+        }
     }
     pub(crate) fn index_of(from: impl Into<AstNode>, index: impl Into<AstNode>) -> AstNode {
         AstNode::IndexOf(IndexOf {
@@ -560,6 +568,12 @@ pub mod tests {
         do_test_opt_parser(func, input, None, input.len() - 1);
     }
 
+    impl From<&str> for Identifier {
+        fn from(value: &str) -> Self {
+            Identifier::new(value.to_string(), Span::new(999, 9999))
+        }
+    }
+
     macro_rules! with_span {
         ($type:ident) => {
             impl $type {
@@ -575,4 +589,6 @@ pub mod tests {
     with_span!(UnaryOp);
     with_span!(Literal);
     with_span!(Identifier);
+    with_span!(DictBuilder);
+    with_span!(PropertyOf);
 }
