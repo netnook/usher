@@ -1,5 +1,36 @@
 use super::{BuiltInFunc, FunctionDef, InternalProgramError, Span};
-use std::borrow::Cow;
+use std::{borrow::Cow, fmt::Display};
+
+#[derive(PartialEq, Debug, Clone)]
+pub enum ValueType {
+    Function,
+    BuiltInFunction,
+    String,
+    Integer,
+    Float,
+    Boolean,
+    Nil,
+}
+
+impl Display for ValueType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.type_name())
+    }
+}
+
+impl ValueType {
+    pub fn type_name(&self) -> &'static str {
+        match self {
+            ValueType::Function => "function",
+            ValueType::BuiltInFunction => "built-in-function",
+            ValueType::String => "string",
+            ValueType::Integer => "integer",
+            ValueType::Float => "float",
+            ValueType::Boolean => "boolean",
+            ValueType::Nil => "nil",
+        }
+    }
+}
 
 #[derive(PartialEq, Debug, Clone)]
 pub enum Value {
@@ -13,7 +44,7 @@ pub enum Value {
 }
 
 impl Value {
-    pub fn as_string(&self) -> Result<Cow<str>, InternalProgramError> {
+    pub fn as_string(&'_ self) -> Result<Cow<'_, str>, InternalProgramError> {
         Ok(match self {
             Value::Func(_) => {
                 return Err(InternalProgramError {
@@ -38,6 +69,18 @@ impl Value {
             },
             Value::Nil => Cow::Borrowed("nil"),
         })
+    }
+
+    pub fn value_type(&self) -> ValueType {
+        match self {
+            Value::Func(_) => ValueType::Function,
+            Value::BuiltInFunc(_) => ValueType::BuiltInFunction,
+            Value::Str(_) => ValueType::String,
+            Value::Integer(_) => ValueType::Integer,
+            Value::Float(_) => ValueType::Float,
+            Value::Bool(_) => ValueType::Boolean,
+            Value::Nil => ValueType::Nil,
+        }
     }
 }
 

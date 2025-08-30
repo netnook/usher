@@ -14,7 +14,7 @@ pub struct SourcePos {
     pub char: usize,
 }
 
-pub(super) fn build_parse_error(source: &str, se: SyntaxError) -> ParseError {
+pub(super) fn build_parse_error(source: &'_ str, se: SyntaxError) -> ParseError<'_> {
     let info = find_source_position(source, se.pos);
     ParseError {
         line_no: info.0.line,

@@ -1,5 +1,7 @@
+mod binary_op;
 mod value;
 
+pub use binary_op::{BinaryOp, BinaryOpCode};
 use std::collections::HashMap;
 pub use value::Value;
 
@@ -272,44 +274,6 @@ pub struct UnaryOp {
 }
 
 #[derive(PartialEq, Debug, Clone)]
-pub struct BinaryOp {
-    pub(crate) op: BinaryOpCode,
-    pub(crate) lhs: Box<AstNode>,
-    pub(crate) rhs: Box<AstNode>,
-    pub(crate) span: Span,
-}
-
-impl BinaryOp {
-    pub fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
-        match self.op {
-            BinaryOpCode::And => todo!(),
-            BinaryOpCode::Or => todo!(),
-            _ => {}
-        };
-
-        let lhs = self.lhs.eval(ctxt)?;
-        let rhs = self.rhs.eval(ctxt)?;
-
-        match (lhs, rhs) {
-            (Value::Integer(lhs), Value::Integer(rhs)) => Ok(match self.op {
-                BinaryOpCode::Add => Value::Integer(lhs + rhs),
-                BinaryOpCode::Sub => Value::Integer(lhs - rhs),
-                BinaryOpCode::Mul => Value::Integer(lhs + rhs),
-                BinaryOpCode::Div => Value::Integer(lhs / rhs),
-                _ => todo!(),
-            }),
-            (Value::Integer(_), _) => Err(InternalProgramError {
-                msg: "Incompatible lhs and rhs of operation".to_string(),
-                span: self.span.clone(),
-            }),
-            (lhs, rhs) => todo!("not implemented for lhs={lhs:?} and rhs={rhs:?}"),
-        }
-
-        // FIXME: finish eval impl of BinaryOp
-    }
-}
-
-#[derive(PartialEq, Debug, Clone)]
 pub struct ChainCatch {
     pub(crate) inner: Box<AstNode>,
 }
@@ -375,23 +339,6 @@ impl DictBuilder {
 pub enum UnaryOpCode {
     Not,
     Negative,
-}
-
-#[derive(PartialEq, Debug, Clone)]
-pub enum BinaryOpCode {
-    Add,
-    Sub,
-    Mul,
-    Div,
-    Mod,
-    Equal,
-    NotEqual,
-    Greater,
-    GreaterOrEqual,
-    LessOrEqual,
-    Less,
-    And,
-    Or,
 }
 
 #[derive(PartialEq, Debug, Clone)]

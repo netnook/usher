@@ -29,7 +29,7 @@ pub(crate) const KEYWORDS: [&str; 17] = [
 // FIXME: add all necessary keywords
 pub(crate) const RESERVED_NAMES: [&str; 3] = ["print", "error", "std"];
 
-pub fn parse(input: &str) -> Result<Program, ParseError> {
+pub fn parse(input: &'_ str) -> Result<Program<'_>, ParseError<'_>> {
     let mut p = Parser::new(input);
 
     let program = match p.program() {
@@ -72,7 +72,7 @@ impl<'a> Parser<'a> {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     mod nested_types;
     pub mod printing;
     mod programs;
