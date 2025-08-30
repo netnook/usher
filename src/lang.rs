@@ -6,6 +6,7 @@ mod list;
 mod string;
 mod unary_op;
 mod value;
+mod var;
 
 pub use binary_op::{BinaryOp, BinaryOpCode};
 pub use block::Block;
@@ -16,6 +17,7 @@ use std::{collections::HashMap, rc::Rc};
 pub use string::InterpolatedStr;
 pub use unary_op::{UnaryOp, UnaryOpCode};
 pub use value::Value;
+pub use var::{Assignment, Declaration};
 
 use crate::find_source_position;
 
@@ -130,14 +132,23 @@ impl AstNode {
             AstNode::IndexOf(v) => v.eval(ctxt),
             AstNode::Block(v) => v.eval(ctxt),
             AstNode::FunctionDef(v) => v.eval(ctxt),
+            AstNode::Assignment(v) => v.eval(ctxt),
             // FIXME: finish eval
             // AstNode::ChainCatch(chain_catch) => todo!(),
             // AstNode::IfElseStmt(if_else_stmt) => todo!(),
             // AstNode::ForStmt(for_stmt) => todo!(),
             // AstNode::ReturnStmt(return_stmt) => todo!(),
-            // AstNode::Assignment(assignment) => todo!(),
             // AstNode::KeyValue(key_value) => todo!(),
             n => todo!("eval not implemented for {n:?}"),
+        }
+    }
+
+    pub fn as_assignable(&'_ self) -> Option<Assignable<'_>> {
+        match self {
+            AstNode::Identifier(v) => Some(Assignable::Identifier(v)),
+            AstNode::PropertyOf(v) => Some(Assignable::PropertyOf(v)),
+            AstNode::IndexOf(v) => Some(Assignable::IndexOf(v)),
+            _ => None,
         }
     }
 
@@ -249,6 +260,24 @@ impl From<IndexOf> for AstNode {
     }
 }
 
+#[derive(PartialEq, Debug, Clone)]
+pub enum Assignable<'a> {
+    Identifier(&'a Identifier),
+    PropertyOf(&'a PropertyOf),
+    IndexOf(&'a IndexOf),
+}
+
+impl<'a> Assignable<'a> {
+    pub fn set(&self, _ctxt: &mut Context, _value: Value) -> Result<Value, InternalProgramError> {
+        match self {
+            // FIXME: finish eval
+            Assignable::Identifier(_v) => todo!(),
+            _ => todo!(),
+            // Assignable::PropertyOf(v) => todo!(),
+            // Assignable::IndexOf(v) => todo!(),
+        }
+    }
+}
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct Span {
     pub(crate) start: usize,
@@ -406,26 +435,6 @@ impl Arg {
 #[derive(PartialEq, Debug, Clone)]
 pub struct ReturnStmt {
     pub(crate) value: Option<Box<AstNode>>,
-}
-
-#[derive(PartialEq, Debug, Clone)]
-pub struct Declaration {
-    pub(crate) ident: Identifier,
-    pub(crate) value: Box<AstNode>,
-}
-
-impl Eval for Declaration {
-    fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
-        let value = self.value.eval(ctxt)?;
-        ctxt.set(&self.ident, value);
-        Ok(Value::Nil)
-    }
-}
-
-#[derive(PartialEq, Debug, Clone)]
-pub struct Assignment {
-    pub(crate) lhs: Box<AstNode>,
-    pub(crate) rhs: Box<AstNode>,
 }
 
 #[derive(PartialEq, Debug, Clone)]
