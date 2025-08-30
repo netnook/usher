@@ -55,6 +55,27 @@ pub struct BinaryOp {
     pub(crate) span: Span,
 }
 
+macro_rules! bad_type_error {
+    ($op:expr, LHS, $expected:expr, $actual:expr) => {
+        return Err(InternalProgramError {
+            msg: format!(
+                "Expected {} but got {} on LHS of {} operation",
+                $expected, $actual, $op.op,
+            ),
+            span: $op.lhs.span().clone(),
+        })
+    };
+    ($op:expr, RHS, $expected:expr, $actual:expr) => {
+        return Err(InternalProgramError {
+            msg: format!(
+                "Expected {} but got {} on RHS of {} operation",
+                $expected, $actual, $op.op,
+            ),
+            span: $op.rhs.span().clone(),
+        })
+    };
+}
+
 impl BinaryOp {
     pub fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
         // Do the logical short-circuiting ops first, taking care to only evaluate rhs
@@ -63,15 +84,7 @@ impl BinaryOp {
             BinaryOpCode::And => {
                 let lhs = self.lhs.eval(ctxt)?;
                 let Value::Bool(lhs) = lhs else {
-                    return Err(InternalProgramError {
-                        msg: format!(
-                            "Expected {} but got {} on LHS of {} operation",
-                            ValueType::Boolean,
-                            lhs.value_type(),
-                            self.op,
-                        ),
-                        span: self.span.clone(),
-                    });
+                    bad_type_error!(self, LHS, ValueType::Boolean, lhs.value_type());
                 };
 
                 if !lhs {
@@ -80,20 +93,28 @@ impl BinaryOp {
 
                 let rhs = self.rhs.eval(ctxt)?;
                 let Value::Bool(rhs) = rhs else {
-                    return Err(InternalProgramError {
-                        msg: format!(
-                            "Expected {} but got {} on RHS of {} operation",
-                            ValueType::Boolean,
-                            rhs.value_type(),
-                            self.op,
-                        ),
-                        span: self.span.clone(),
-                    });
+                    bad_type_error!(self, RHS, ValueType::Boolean, rhs.value_type());
                 };
 
                 return Ok(Value::Bool(rhs));
             }
-            BinaryOpCode::Or => todo!(),
+            BinaryOpCode::Or => {
+                let lhs = self.lhs.eval(ctxt)?;
+                let Value::Bool(lhs) = lhs else {
+                    bad_type_error!(self, LHS, ValueType::Boolean, lhs.value_type());
+                };
+
+                if lhs {
+                    return Ok(Value::Bool(true));
+                }
+
+                let rhs = self.rhs.eval(ctxt)?;
+                let Value::Bool(rhs) = rhs else {
+                    bad_type_error!(self, RHS, ValueType::Boolean, rhs.value_type());
+                };
+
+                return Ok(Value::Bool(rhs));
+            }
             _ => {}
         };
 
@@ -204,5 +225,18 @@ mod tests {
 
         do_test_eval_err(and(s("x"), b(false)));
         do_test_eval_err(and(b(true), s("x")));
+    }
+
+    #[test]
+    fn test_eval_or() {
+        do_test_eval_ok(or(b(false), b(false)), b(false));
+        do_test_eval_ok(or(b(false), b(true)), b(true));
+        do_test_eval_ok(or(b(true), b(false)), b(true));
+        do_test_eval_ok(or(b(true), b(true)), b(true));
+
+        do_test_eval_ok(or(b(true), s("x")), b(true));
+
+        do_test_eval_err(or(s("x"), b(false)));
+        do_test_eval_err(or(b(false), s("x")));
     }
 }
