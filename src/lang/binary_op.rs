@@ -77,6 +77,10 @@ macro_rules! bad_type_error {
 }
 
 impl BinaryOp {
+    pub fn span(&self) -> Span {
+        Span::merge(self.lhs.span(), self.rhs.span())
+    }
+
     pub fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
         // Do the logical short-circuiting ops first, taking care to only evaluate rhs
         // if necessary

@@ -58,19 +58,19 @@ mod tests {
     #[test]
     fn test_integers() {
         // FIXME check exact/location matach
-        do_test_opt_parser_some(Parser::integer, "_1_", i(1).span(1, 1), 1);
-        do_test_opt_parser_some(Parser::integer, "_1", i(1).span(1, 1), 0);
-        do_test_opt_parser_some(Parser::integer, "_-1_", i(-1).span(1, 2), 1);
-        do_test_opt_parser_some(Parser::integer, "_0_", i(0).span(1, 1), 1);
-        do_test_opt_parser_some(Parser::integer, "_1289_", i(1289).span(1, 4), 1);
-        do_test_opt_parser_some(Parser::integer, "_-1289_", i(-1289).span(1, 5), 1);
-        do_test_opt_parser_some(Parser::integer, "_-0_", i(0).span(1, 2), 1);
-        do_test_opt_parser_some(Parser::integer, "_000_", i(0).span(1, 3), 1);
-        do_test_opt_parser_some(Parser::integer, "_007_", i(7).span(1, 3), 1);
-        do_test_opt_parser_some(Parser::integer, "_-007_", i(-7).span(1, 4), 1);
+        do_test_opt_parser_some(Parser::integer, "_1_", i(1).spanned(1, 1), 1);
+        do_test_opt_parser_some(Parser::integer, "_1", i(1).spanned(1, 1), 0);
+        do_test_opt_parser_some(Parser::integer, "_-1_", i(-1).spanned(1, 2), 1);
+        do_test_opt_parser_some(Parser::integer, "_0_", i(0).spanned(1, 1), 1);
+        do_test_opt_parser_some(Parser::integer, "_1289_", i(1289).spanned(1, 4), 1);
+        do_test_opt_parser_some(Parser::integer, "_-1289_", i(-1289).spanned(1, 5), 1);
+        do_test_opt_parser_some(Parser::integer, "_-0_", i(0).spanned(1, 2), 1);
+        do_test_opt_parser_some(Parser::integer, "_000_", i(0).spanned(1, 3), 1);
+        do_test_opt_parser_some(Parser::integer, "_007_", i(7).spanned(1, 3), 1);
+        do_test_opt_parser_some(Parser::integer, "_-007_", i(-7).spanned(1, 4), 1);
 
-        do_test_opt_parser_some(Parser::integer, "_1.1_", i(1).span(1, 1), 3);
-        do_test_opt_parser_some(Parser::integer, "_-1.1_", i(-1).span(1, 2), 3);
+        do_test_opt_parser_some(Parser::integer, "_1.1_", i(1).spanned(1, 1), 3);
+        do_test_opt_parser_some(Parser::integer, "_-1.1_", i(-1).spanned(1, 2), 3);
 
         do_test_opt_parser_none(Parser::integer, "_-x.0_");
         do_test_opt_parser_none(Parser::integer, "_x");
@@ -79,15 +79,20 @@ mod tests {
 
     #[test]
     fn test_floats() {
-        do_test_opt_parser_some(Parser::float, "_1.0_", f(1.0).span(1, 3), 1);
-        do_test_opt_parser_some(Parser::float, "_-1.0_", f(-1.0).span(1, 4), 1);
-        do_test_opt_parser_some(Parser::float, "_0._", f(0.0).span(1, 2), 1);
-        do_test_opt_parser_some(Parser::float, "_1289.0_", f(1289.0).span(1, 6), 1);
-        do_test_opt_parser_some(Parser::float, "_-1289.0_", f(-1289.0).span(1, 7), 1);
-        do_test_opt_parser_some(Parser::float, "_-0.000_", f(0.0).span(1, 6), 1);
-        do_test_opt_parser_some(Parser::float, "_000.00_", f(0.0).span(1, 6), 1);
-        do_test_opt_parser_some(Parser::float, "_007.123099_", f(7.123099).span(1, 10), 1);
-        do_test_opt_parser_some(Parser::float, "_-007.123099_", f(-7.123099).span(1, 11), 1);
+        do_test_opt_parser_some(Parser::float, "_1.0_", f(1.0).spanned(1, 3), 1);
+        do_test_opt_parser_some(Parser::float, "_-1.0_", f(-1.0).spanned(1, 4), 1);
+        do_test_opt_parser_some(Parser::float, "_0._", f(0.0).spanned(1, 2), 1);
+        do_test_opt_parser_some(Parser::float, "_1289.0_", f(1289.0).spanned(1, 6), 1);
+        do_test_opt_parser_some(Parser::float, "_-1289.0_", f(-1289.0).spanned(1, 7), 1);
+        do_test_opt_parser_some(Parser::float, "_-0.000_", f(0.0).spanned(1, 6), 1);
+        do_test_opt_parser_some(Parser::float, "_000.00_", f(0.0).spanned(1, 6), 1);
+        do_test_opt_parser_some(Parser::float, "_007.123099_", f(7.123099).spanned(1, 10), 1);
+        do_test_opt_parser_some(
+            Parser::float,
+            "_-007.123099_",
+            f(-7.123099).spanned(1, 11),
+            1,
+        );
 
         do_test_opt_parser_none(Parser::float, "_10_");
         do_test_opt_parser_none(Parser::float, "_1");

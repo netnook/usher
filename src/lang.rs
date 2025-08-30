@@ -125,10 +125,11 @@ impl AstNode {
         }
     }
 
-    pub fn span(&self) -> &Span {
+    pub fn span(&self) -> Span {
         match self {
-            AstNode::Identifier(v) => &v.span,
-            AstNode::Literal(v) => &v.span,
+            AstNode::Identifier(v) => v.span,
+            AstNode::Literal(v) => v.span,
+            AstNode::BinaryOp(v) => v.span(),
             // FIXME: finish pos
             // AstNode::Declaration(v) => v.eval(ctxt),
             // AstNode::FunctionCall(v) => v.eval(ctxt),
@@ -138,7 +139,6 @@ impl AstNode {
             // AstNode::PropertyOf(property_of) => todo!(),
             // AstNode::IndexOf(index_of) => todo!(),
             // AstNode::UnaryOp(unary_op) => todo!(),
-            // AstNode::BinaryOp(binary_op) => todo!(),
             // AstNode::ChainCatch(chain_catch) => todo!(),
             // AstNode::Block(block) => todo!(),
             // AstNode::IfElseStmt(if_else_stmt) => todo!(),
@@ -218,7 +218,7 @@ impl From<BinaryOp> for AstNode {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct Span {
     pub(crate) start: usize,
     pub(crate) len: usize,
@@ -230,6 +230,16 @@ impl Span {
     }
     pub(crate) fn start_end(start: usize, end: usize) -> Self {
         Self::new(start, end - start)
+    }
+    pub(crate) fn end(&self) -> usize {
+        self.start + self.len
+    }
+    pub(crate) fn merge(mut a: Self, b: Self) -> Self {
+        let start = a.start.min(b.start);
+        let end = a.end().min(b.end());
+        a.start = start;
+        a.len = end - start;
+        a
     }
 }
 

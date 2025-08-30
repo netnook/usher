@@ -561,7 +561,7 @@ pub mod tests {
     macro_rules! with_span {
         ($type:ident) => {
             impl $type {
-                pub fn span(mut self, start: usize, len: usize) -> Self {
+                pub fn spanned(mut self, start: usize, len: usize) -> Self {
                     self.span = Span::new(start, len);
                     self
                 }
