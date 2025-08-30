@@ -208,11 +208,15 @@ impl<'a> Parser<'a> {
     fn prefix_expression(&mut self) -> ParseResult<Option<AstNode>> {
         let start = self.pos;
 
-        let mut prefixes = Vec::new();
+        let mut ops = Vec::new();
 
         loop {
             if self.char(b'!') {
-                prefixes.push(UnaryOpCode::Not);
+                ops.push(UnaryOp {
+                    op: UnaryOpCode::Not,
+                    on: Box::new(AstNode::This), // dummy
+                    span: Span::new(self.pos - 1, 1),
+                });
                 continue;
             };
             if self.char(b'-') {
@@ -220,7 +224,11 @@ impl<'a> Parser<'a> {
                     self.pos -= 1;
                     break;
                 }
-                prefixes.push(UnaryOpCode::Negative);
+                ops.push(UnaryOp {
+                    op: UnaryOpCode::Negative,
+                    on: Box::new(AstNode::This), // dummy
+                    span: Span::new(self.pos - 1, 1),
+                });
                 continue;
             };
             break;
@@ -231,11 +239,9 @@ impl<'a> Parser<'a> {
             return Ok(None);
         };
 
-        while let Some(op) = prefixes.pop() {
-            node = AstNode::UnaryOp(UnaryOp {
-                op,
-                on: node.into(),
-            });
+        while let Some(mut op) = ops.pop() {
+            *op.on = node;
+            node = AstNode::UnaryOp(op);
         }
 
         Ok(Some(node))

@@ -69,6 +69,21 @@ fn test_stmt_spanneds() {
         .into(),
         -1,
     );
+    do_test_parser_exact(
+        Parser::stmt,
+        " var a = !(-b==c) ",
+        var(
+            id("a").spanned(5, 1),
+            not(equal(
+                neg(id("b").spanned(12, 1)).spanned(11, 1),
+                id("c").spanned(15, 1),
+            )
+            .spanned(13, 2))
+            .spanned(9, 1),
+        )
+        .into(),
+        -1,
+    );
 }
 
 #[test]

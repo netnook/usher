@@ -133,17 +133,19 @@ pub mod tests {
             inner: from.into().into(),
         })
     }
-    pub(crate) fn neg(on: impl Into<AstNode>) -> AstNode {
-        AstNode::UnaryOp(UnaryOp {
+    pub(crate) fn neg(on: impl Into<AstNode>) -> UnaryOp {
+        UnaryOp {
             on: on.into().into(),
             op: UnaryOpCode::Negative,
-        })
+            span: Span::new(999, 9999),
+        }
     }
-    pub(crate) fn not(on: impl Into<AstNode>) -> AstNode {
-        AstNode::UnaryOp(UnaryOp {
+    pub(crate) fn not(on: impl Into<AstNode>) -> UnaryOp {
+        UnaryOp {
             op: UnaryOpCode::Not,
             on: on.into().into(),
-        })
+            span: Span::new(999, 9999),
+        }
     }
     pub(crate) fn add(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> BinaryOp {
         binary(BinaryOpCode::Add, lhs, rhs)
@@ -570,6 +572,7 @@ pub mod tests {
     }
 
     with_span!(BinaryOp);
+    with_span!(UnaryOp);
     with_span!(Literal);
     with_span!(Identifier);
 }

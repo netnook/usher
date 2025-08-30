@@ -1,8 +1,10 @@
 mod binary_op;
+mod unary_op;
 mod value;
 
 pub use binary_op::{BinaryOp, BinaryOpCode};
 use std::collections::HashMap;
+pub use unary_op::{UnaryOp, UnaryOpCode};
 pub use value::Value;
 
 use crate::find_source_position;
@@ -107,12 +109,12 @@ impl AstNode {
             AstNode::Identifier(v) => v.eval(ctxt),
             AstNode::InterpolatedStr(v) => v.eval(ctxt),
             AstNode::BinaryOp(v) => v.eval(ctxt),
+            AstNode::UnaryOp(v) => v.eval(ctxt),
             // FIXME: finish eval
             // AstNode::ListBuilder(list_builder) => todo!(),
             // AstNode::DictBuilder(dict_builder) => todo!(),
             // AstNode::PropertyOf(property_of) => todo!(),
             // AstNode::IndexOf(index_of) => todo!(),
-            // AstNode::UnaryOp(unary_op) => todo!(),
             // AstNode::ChainCatch(chain_catch) => todo!(),
             // AstNode::Block(block) => todo!(),
             // AstNode::IfElseStmt(if_else_stmt) => todo!(),
@@ -217,6 +219,11 @@ impl From<BinaryOp> for AstNode {
         Self::BinaryOp(value)
     }
 }
+impl From<UnaryOp> for AstNode {
+    fn from(value: UnaryOp) -> Self {
+        Self::UnaryOp(value)
+    }
+}
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct Span {
@@ -278,12 +285,6 @@ impl Identifier {
 }
 
 #[derive(PartialEq, Debug, Clone)]
-pub struct UnaryOp {
-    pub(crate) op: UnaryOpCode,
-    pub(crate) on: Box<AstNode>,
-}
-
-#[derive(PartialEq, Debug, Clone)]
 pub struct ChainCatch {
     pub(crate) inner: Box<AstNode>,
 }
@@ -315,7 +316,7 @@ impl InterpolatedStr {
                 let val = p.eval(ctxt)?;
                 let s = val.as_string().map_err(|e| InternalProgramError {
                     msg: format!("Error interpolating string: {}", e.msg),
-                    span: p.span().clone(),
+                    span: p.span(),
                 })?;
                 res.push_str(&format!("{s}"));
             }
@@ -343,12 +344,6 @@ impl DictBuilder {
     pub(crate) fn new(entries: Vec<KeyValue>) -> Self {
         Self { entries }
     }
-}
-
-#[derive(PartialEq, Debug, Clone)]
-pub enum UnaryOpCode {
-    Not,
-    Negative,
 }
 
 #[derive(PartialEq, Debug, Clone)]
