@@ -9,6 +9,7 @@ pub enum ValueType {
     Integer,
     Float,
     Boolean,
+    List,
     Dict,
     Nil,
 }
@@ -28,6 +29,7 @@ impl ValueType {
             ValueType::Integer => "integer",
             ValueType::Float => "float",
             ValueType::Boolean => "boolean",
+            ValueType::List => "list",
             ValueType::Dict => "dict",
             ValueType::Nil => "nil",
         }
@@ -42,6 +44,7 @@ pub enum Value {
     Integer(isize),
     Float(f64),
     Bool(bool),
+    List(List),
     Dict(Dict),
     Nil,
 }
@@ -66,6 +69,11 @@ impl Value {
                 true => Cow::Borrowed("true"),
                 false => Cow::Borrowed("false"),
             },
+            Value::List(_) => {
+                let mut result = String::new();
+                self.write_to(&mut result)?;
+                Cow::Owned(result)
+            }
             Value::Dict(_) => {
                 let mut result = String::new();
                 self.write_to(&mut result)?;
@@ -103,6 +111,21 @@ impl Value {
                 true => into.push_str("true"),
                 false => into.push_str("false"),
             },
+            Value::List(v) => {
+                into.push('[');
+
+                let mut first = true;
+                for v in &v.content {
+                    if !first {
+                        into.push(',');
+                    } else {
+                        first = false;
+                    }
+                    v.write_to(into)?;
+                }
+
+                into.push(']');
+            }
             Value::Dict(v) => {
                 into.push_str("dict(");
 
@@ -135,15 +158,52 @@ impl Value {
             Value::Integer(_) => ValueType::Integer,
             Value::Float(_) => ValueType::Float,
             Value::Bool(_) => ValueType::Boolean,
+            Value::List(_) => ValueType::List,
             Value::Dict(_) => ValueType::Dict,
             Value::Nil => ValueType::Nil,
         }
     }
 }
 
+impl From<List> for Value {
+    fn from(value: List) -> Self {
+        Self::List(value)
+    }
+}
+
 impl From<Dict> for Value {
     fn from(value: Dict) -> Self {
         Self::Dict(value)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct List {
+    pub content: Vec<Value>,
+}
+
+impl List {
+    pub fn new() -> Self {
+        Self {
+            content: Vec::new(),
+        }
+    }
+
+    pub fn get(&self, index: usize) -> Option<Value> {
+        self.content.get(index).cloned()
+    }
+
+    #[allow(dead_code)] // FIXME: remove later
+    pub fn set(&mut self, index: usize, value: Value) {
+        self.content.insert(index, value);
+    }
+
+    pub fn add(&mut self, value: Value) {
+        self.content.push(value);
+    }
+
+    pub fn len(&self) -> usize {
+        self.content.len()
     }
 }
 
@@ -223,6 +283,21 @@ mod tests {
         );
 
         {
+            let mut list = List::new();
+            list.add(Value::Integer(1));
+            list.add(Value::Nil);
+            let list_a = List::new();
+            list.add(list_a.into());
+            let mut list_b = List::new();
+            list_b.add(Value::Str("bar".to_string()));
+            list.add(list_b.into());
+
+            let str = format!("{}", Value::List(list).as_string().unwrap());
+            assert_eq!(str, r#"[1,nil,[],["bar"]]"#);
+        }
+        do_test_as_string(Value::Dict(Dict::new()), "dict()");
+
+        {
             let mut dict = Dict::new();
             dict.set("one".to_string(), Value::Integer(1));
             dict.set("nil".to_string(), Value::Nil);
@@ -262,5 +337,24 @@ mod tests {
 
         assert_eq!(d.remove("foo"), Some(Value::Str("aaa".to_string())));
         assert_eq!(d.get("foo"), None);
+    }
+
+    #[test]
+    fn test_list() {
+        let mut l = List::new();
+
+        assert_eq!(l.get(0), None);
+        assert_eq!(l.get(1), None);
+        assert_eq!(l.len(), 0);
+
+        l.add(Value::Integer(42));
+        assert_eq!(l.get(0), Some(Value::Integer(42)));
+        assert_eq!(l.get(1), None);
+        assert_eq!(l.len(), 1);
+
+        l.add(Value::Str("aaa".to_string()));
+        assert_eq!(l.get(0), Some(Value::Integer(42)));
+        assert_eq!(l.get(1), Some(Value::Str("aaa".to_string())));
+        assert_eq!(l.len(), 2);
     }
 }

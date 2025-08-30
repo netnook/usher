@@ -1,5 +1,5 @@
 use super::{ParseResult, Parser, SyntaxError};
-use crate::lang::ListBuilder;
+use crate::lang::{ListBuilder, Span};
 
 const MISSING_CLOSE: &str = "Missing closing ']'.";
 const EXPECTED_EXPRESSION_OR_CLOSE: &str = "Expected expression or ']'.";
@@ -61,7 +61,10 @@ impl<'a> Parser<'a> {
             });
         }
 
-        Ok(Some(ListBuilder::new(entries)))
+        Ok(Some(ListBuilder::new(
+            entries,
+            Span::start_end(start, self.pos),
+        )))
     }
 }
 
@@ -76,12 +79,12 @@ mod tests {
 
     #[test]
     fn test_list_ok() {
-        let expect = ListBuilder::new(vec![i(1).into(), i(2).into(), i(3).into(), i(4).into()]);
+        let expect = list!(i(1), i(2), i(3), i(4));
         do_test_expr_ok(" [1,2,3,4] ", expect.clone(), -1);
         do_test_expr_ok(" [1,2,3,4,] ", expect.clone(), -1);
         do_test_expr_ok(" [ 1 , 2 , 3 , 4 ] ", expect.clone(), -1);
-        do_test_expr_ok(r#" [] "#, ListBuilder::new(Vec::new()), -1);
-        do_test_expr_ok(r#" [  ] "#, ListBuilder::new(Vec::new()), -1);
+        do_test_expr_ok(r#" [] "#, list!(), -1);
+        do_test_expr_ok(r#" [  ] "#, list!(), -1);
         do_test_expr_ok(
             " [ # comment \n 1 , # comment \n 2 # comment \n , # comment \n\n 3 # comment \n , # comment \n 4 ] ",
             expect.clone(),
@@ -93,28 +96,14 @@ mod tests {
             -1,
         );
 
-        let expect = ListBuilder::new(vec![
-            i(1).into(),
-            nil().into(),
-            b(false).into(),
-            s("foo").into(),
-        ]);
+        let expect = list!(i(1), nil(), b(false), s("foo"));
         do_test_expr_ok(r#" [1,nil,false,"foo"] "#, expect.clone(), -1);
         do_test_expr_ok(r#" [1, nil, false, "foo"] "#, expect.clone(), -1);
         do_test_expr_ok(r#" [1, nil, false, "foo", ] "#, expect.clone(), -1);
-        do_test_expr_ok(
-            " [ # comment\n # comment \n \n ] ",
-            ListBuilder::new(Vec::new()),
-            -1,
-        );
+        do_test_expr_ok(" [ # comment\n # comment \n \n ] ", list!(), -1);
         do_test_expr_ok(
             " [[1, 1], 2, [3, 3, 3,], 4,] ",
-            ListBuilder::new(vec![
-                ListBuilder::new(vec![i(1).into(), i(1).into()]).into(),
-                i(2).into(),
-                ListBuilder::new(vec![i(3).into(), i(3).into(), i(3).into()]).into(),
-                i(4).into(),
-            ]),
+            list!(list!(i(1), i(1)), i(2), list!(i(3), i(3), i(3)), i(4)),
             -1,
         );
     }

@@ -82,8 +82,8 @@ pub mod tests {
     use crate::{
         lang::{
             Assignment, AstNode, BinaryOp, BinaryOpCode, Block, ChainCatch, Declaration,
-            DictBuilder, ForStmt, Identifier, IndexOf, KeyValue, Literal, PropertyOf, Span,
-            UnaryOp, UnaryOpCode, Value,
+            DictBuilder, ForStmt, Identifier, IndexOf, KeyValue, ListBuilder, Literal, PropertyOf,
+            Span, UnaryOp, UnaryOpCode, Value,
         },
         parser::Parser,
     };
@@ -123,6 +123,18 @@ pub mod tests {
             span: Span::new(999, 9999),
         }
     }
+    macro_rules! list{
+        ($($entry:expr),*) => {{
+            use crate::lang::ListBuilder;
+            use crate::lang::Span;
+            ListBuilder {
+                entries: vec![$($entry.into()),*],
+                span: Span::new(999, 9999),
+            }
+        }};
+    }
+    pub(crate) use list;
+
     pub(crate) fn prop_of(from: impl Into<AstNode>, prop: impl Into<Identifier>) -> PropertyOf {
         PropertyOf {
             from: from.into().into(),
@@ -130,11 +142,12 @@ pub mod tests {
             span: Span::new(999, 9999),
         }
     }
-    pub(crate) fn index_of(from: impl Into<AstNode>, index: impl Into<AstNode>) -> AstNode {
-        AstNode::IndexOf(IndexOf {
+    pub(crate) fn index_of(from: impl Into<AstNode>, index: impl Into<AstNode>) -> IndexOf {
+        IndexOf {
             from: from.into().into(),
             index: index.into().into(),
-        })
+            span: Span::new(999, 9999),
+        }
     }
     pub(crate) fn chain_catch(from: impl Into<AstNode>) -> AstNode {
         AstNode::ChainCatch(ChainCatch {
@@ -591,4 +604,6 @@ pub mod tests {
     with_span!(Identifier);
     with_span!(DictBuilder);
     with_span!(PropertyOf);
+    with_span!(ListBuilder);
+    with_span!(IndexOf);
 }

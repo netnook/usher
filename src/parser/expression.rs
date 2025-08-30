@@ -270,10 +270,11 @@ impl<'a> Parser<'a> {
                 continue;
             }
 
-            if let Some(index) = self.index_of()? {
+            if let Some((index, span)) = self.index_of()? {
                 node = AstNode::IndexOf(IndexOf {
                     from: node.into(),
                     index: index.into(),
+                    span,
                 });
                 continue;
             }
@@ -402,7 +403,8 @@ impl<'a> Parser<'a> {
         )))
     }
 
-    fn index_of(&mut self) -> ParseResult<Option<AstNode>> {
+    fn index_of(&mut self) -> ParseResult<Option<(AstNode, Span)>> {
+        let start = self.pos;
         if !self.char(b'[') {
             return Ok(None);
         }
@@ -419,7 +421,7 @@ impl<'a> Parser<'a> {
             return Err(SyntaxError::new(self.pos, EXPECTED_COSING_BRACKET));
         }
 
-        Ok(Some(index))
+        Ok(Some((index, Span::start_end(start, self.pos))))
     }
 
     fn call_of(&mut self) -> ParseResult<Option<Vec<Arg>>> {

@@ -48,6 +48,18 @@ fn test_string_spans() {
 }
 
 #[test]
+fn test_list_spans() {
+    do_test_parser_exact(
+        Parser::expression,
+        r#" [111, "xxx"] "#,
+        list!(i(111).spanned(2, 3), s("xxx").spanned(7, 5))
+            .spanned(1, 12)
+            .into(),
+        -1,
+    );
+}
+
+#[test]
 fn test_dict_spans() {
     do_test_parser_exact(
         Parser::expression,
@@ -107,6 +119,17 @@ fn test_stmt_spanneds() {
             id("ghi").spanned(9, 3),
         )
         .spanned(8, 4)
+        .into(),
+        -1,
+    );
+    do_test_parser_exact(
+        Parser::stmt,
+        r#" abc[a][123] "#,
+        index_of(
+            index_of(id("abc").spanned(1, 3), id("a").spanned(5, 1)).spanned(4, 3),
+            i(123).spanned(8, 3),
+        )
+        .spanned(7, 5)
         .into(),
         -1,
     );

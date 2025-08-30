@@ -1,10 +1,12 @@
 mod binary_op;
 mod dict;
+mod list;
 mod unary_op;
 mod value;
 
 pub use binary_op::{BinaryOp, BinaryOpCode};
 pub use dict::{DictBuilder, PropertyOf};
+pub use list::{IndexOf, ListBuilder};
 use std::collections::HashMap;
 pub use unary_op::{UnaryOp, UnaryOpCode};
 pub use value::Value;
@@ -114,9 +116,9 @@ impl AstNode {
             AstNode::UnaryOp(v) => v.eval(ctxt),
             AstNode::DictBuilder(v) => v.eval(ctxt),
             AstNode::PropertyOf(v) => v.eval(ctxt),
+            AstNode::ListBuilder(v) => v.eval(ctxt),
+            AstNode::IndexOf(v) => v.eval(ctxt),
             // FIXME: finish eval
-            // AstNode::ListBuilder(list_builder) => todo!(),
-            // AstNode::IndexOf(index_of) => todo!(),
             // AstNode::ChainCatch(chain_catch) => todo!(),
             // AstNode::Block(block) => todo!(),
             // AstNode::IfElseStmt(if_else_stmt) => todo!(),
@@ -302,12 +304,6 @@ pub struct ChainCatch {
 }
 
 #[derive(PartialEq, Debug, Clone)]
-pub struct IndexOf {
-    pub(crate) from: Box<AstNode>,
-    pub(crate) index: Box<AstNode>,
-}
-
-#[derive(PartialEq, Debug, Clone)]
 pub struct InterpolatedStr {
     pub(crate) parts: Vec<AstNode>,
 }
@@ -328,16 +324,6 @@ impl InterpolatedStr {
             }
             Ok(Value::Str(res))
         }
-    }
-}
-#[derive(PartialEq, Debug, Clone)]
-pub struct ListBuilder {
-    pub(crate) entries: Vec<AstNode>,
-}
-
-impl ListBuilder {
-    pub(crate) fn new(entries: Vec<AstNode>) -> Self {
-        Self { entries }
     }
 }
 

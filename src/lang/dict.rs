@@ -39,7 +39,7 @@ impl PropertyOf {
         let Value::Dict(from) = from else {
             return Err(InternalProgramError {
                 msg: format!(
-                    "Property-of operator can only be applied to {} but got {} LHS",
+                    "property-of operator can only be applied to {} but got {} LHS",
                     ValueType::Dict,
                     from.value_type()
                 ),
@@ -78,8 +78,6 @@ mod tests {
             let mut d = Dict::new();
             d.set("a".to_string(), Value::Integer(1));
             d.set("b".to_string(), Value::Str("bbb".to_string()));
-            // let id = "dict".into();
-            // ctxt.set(&id, d.into());
             ctxt.set(&id("dict"), d.into());
             ctxt
         };
