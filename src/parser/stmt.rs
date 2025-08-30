@@ -1,5 +1,5 @@
 use super::{ParseResult, Parser, SyntaxError};
-use crate::lang::{Assignment, AstNode, Block};
+use crate::lang::{Assignment, AstNode, Block, Span};
 
 pub(crate) const MISSING_BLOCK_END: &str = "Missing closing brace to end block.";
 pub(crate) const EXPECTED_NEW_LINE_AFTER_STMT: &str = "Expected new line after statement.";
@@ -86,7 +86,10 @@ impl<'a> Parser<'a> {
             stmts.push(stmt);
         }
 
-        Ok(Some(Block { stmts }))
+        Ok(Some(Block {
+            stmts,
+            span: Span::start_end(start, self.pos),
+        }))
     }
 
     pub(super) fn assignment_or_expression(&mut self) -> ParseResult<Option<AstNode>> {

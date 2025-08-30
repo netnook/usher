@@ -285,8 +285,10 @@ pub mod tests {
     macro_rules! _block{
         ($($stmt:expr),*) => {{
             use crate::lang::Block;
+            use crate::lang::Span;
             Block{
-                stmts:vec![$($stmt.into()),*]
+                stmts:vec![$($stmt.into()),*],
+                span: Span::new(999, 9999),
             }
         }};
     }
@@ -606,4 +608,5 @@ pub mod tests {
     with_span!(PropertyOf);
     with_span!(ListBuilder);
     with_span!(IndexOf);
+    with_span!(Block);
 }

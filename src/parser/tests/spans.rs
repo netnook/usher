@@ -133,6 +133,17 @@ fn test_stmt_spanneds() {
         .into(),
         -1,
     );
+    do_test_parser_exact(
+        Parser::stmt,
+        " { \n abc = 2 \n 42 \n } ",
+        _block!(
+            assign(id("abc").spanned(5, 3), i(2).spanned(11, 1)),
+            i(42).spanned(15, 2)
+        )
+        .spanned(1, 20)
+        .into(),
+        -1,
+    );
 }
 
 #[test]

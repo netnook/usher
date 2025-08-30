@@ -236,10 +236,10 @@ impl Dict {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::lang::Block;
     use crate::lang::BuiltInFunc;
     use crate::lang::FunctionDef;
     use crate::lang::Value;
+    use crate::parser::tests::_block;
 
     #[track_caller]
     fn do_test_as_string(val: Value, expected: &str) {
@@ -276,7 +276,7 @@ mod tests {
             Value::Func(FunctionDef {
                 name: None,
                 params: Vec::new(),
-                body: Block { stmts: Vec::new() }
+                body: _block!()
             })
             .as_string()
             .is_err()

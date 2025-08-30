@@ -1,10 +1,12 @@
 mod binary_op;
+mod block;
 mod dict;
 mod list;
 mod unary_op;
 mod value;
 
 pub use binary_op::{BinaryOp, BinaryOpCode};
+pub use block::Block;
 pub use dict::{DictBuilder, PropertyOf};
 pub use list::{IndexOf, ListBuilder};
 use std::collections::HashMap;
@@ -118,9 +120,9 @@ impl AstNode {
             AstNode::PropertyOf(v) => v.eval(ctxt),
             AstNode::ListBuilder(v) => v.eval(ctxt),
             AstNode::IndexOf(v) => v.eval(ctxt),
+            AstNode::Block(v) => v.eval(ctxt),
             // FIXME: finish eval
             // AstNode::ChainCatch(chain_catch) => todo!(),
-            // AstNode::Block(block) => todo!(),
             // AstNode::IfElseStmt(if_else_stmt) => todo!(),
             // AstNode::ForStmt(for_stmt) => todo!(),
             // AstNode::FunctionDef(function_def) => todo!(),
@@ -345,11 +347,6 @@ pub struct ForStmt {
     pub(crate) loop_var_2: Option<Identifier>,
     pub(crate) loop_expr: Box<AstNode>,
     pub(crate) block: Block,
-}
-
-#[derive(PartialEq, Debug, Clone)]
-pub struct Block {
-    pub(crate) stmts: Vec<AstNode>,
 }
 
 #[derive(PartialEq, Debug, Clone)]
