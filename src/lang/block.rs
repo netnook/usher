@@ -1,4 +1,4 @@
-use crate::lang::{AstNode, Context, InternalProgramError, Span, Value};
+use crate::lang::{AstNode, Context, Eval, InternalProgramError, Span, Value};
 
 #[derive(PartialEq, Debug, Clone)]
 pub struct Block {
@@ -6,8 +6,8 @@ pub struct Block {
     pub(crate) span: Span,
 }
 
-impl Block {
-    pub fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
+impl Eval for Block {
+    fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
         // FIXME: need new context to separate scope !!!
         let mut result = Value::Nil;
         for stmt in &self.stmts {
@@ -21,7 +21,7 @@ impl Block {
 mod tests {
 
     use crate::{
-        lang::{Block, Context, Value},
+        lang::{Block, Context, Eval, Value},
         parser::tests::{_block, add, i},
     };
 

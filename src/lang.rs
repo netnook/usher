@@ -3,6 +3,7 @@ mod block;
 mod dict;
 mod function;
 mod list;
+mod string;
 mod unary_op;
 mod value;
 
@@ -12,6 +13,7 @@ pub use dict::{DictBuilder, PropertyOf};
 pub use function::{FunctionDef, Param};
 pub use list::{IndexOf, ListBuilder};
 use std::{collections::HashMap, rc::Rc};
+pub use string::InterpolatedStr;
 pub use unary_op::{UnaryOp, UnaryOpCode};
 pub use value::Value;
 
@@ -282,7 +284,9 @@ impl Literal {
     pub fn new(val: Value, span: Span) -> Self {
         Self { val, span }
     }
-    pub fn eval(&self, _: &mut Context) -> Result<Value, InternalProgramError> {
+}
+impl Eval for Literal {
+    fn eval(&self, _: &mut Context) -> Result<Value, InternalProgramError> {
         Ok(self.val.clone())
     }
 }
@@ -297,7 +301,9 @@ impl Identifier {
     pub(crate) fn new(name: String, span: Span) -> Self {
         Self { name, span }
     }
-    pub fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
+}
+impl Eval for Identifier {
+    fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
         if self.name == "print" {
             Ok(Value::BuiltInFunc(BuiltInFunc::Print))
         } else {
@@ -309,30 +315,6 @@ impl Identifier {
 #[derive(PartialEq, Debug, Clone)]
 pub struct ChainCatch {
     pub(crate) inner: Box<AstNode>,
-}
-
-#[derive(PartialEq, Debug, Clone)]
-pub struct InterpolatedStr {
-    pub(crate) parts: Vec<AstNode>,
-}
-
-impl InterpolatedStr {
-    pub fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
-        if self.parts.len() == 1 {
-            self.parts.first().expect("should be there").eval(ctxt)
-        } else {
-            let mut res = String::new();
-            for p in &self.parts {
-                let val = p.eval(ctxt)?;
-                let s = val.as_string().map_err(|e| InternalProgramError {
-                    msg: format!("Error interpolating string: {}", e.msg),
-                    span: p.span(),
-                })?;
-                res.push_str(&format!("{s}"));
-            }
-            Ok(Value::Str(res))
-        }
-    }
 }
 
 #[derive(PartialEq, Debug, Clone)]
@@ -383,8 +365,8 @@ pub struct FunctionCall {
     pub(crate) args: Vec<Arg>,
 }
 
-impl FunctionCall {
-    pub fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
+impl Eval for FunctionCall {
+    fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
         // get the function
         let maybe_func = self.on.eval(ctxt)?;
 
@@ -432,8 +414,8 @@ pub struct Declaration {
     pub(crate) value: Box<AstNode>,
 }
 
-impl Declaration {
-    pub fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
+impl Eval for Declaration {
+    fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
         let value = self.value.eval(ctxt)?;
         ctxt.set(&self.ident, value);
         Ok(Value::Nil)

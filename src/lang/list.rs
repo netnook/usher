@@ -1,5 +1,5 @@
 use crate::lang::{
-    AstNode, Context, InternalProgramError, Span, Value,
+    AstNode, Context, Eval, InternalProgramError, Span, Value,
     value::{List, ValueType},
 };
 
@@ -13,7 +13,9 @@ impl ListBuilder {
     pub(crate) fn new(entries: Vec<AstNode>, span: Span) -> Self {
         Self { entries, span }
     }
-    pub fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
+}
+impl Eval for ListBuilder {
+    fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
         let mut list = List::new();
 
         for v in &self.entries {
@@ -32,8 +34,8 @@ pub struct IndexOf {
     pub(crate) span: Span,
 }
 
-impl IndexOf {
-    pub fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
+impl Eval for IndexOf {
+    fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
         // FIXME: returning an owned value won't work iw we want to be able to assign prop
         // to object and have result in conmext !!
         let from = self.from.eval(ctxt)?;
@@ -80,7 +82,7 @@ impl IndexOf {
 
 #[cfg(test)]
 mod tests {
-    use crate::lang::{AstNode, Context, Value, value::List};
+    use crate::lang::{AstNode, Context, Eval, Value, value::List};
 
     #[test]
     fn test_list_builder_eval() {

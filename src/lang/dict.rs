@@ -1,5 +1,5 @@
 use crate::lang::{
-    AstNode, Context, Identifier, InternalProgramError, KeyValue, Span, Value,
+    AstNode, Context, Eval, Identifier, InternalProgramError, KeyValue, Span, Value,
     value::{Dict, ValueType},
 };
 
@@ -9,8 +9,8 @@ pub struct DictBuilder {
     pub(crate) span: Span,
 }
 
-impl DictBuilder {
-    pub fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
+impl Eval for DictBuilder {
+    fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
         let mut dict = Dict::new();
 
         for e in &self.entries {
@@ -30,8 +30,8 @@ pub struct PropertyOf {
     pub(crate) span: Span,
 }
 
-impl PropertyOf {
-    pub fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
+impl Eval for PropertyOf {
+    fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
         // FIXME: returning an owned value won't work iw we want to be able to assign prop
         // to object and have result in conmext !!
         let from = self.from.eval(ctxt)?;
@@ -55,8 +55,7 @@ impl PropertyOf {
 
 #[cfg(test)]
 mod tests {
-    use crate::lang::AstNode;
-    use crate::lang::{Context, Value, value::Dict};
+    use crate::lang::{AstNode, Context, Eval, Value, value::Dict};
 
     #[test]
     fn test_dict_builder_eval() {

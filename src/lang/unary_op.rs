@@ -1,4 +1,4 @@
-use crate::lang::{AstNode, Context, InternalProgramError, Span, Value, value::ValueType};
+use crate::lang::{AstNode, Context, Eval, InternalProgramError, Span, Value, value::ValueType};
 use std::fmt::Display;
 
 #[derive(PartialEq, Debug, Clone)]
@@ -45,8 +45,9 @@ impl UnaryOp {
     pub fn span(&self) -> Span {
         Span::merge(self.span, self.on.span())
     }
-
-    pub fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
+}
+impl Eval for UnaryOp {
+    fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
         let on = self.on.eval(ctxt)?;
 
         let result = match self.op {
@@ -72,7 +73,7 @@ impl UnaryOp {
 #[cfg(test)]
 mod tests {
     use super::UnaryOp;
-    use crate::lang::{Context, Literal};
+    use crate::lang::{Context, Eval, Literal};
     use crate::parser::tests::*;
 
     #[track_caller]

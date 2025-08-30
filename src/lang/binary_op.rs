@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::lang::value::ValueType;
+use crate::lang::{Eval, value::ValueType};
 
 use super::{AstNode, Context, InternalProgramError, Span, Value};
 
@@ -80,8 +80,9 @@ impl BinaryOp {
     pub fn span(&self) -> Span {
         Span::merge(self.lhs.span(), self.rhs.span())
     }
-
-    pub fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
+}
+impl Eval for BinaryOp {
+    fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
         // Do the logical short-circuiting ops first, taking care to only evaluate rhs
         // if necessary
         match self.op {
@@ -206,7 +207,7 @@ impl BinaryOp {
 
 #[cfg(test)]
 mod tests {
-    use crate::lang::{Context, Literal};
+    use crate::lang::{Context, Eval, Literal};
     use crate::parser::tests::*;
 
     use super::BinaryOp;
