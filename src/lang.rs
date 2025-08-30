@@ -1,6 +1,7 @@
 mod binary_op;
 mod block;
 mod dict;
+mod function;
 mod list;
 mod unary_op;
 mod value;
@@ -8,8 +9,9 @@ mod value;
 pub use binary_op::{BinaryOp, BinaryOpCode};
 pub use block::Block;
 pub use dict::{DictBuilder, PropertyOf};
+pub use function::{FunctionDef, Param};
 pub use list::{IndexOf, ListBuilder};
-use std::collections::HashMap;
+use std::{collections::HashMap, rc::Rc};
 pub use unary_op::{UnaryOp, UnaryOpCode};
 pub use value::Value;
 
@@ -96,7 +98,7 @@ pub enum AstNode {
     IfElseStmt(IfElseStmt),
     ForStmt(ForStmt),
     Declaration(Declaration),
-    FunctionDef(FunctionDef),
+    FunctionDef(Rc<FunctionDef>),
     FunctionCall(FunctionCall),
     ReturnStmt(ReturnStmt),
     Assignment(Assignment),
@@ -104,6 +106,10 @@ pub enum AstNode {
     Break,
     Continue,
     End,
+}
+
+trait Eval {
+    fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError>;
 }
 
 impl AstNode {
@@ -121,11 +127,11 @@ impl AstNode {
             AstNode::ListBuilder(v) => v.eval(ctxt),
             AstNode::IndexOf(v) => v.eval(ctxt),
             AstNode::Block(v) => v.eval(ctxt),
+            AstNode::FunctionDef(v) => v.eval(ctxt),
             // FIXME: finish eval
             // AstNode::ChainCatch(chain_catch) => todo!(),
             // AstNode::IfElseStmt(if_else_stmt) => todo!(),
             // AstNode::ForStmt(for_stmt) => todo!(),
-            // AstNode::FunctionDef(function_def) => todo!(),
             // AstNode::ReturnStmt(return_stmt) => todo!(),
             // AstNode::Assignment(assignment) => todo!(),
             // AstNode::KeyValue(key_value) => todo!(),
@@ -207,7 +213,7 @@ impl From<Declaration> for AstNode {
 }
 impl From<FunctionDef> for AstNode {
     fn from(value: FunctionDef) -> Self {
-        Self::FunctionDef(value)
+        Self::FunctionDef(Rc::new(value))
     }
 }
 impl From<FunctionCall> for AstNode {
@@ -350,26 +356,6 @@ pub struct ForStmt {
 }
 
 #[derive(PartialEq, Debug, Clone)]
-pub struct FunctionDef {
-    pub(crate) name: Option<Identifier>,
-    pub(crate) params: Vec<Param>,
-    pub(crate) body: Block,
-}
-
-impl FunctionDef {
-    pub fn call(
-        &self,
-        ctxt: &mut Context,
-        params: Vec<Value>,
-    ) -> Result<Value, InternalProgramError> {
-        let _ = params;
-        let _ = ctxt;
-        let _ = Value::Func(self.clone());
-        todo!()
-    }
-}
-
-#[derive(PartialEq, Debug, Clone)]
 pub enum BuiltInFunc {
     Print,
 }
@@ -389,12 +375,6 @@ impl BuiltInFunc {
             }
         }
     }
-}
-
-#[derive(PartialEq, Debug, Clone)]
-pub struct Param {
-    pub(crate) name: Identifier,
-    pub(crate) value: Option<AstNode>,
 }
 
 #[derive(PartialEq, Debug, Clone)]

@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use super::{ParseResult, Parser, SyntaxError, chars::is_digit};
 use crate::lang::{
     Arg, AstNode, BinaryOp, BinaryOpCode, ChainCatch, FunctionCall, Identifier, IndexOf, KeyValue,
@@ -326,7 +328,9 @@ impl<'a> Parser<'a> {
                     Span::new(start, 5),
                 ))));
             }
-            Some("function") => return Ok(Some(AstNode::FunctionDef(self.function_def()?))),
+            Some("function") => {
+                return Ok(Some(AstNode::FunctionDef(Rc::new(self.function_def()?))));
+            }
             Some(id) => {
                 return Ok(Some(AstNode::Identifier(Identifier::new(
                     id.to_string(),

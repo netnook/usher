@@ -1,5 +1,5 @@
 use super::{BuiltInFunc, FunctionDef, InternalProgramError, Span};
-use std::{borrow::Cow, collections::HashMap, fmt::Display};
+use std::{borrow::Cow, collections::HashMap, fmt::Display, rc::Rc};
 
 #[derive(PartialEq, Debug, Clone)]
 pub enum ValueType {
@@ -38,7 +38,7 @@ impl ValueType {
 
 #[derive(PartialEq, Debug, Clone)]
 pub enum Value {
-    Func(FunctionDef),
+    Func(Rc<FunctionDef>),
     BuiltInFunc(BuiltInFunc),
     Str(String),
     Integer(isize),
@@ -273,11 +273,11 @@ mod tests {
 
         assert!(Value::BuiltInFunc(BuiltInFunc::Print).as_string().is_err());
         assert!(
-            Value::Func(FunctionDef {
+            Value::Func(Rc::new(FunctionDef {
                 name: None,
                 params: Vec::new(),
                 body: _block!()
-            })
+            }))
             .as_string()
             .is_err()
         );
