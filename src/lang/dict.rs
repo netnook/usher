@@ -1,5 +1,5 @@
 use crate::lang::{
-    AstNode, Context, Eval, Identifier, InternalProgramError, KeyValue, Span, Value,
+    AstNode, Context, Eval, Identifier, InternalProgramError, KeyValue, Setter, Span, Value,
     value::{Dict, ValueType},
 };
 
@@ -25,31 +25,51 @@ impl Eval for DictBuilder {
 
 #[derive(PartialEq, Debug, Clone)]
 pub struct PropertyOf {
-    pub(crate) from: Box<AstNode>,
+    pub(crate) of: Box<AstNode>,
     pub(crate) property: Identifier,
     pub(crate) span: Span,
+}
+
+impl PropertyOf {
+    fn of(&self, ctxt: &mut Context) -> Result<Dict, InternalProgramError> {
+        // FIXME: returning an owned value won't work iw we want to be able to assign prop
+        // to object and have result in conmext !!
+        let of = self.of.eval(ctxt)?;
+
+        let Value::Dict(of) = of else {
+            return Err(InternalProgramError {
+                msg: format!(
+                    "property-of operator can only be applied to {} but got {} LHS",
+                    ValueType::Dict,
+                    of.value_type()
+                ),
+                span: self.of.span(),
+            });
+        };
+
+        Ok(of)
+    }
 }
 
 impl Eval for PropertyOf {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
         // FIXME: returning an owned value won't work iw we want to be able to assign prop
         // to object and have result in conmext !!
-        let from = self.from.eval(ctxt)?;
+        let of = self.of(ctxt)?;
 
-        let Value::Dict(from) = from else {
-            return Err(InternalProgramError {
-                msg: format!(
-                    "property-of operator can only be applied to {} but got {} LHS",
-                    ValueType::Dict,
-                    from.value_type()
-                ),
-                span: self.from.span(),
-            });
-        };
-
-        let result = from.get(&self.property.name).unwrap_or(Value::Nil);
+        let result = of.get(&self.property.name).unwrap_or(Value::Nil);
 
         Ok(result)
+    }
+}
+
+impl Setter for PropertyOf {
+    fn set(&self, ctxt: &mut Context, value: Value) -> Result<(), InternalProgramError> {
+        let mut from = self.of(ctxt)?;
+
+        from.set(self.property.name.clone(), value);
+
+        Ok(())
     }
 }
 

@@ -135,16 +135,16 @@ pub mod tests {
     }
     pub(crate) use list;
 
-    pub(crate) fn prop_of(from: impl Into<AstNode>, prop: impl Into<Identifier>) -> PropertyOf {
+    pub(crate) fn prop_of(of: impl Into<AstNode>, prop: impl Into<Identifier>) -> PropertyOf {
         PropertyOf {
-            from: from.into().into(),
+            of: of.into().into(),
             property: prop.into(),
             span: Span::new(999, 9999),
         }
     }
-    pub(crate) fn index_of(from: impl Into<AstNode>, index: impl Into<AstNode>) -> IndexOf {
+    pub(crate) fn index_of(of: impl Into<AstNode>, index: impl Into<AstNode>) -> IndexOf {
         IndexOf {
-            from: from.into().into(),
+            of: of.into().into(),
             index: index.into().into(),
             span: Span::new(999, 9999),
         }

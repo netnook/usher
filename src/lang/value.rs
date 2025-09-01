@@ -193,9 +193,9 @@ impl List {
         self.content.get(index).cloned()
     }
 
-    #[allow(dead_code)] // FIXME: remove later
     pub fn set(&mut self, index: usize, value: Value) {
-        self.content.insert(index, value);
+        // should there be an error if index out of range, or grow automatically
+        self.content[index] = value;
     }
 
     pub fn add(&mut self, value: Value) {

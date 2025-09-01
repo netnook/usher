@@ -265,7 +265,7 @@ impl<'a> Parser<'a> {
 
             if let Some((property, span)) = self.property_of()? {
                 node = AstNode::PropertyOf(PropertyOf {
-                    from: node.into(),
+                    of: node.into(),
                     property,
                     span,
                 });
@@ -274,7 +274,7 @@ impl<'a> Parser<'a> {
 
             if let Some((index, span)) = self.index_of()? {
                 node = AstNode::IndexOf(IndexOf {
-                    from: node.into(),
+                    of: node.into(),
                     index: index.into(),
                     span,
                 });

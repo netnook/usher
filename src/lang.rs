@@ -116,6 +116,10 @@ trait Eval {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError>;
 }
 
+trait Setter {
+    fn set(&self, ctxt: &mut Context, value: Value) -> Result<(), InternalProgramError>;
+}
+
 impl AstNode {
     pub fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
         match self {
@@ -268,13 +272,11 @@ pub enum Assignable<'a> {
 }
 
 impl<'a> Assignable<'a> {
-    pub fn set(&self, _ctxt: &mut Context, _value: Value) -> Result<Value, InternalProgramError> {
+    pub fn set(&self, ctxt: &mut Context, value: Value) -> Result<(), InternalProgramError> {
         match self {
-            // FIXME: finish eval
-            Assignable::Identifier(_v) => todo!(),
-            _ => todo!(),
-            // Assignable::PropertyOf(v) => todo!(),
-            // Assignable::IndexOf(v) => todo!(),
+            Assignable::Identifier(v) => v.set(ctxt, value),
+            Assignable::PropertyOf(v) => v.set(ctxt, value),
+            Assignable::IndexOf(v) => v.set(ctxt, value),
         }
     }
 }
@@ -338,6 +340,12 @@ impl Eval for Identifier {
         } else {
             Ok(ctxt.get(self))
         }
+    }
+}
+impl Setter for Identifier {
+    fn set(&self, ctxt: &mut Context, value: Value) -> Result<(), InternalProgramError> {
+        ctxt.set(self, value);
+        Ok(())
     }
 }
 

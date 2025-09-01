@@ -1,5 +1,5 @@
 use crate::lang::{
-    AstNode, Context, Eval, InternalProgramError, Span, Value,
+    AstNode, Context, Eval, InternalProgramError, Setter, Span, Value,
     value::{List, ValueType},
 };
 
@@ -29,28 +29,32 @@ impl Eval for ListBuilder {
 
 #[derive(PartialEq, Debug, Clone)]
 pub struct IndexOf {
-    pub(crate) from: Box<AstNode>,
+    pub(crate) of: Box<AstNode>,
     pub(crate) index: Box<AstNode>,
     pub(crate) span: Span,
 }
 
-impl Eval for IndexOf {
-    fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
+impl IndexOf {
+    fn of(&self, ctxt: &mut Context) -> Result<List, InternalProgramError> {
         // FIXME: returning an owned value won't work iw we want to be able to assign prop
         // to object and have result in conmext !!
-        let from = self.from.eval(ctxt)?;
+        let of = self.of.eval(ctxt)?;
 
-        let Value::List(from) = from else {
+        let Value::List(of) = of else {
             return Err(InternalProgramError {
                 msg: format!(
                     "index-of operator can only be applied to {} but got {} LHS",
                     ValueType::List,
-                    from.value_type()
+                    of.value_type()
                 ),
-                span: self.from.span(),
+                span: self.of.span(),
             });
         };
 
+        Ok(of)
+    }
+
+    fn index(&self, ctxt: &mut Context) -> Result<isize, InternalProgramError> {
         let index = self.index.eval(ctxt)?;
 
         let Value::Integer(index) = index else {
@@ -64,8 +68,20 @@ impl Eval for IndexOf {
             });
         };
 
+        Ok(index)
+    }
+}
+
+impl Eval for IndexOf {
+    fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
+        // FIXME: returning an owned value won't work iw we want to be able to assign prop
+        // to object and have result in conmext !!
+        let of = self.of(ctxt)?;
+
+        let index = self.index(ctxt)?;
+
         let index = {
-            if index.is_negative() || index as usize >= from.len() {
+            if index.is_negative() || index as usize >= of.len() {
                 return Err(InternalProgramError {
                     msg: format!("index {} out of range", index),
                     span: self.index.span(),
@@ -74,9 +90,33 @@ impl Eval for IndexOf {
             index as usize
         };
 
-        let result = from.get(index).expect("index in range");
+        let result = of.get(index).expect("index in range");
 
         Ok(result)
+    }
+}
+
+impl Setter for IndexOf {
+    fn set(&self, ctxt: &mut Context, value: Value) -> Result<(), InternalProgramError> {
+        // FIXME: returning an owned value won't work iw we want to be able to assign prop
+        // to object and have result in conmext !!
+        let mut of = self.of(ctxt)?;
+
+        let index = self.index(ctxt)?;
+
+        let index = {
+            if index.is_negative() || index as usize >= of.len() {
+                return Err(InternalProgramError {
+                    msg: format!("index {} out of range", index),
+                    span: self.index.span(),
+                });
+            }
+            index as usize
+        };
+
+        of.set(index, value);
+
+        Ok(())
     }
 }
 

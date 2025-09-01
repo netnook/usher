@@ -264,7 +264,7 @@ impl BinaryOp {
 impl PropertyOf {
     fn print(&self, w: &mut impl Write, indent: usize) {
         write_open(w, indent, "property");
-        self.from.do_print(w, indent + 1);
+        self.of.do_print(w, indent + 1);
         self.property.print(w, indent + 1);
         write_close(w, indent);
     }
@@ -273,7 +273,7 @@ impl PropertyOf {
 impl IndexOf {
     fn print(&self, w: &mut impl Write, indent: usize) {
         write_open(w, indent, "index");
-        self.from.do_print(w, indent + 1);
+        self.of.do_print(w, indent + 1);
         self.index.do_print(w, indent + 1);
         write_close(w, indent);
     }
