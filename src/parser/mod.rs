@@ -78,6 +78,8 @@ pub mod tests {
     mod programs;
     mod spans;
 
+    use std::rc::Rc;
+
     use super::SyntaxError;
     use crate::{
         lang::{
@@ -89,8 +91,33 @@ pub mod tests {
     };
     use pretty_assertions::assert_eq;
 
+    pub trait ToValue {
+        fn to_value(self) -> Value;
+    }
+
+    impl ToValue for &str {
+        fn to_value(self) -> Value {
+            Value::Str(Rc::new(self.to_string()))
+        }
+    }
+    impl ToValue for isize {
+        fn to_value(self) -> Value {
+            Value::Integer(self)
+        }
+    }
+    impl ToValue for f64 {
+        fn to_value(self) -> Value {
+            Value::Float(self)
+        }
+    }
+    impl ToValue for bool {
+        fn to_value(self) -> Value {
+            Value::Bool(self)
+        }
+    }
+
     pub fn s(val: &str) -> Literal {
-        Literal::new(Value::Str(val.to_string()), Span::new(999, 9999))
+        Literal::new(Value::Str(Rc::new(val.to_string())), Span::new(999, 9999))
     }
     pub fn i(val: isize) -> Literal {
         Literal::new(Value::Integer(val), Span::new(999, 9999))

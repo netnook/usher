@@ -1,5 +1,5 @@
 use super::{BuiltInFunc, FunctionDef, InternalProgramError, Span};
-use std::{borrow::Cow, collections::HashMap, fmt::Display, rc::Rc};
+use std::{borrow::Cow, cell::RefCell, collections::HashMap, fmt::Display, rc::Rc};
 
 #[derive(PartialEq, Debug, Clone)]
 pub enum ValueType {
@@ -40,12 +40,12 @@ impl ValueType {
 pub enum Value {
     Func(Rc<FunctionDef>),
     BuiltInFunc(BuiltInFunc),
-    Str(String),
+    Str(StringCell),
     Integer(isize),
     Float(f64),
     Bool(bool),
-    List(List),
-    Dict(Dict),
+    List(ListCell),
+    Dict(DictCell),
     Nil,
 }
 
@@ -115,7 +115,7 @@ impl Value {
                 into.push('[');
 
                 let mut first = true;
-                for v in &v.content {
+                for v in &v.borrow().content {
                     if !first {
                         into.push(',');
                     } else {
@@ -130,7 +130,7 @@ impl Value {
                 into.push_str("dict(");
 
                 let mut first = true;
-                for (k, v) in &v.content {
+                for (k, v) in &v.borrow().content {
                     if !first {
                         into.push(',');
                     } else {
@@ -165,28 +165,42 @@ impl Value {
     }
 }
 
-impl From<List> for Value {
-    fn from(value: List) -> Self {
-        Self::List(value)
+pub type StringCell = Rc<String>;
+
+impl From<Dict> for DictCell {
+    fn from(value: Dict) -> Self {
+        Rc::new(RefCell::new(value))
     }
 }
 
 impl From<Dict> for Value {
     fn from(value: Dict) -> Self {
-        Self::Dict(value)
+        Self::Dict(value.into())
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+impl From<List> for ListCell {
+    fn from(value: List) -> Self {
+        Rc::new(RefCell::new(value))
+    }
+}
+
+impl From<List> for Value {
+    fn from(value: List) -> Self {
+        Self::List(value.into())
+    }
+}
+
+pub type ListCell = Rc<RefCell<List>>;
+
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct List {
     pub content: Vec<Value>,
 }
 
 impl List {
     pub fn new() -> Self {
-        Self {
-            content: Vec::new(),
-        }
+        Self::default()
     }
 
     pub fn get(&self, index: usize) -> Option<Value> {
@@ -207,16 +221,16 @@ impl List {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+pub type DictCell = Rc<RefCell<Dict>>;
+
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct Dict {
     pub content: HashMap<String, Value>,
 }
 
 impl Dict {
     pub fn new() -> Self {
-        Self {
-            content: HashMap::new(),
-        }
+        Self::default()
     }
 
     pub fn get(&self, key: &str) -> Option<Value> {
@@ -240,6 +254,7 @@ mod tests {
     use crate::lang::FunctionDef;
     use crate::lang::Value;
     use crate::parser::tests::_block;
+    use crate::parser::tests::ToValue;
 
     #[track_caller]
     fn do_test_as_string(val: Value, expected: &str) {
@@ -249,24 +264,24 @@ mod tests {
     #[test]
     fn test_value_display() {
         // strings
-        do_test_as_string(Value::Str("the-string".to_string()), "the-string");
-        do_test_as_string(Value::Str("the-s\"tring".to_string()), "the-s\"tring");
+        do_test_as_string("the-string".to_value(), "the-string");
+        do_test_as_string("the-s\"tring".to_value(), "the-s\"tring");
 
         // integers
-        do_test_as_string(Value::Integer(000), "0");
-        do_test_as_string(Value::Integer(10000), "10000");
-        do_test_as_string(Value::Integer(-10000), "-10000");
+        do_test_as_string(000.to_value(), "0");
+        do_test_as_string(10000.to_value(), "10000");
+        do_test_as_string((-10000).to_value(), "-10000");
 
         // floats
-        do_test_as_string(Value::Float(000.00), "0");
-        do_test_as_string(Value::Float(10000.0), "10000");
-        do_test_as_string(Value::Float(-10000.0), "-10000");
-        do_test_as_string(Value::Float(10000.012340), "10000.01234");
-        do_test_as_string(Value::Float(-10000.012340), "-10000.01234");
+        do_test_as_string(000.00.to_value(), "0");
+        do_test_as_string(10000.0.to_value(), "10000");
+        do_test_as_string((-10000.0).to_value(), "-10000");
+        do_test_as_string(10000.012340.to_value(), "10000.01234");
+        do_test_as_string((-10000.012340).to_value(), "-10000.01234");
 
         // bool
-        do_test_as_string(Value::Bool(true), "true");
-        do_test_as_string(Value::Bool(false), "false");
+        do_test_as_string(true.to_value(), "true");
+        do_test_as_string(false.to_value(), "false");
 
         // nil
         do_test_as_string(Value::Nil, "nil");
@@ -289,13 +304,13 @@ mod tests {
             let list_a = List::new();
             list.add(list_a.into());
             let mut list_b = List::new();
-            list_b.add(Value::Str("bar".to_string()));
+            list_b.add("bar".to_value());
             list.add(list_b.into());
 
-            let str = format!("{}", Value::List(list).as_string().unwrap());
+            let str = format!("{}", Value::List(list.into()).as_string().unwrap());
             assert_eq!(str, r#"[1,nil,[],["bar"]]"#);
         }
-        do_test_as_string(Value::Dict(Dict::new()), "dict()");
+        do_test_as_string(Value::Dict(Dict::new().into()), "dict()");
 
         {
             let mut dict = Dict::new();
@@ -304,10 +319,10 @@ mod tests {
             let dict_a = Dict::new();
             dict.set("dict_a".to_string(), dict_a.into());
             let mut dict_b = Dict::new();
-            dict_b.set("foo".to_string(), Value::Str("bar".to_string()));
+            dict_b.set("foo".to_string(), "bar".to_value());
             dict.set("dict_b".to_string(), dict_b.into());
 
-            let str = format!("{}", Value::Dict(dict).as_string().unwrap());
+            let str = format!("{}", Value::Dict(dict.into()).as_string().unwrap());
             assert!(str.starts_with("dict("));
             assert!(str.ends_with(")"));
             assert!(str.contains(r#""one":1"#));
@@ -320,7 +335,7 @@ mod tests {
                 r#"dict("one":1,"nil":nil,"dict_a":dict(),"dict_b":dict("foo":"bar"))"#.len()
             );
         }
-        do_test_as_string(Value::Dict(Dict::new()), "dict()");
+        do_test_as_string(Value::Dict(Dict::new().into()), "dict()");
     }
 
     #[test]
@@ -329,13 +344,13 @@ mod tests {
 
         assert_eq!(d.get("foo"), None);
 
-        d.set("foo".to_string(), Value::Integer(42));
-        assert_eq!(d.get("foo"), Some(Value::Integer(42)));
+        d.set("foo".to_string(), 42.to_value());
+        assert_eq!(d.get("foo"), Some(42.to_value()));
 
-        d.set("foo".to_string(), Value::Str("aaa".to_string()));
-        assert_eq!(d.get("foo"), Some(Value::Str("aaa".to_string())));
+        d.set("foo".to_string(), "aaa".to_value());
+        assert_eq!(d.get("foo"), Some("aaa".to_value()));
 
-        assert_eq!(d.remove("foo"), Some(Value::Str("aaa".to_string())));
+        assert_eq!(d.remove("foo"), Some("aaa".to_value()));
         assert_eq!(d.get("foo"), None);
     }
 
@@ -347,14 +362,14 @@ mod tests {
         assert_eq!(l.get(1), None);
         assert_eq!(l.len(), 0);
 
-        l.add(Value::Integer(42));
-        assert_eq!(l.get(0), Some(Value::Integer(42)));
+        l.add(42.to_value());
+        assert_eq!(l.get(0), Some(42.to_value()));
         assert_eq!(l.get(1), None);
         assert_eq!(l.len(), 1);
 
-        l.add(Value::Str("aaa".to_string()));
-        assert_eq!(l.get(0), Some(Value::Integer(42)));
-        assert_eq!(l.get(1), Some(Value::Str("aaa".to_string())));
+        l.add("aaa".to_value());
+        assert_eq!(l.get(0), Some(42.to_value()));
+        assert_eq!(l.get(1), Some("aaa".to_value()));
         assert_eq!(l.len(), 2);
     }
 }

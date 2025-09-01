@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use crate::lang::{AstNode, Context, Eval, InternalProgramError, Value};
 
 #[derive(PartialEq, Debug, Clone)]
@@ -19,7 +21,7 @@ impl Eval for InterpolatedStr {
                 })?;
                 res.push_str(&format!("{s}"));
             }
-            Ok(Value::Str(res))
+            Ok(Value::Str(Rc::new(res)))
         }
     }
 }

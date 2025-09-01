@@ -338,14 +338,14 @@ impl Value {
             }
             Value::List(v) => {
                 w.write_all("list[".as_bytes()).unwrap();
-                for v in &v.content {
+                for v in &v.borrow().content {
                     v.print(w, indent + 1);
                 }
                 write_indented(w, indent, "]");
             }
             Value::Dict(v) => {
                 w.write_all("dict(".as_bytes()).unwrap();
-                for (k, v) in &v.content {
+                for (k, v) in &v.borrow().content {
                     write_indented(w, indent + 1, &format!("{k}:"));
                     v.print(w, indent + 1);
                 }

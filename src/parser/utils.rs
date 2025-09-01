@@ -17,10 +17,7 @@ impl<'a> Parser<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        lang::{Literal, Span, Value},
-        parser::{Parser, SyntaxError},
-    };
+    use crate::parser::{Parser, SyntaxError, tests::s};
 
     #[test]
     fn test_req_with_result() {
@@ -29,7 +26,7 @@ mod tests {
 
         assert_eq!(
             p.req(Parser::string, "the-error"),
-            Ok(Literal::new(Value::Str("xxx".to_string()), Span::new(1, 5)).into())
+            Ok(s("xxx").spanned(1, 5).into())
         );
         assert_eq!(p.pos, 6);
     }

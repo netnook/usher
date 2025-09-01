@@ -1,6 +1,6 @@
 use crate::lang::{
     AstNode, Context, Eval, InternalProgramError, Setter, Span, Value,
-    value::{List, ValueType},
+    value::{List, ListCell, ValueType},
 };
 
 #[derive(PartialEq, Debug, Clone)]
@@ -35,9 +35,7 @@ pub struct IndexOf {
 }
 
 impl IndexOf {
-    fn of(&self, ctxt: &mut Context) -> Result<List, InternalProgramError> {
-        // FIXME: returning an owned value won't work iw we want to be able to assign prop
-        // to object and have result in conmext !!
+    fn of(&self, ctxt: &mut Context) -> Result<ListCell, InternalProgramError> {
         let of = self.of.eval(ctxt)?;
 
         let Value::List(of) = of else {
@@ -74,12 +72,13 @@ impl IndexOf {
 
 impl Eval for IndexOf {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
-        // FIXME: returning an owned value won't work iw we want to be able to assign prop
-        // to object and have result in conmext !!
         let of = self.of(ctxt)?;
 
         let index = self.index(ctxt)?;
 
+        let of = of.borrow();
+
+        // FIXME: combine index validation for eval and set ?
         let index = {
             if index.is_negative() || index as usize >= of.len() {
                 return Err(InternalProgramError {
@@ -98,12 +97,13 @@ impl Eval for IndexOf {
 
 impl Setter for IndexOf {
     fn set(&self, ctxt: &mut Context, value: Value) -> Result<(), InternalProgramError> {
-        // FIXME: returning an owned value won't work iw we want to be able to assign prop
-        // to object and have result in conmext !!
-        let mut of = self.of(ctxt)?;
+        let of = self.of(ctxt)?;
 
         let index = self.index(ctxt)?;
 
+        let mut of = of.borrow_mut();
+
+        // FIXME: combine index validation for eval and set ?
         let index = {
             if index.is_negative() || index as usize >= of.len() {
                 return Err(InternalProgramError {
@@ -122,7 +122,7 @@ impl Setter for IndexOf {
 
 #[cfg(test)]
 mod tests {
-    use crate::lang::{AstNode, Context, Eval, Value, value::List};
+    use crate::lang::{AstNode, Context, Eval, value::List};
 
     #[test]
     fn test_list_builder_eval() {
@@ -130,9 +130,9 @@ mod tests {
         let d = list!(s("a"), i(1), add(i(1), i(3)));
         let actual = d.eval(&mut Context::new()).expect("a value");
         let mut expected = List::new();
-        expected.add(Value::Str("a".to_string()));
-        expected.add(Value::Integer(1));
-        expected.add(Value::Integer(4));
+        expected.add("a".to_value());
+        expected.add(1.to_value());
+        expected.add(4.to_value());
         assert_eq!(actual, expected.into());
     }
 
@@ -143,9 +143,9 @@ mod tests {
         let mut ctxt = {
             let mut ctxt = Context::new();
             let mut l = List::new();
-            l.add(Value::Integer(7));
-            l.add(Value::Str("aaa".to_string()));
-            l.add(Value::Integer(8));
+            l.add(7.to_value());
+            l.add("aaa".to_value());
+            l.add(8.to_value());
             ctxt.set(&id("list"), l.into());
             ctxt
         };
@@ -154,8 +154,8 @@ mod tests {
         let i1: AstNode = index_of(id("list"), sub(i(4), i(3))).into();
         let i9: AstNode = index_of(id("list"), i(9)).into();
 
-        assert_eq!(i0.eval(&mut ctxt).unwrap(), Value::Integer(7));
-        assert_eq!(i1.eval(&mut ctxt).unwrap(), Value::Str("aaa".to_string()));
+        assert_eq!(i0.eval(&mut ctxt).unwrap(), 7.to_value());
+        assert_eq!(i1.eval(&mut ctxt).unwrap(), "aaa".to_value());
         // assert_eq!(i9.eval(&mut ctxt).unwrap(), Value::Nil); // FIXME: or should this error ????
         assert!(
             i9.eval(&mut ctxt)

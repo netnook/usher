@@ -21,16 +21,14 @@ pub use var::{Assignment, Declaration};
 
 use crate::find_source_position;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Context {
     pub vars: HashMap<String, Value>,
 }
 
 impl Context {
     pub fn new() -> Self {
-        Self {
-            vars: HashMap::new(),
-        }
+        Self::default()
     }
 
     pub fn set(&mut self, ident: &Identifier, value: Value) {

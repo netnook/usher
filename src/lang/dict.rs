@@ -1,6 +1,6 @@
 use crate::lang::{
     AstNode, Context, Eval, Identifier, InternalProgramError, KeyValue, Setter, Span, Value,
-    value::{Dict, ValueType},
+    value::{Dict, DictCell, ValueType},
 };
 
 #[derive(PartialEq, Debug, Clone)]
@@ -31,9 +31,7 @@ pub struct PropertyOf {
 }
 
 impl PropertyOf {
-    fn of(&self, ctxt: &mut Context) -> Result<Dict, InternalProgramError> {
-        // FIXME: returning an owned value won't work iw we want to be able to assign prop
-        // to object and have result in conmext !!
+    fn of(&self, ctxt: &mut Context) -> Result<DictCell, InternalProgramError> {
         let of = self.of.eval(ctxt)?;
 
         let Value::Dict(of) = of else {
@@ -53,11 +51,9 @@ impl PropertyOf {
 
 impl Eval for PropertyOf {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
-        // FIXME: returning an owned value won't work iw we want to be able to assign prop
-        // to object and have result in conmext !!
         let of = self.of(ctxt)?;
 
-        let result = of.get(&self.property.name).unwrap_or(Value::Nil);
+        let result = of.borrow().get(&self.property.name).unwrap_or(Value::Nil);
 
         Ok(result)
     }
@@ -65,9 +61,9 @@ impl Eval for PropertyOf {
 
 impl Setter for PropertyOf {
     fn set(&self, ctxt: &mut Context, value: Value) -> Result<(), InternalProgramError> {
-        let mut from = self.of(ctxt)?;
+        let of = self.of(ctxt)?;
 
-        from.set(self.property.name.clone(), value);
+        of.borrow_mut().set(self.property.name.clone(), value);
 
         Ok(())
     }
@@ -83,8 +79,8 @@ mod tests {
         let d = dict(vec![kv(id("a"), i(1)), kv(id("b"), add(i(1), i(3)))]);
         let actual = d.eval(&mut Context::new()).expect("a value");
         let mut expected = Dict::new();
-        expected.set("a".to_string(), Value::Integer(1));
-        expected.set("b".to_string(), Value::Integer(4));
+        expected.set("a".to_string(), 1.to_value());
+        expected.set("b".to_string(), 4.to_value());
         assert_eq!(actual, expected.into());
     }
 
@@ -95,8 +91,8 @@ mod tests {
         let mut ctxt = {
             let mut ctxt = Context::new();
             let mut d = Dict::new();
-            d.set("a".to_string(), Value::Integer(1));
-            d.set("b".to_string(), Value::Str("bbb".to_string()));
+            d.set("a".to_string(), 1.to_value());
+            d.set("b".to_string(), "bbb".to_value());
             ctxt.set(&id("dict"), d.into());
             ctxt
         };
@@ -105,11 +101,8 @@ mod tests {
         let prop_b: AstNode = prop_of(id("dict"), "b").into();
         let prop_c: AstNode = prop_of(id("dict"), "c").into();
 
-        assert_eq!(prop_a.eval(&mut ctxt).unwrap(), Value::Integer(1));
-        assert_eq!(
-            prop_b.eval(&mut ctxt).unwrap(),
-            Value::Str("bbb".to_string())
-        );
+        assert_eq!(prop_a.eval(&mut ctxt).unwrap(), 1.to_value());
+        assert_eq!(prop_b.eval(&mut ctxt).unwrap(), "bbb".to_value());
         assert_eq!(prop_c.eval(&mut ctxt).unwrap(), Value::Nil);
     }
 }
