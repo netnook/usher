@@ -1,4 +1,4 @@
-use crate::lang::{AstNode, Context, Eval, InternalProgramError, Span, Value, value::List};
+use crate::lang::{AstNode, Context, Eval, EvalStop, Span, Value, value::List};
 
 #[derive(PartialEq, Debug, Clone)]
 pub struct ListBuilder {
@@ -12,7 +12,7 @@ impl ListBuilder {
     }
 }
 impl Eval for ListBuilder {
-    fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
+    fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
         let mut list = List::new();
 
         for v in &self.entries {

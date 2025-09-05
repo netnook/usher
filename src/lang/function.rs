@@ -1,6 +1,4 @@
-use crate::lang::{
-    AstNode, Block, Context, Eval, Identifier, InternalProgramError, Span, Value, value::Func,
-};
+use crate::lang::{AstNode, Block, Context, Eval, EvalStop, Identifier, Span, Value, value::Func};
 use std::rc::Rc;
 
 #[derive(PartialEq, Debug)]
@@ -17,7 +15,7 @@ pub struct Param {
 }
 
 impl Eval for Rc<FunctionDef> {
-    fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
+    fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
         let f = Value::Func(Func::Func(Rc::clone(self)));
         if let Some(name) = &self.name {
             ctxt.set(name, f.clone());
@@ -32,7 +30,7 @@ impl FunctionDef {
         ctxt: &mut Context,
         params: Vec<Value>,
         span: &Span,
-    ) -> Result<Value, InternalProgramError> {
+    ) -> Result<Value, EvalStop> {
         let _ = ctxt;
         let _ = params;
         let _ = span;

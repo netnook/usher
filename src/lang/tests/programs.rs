@@ -2,6 +2,8 @@ use crate::parser::{self};
 use pretty_assertions::assert_eq;
 use std::{fs, path::PathBuf};
 
+const PROG_COUNT: usize = 5;
+
 #[test]
 fn test_progs() -> Result<(), std::io::Error> {
     let mut count = 0;
@@ -33,7 +35,7 @@ fn test_progs() -> Result<(), std::io::Error> {
     }
 
     assert_eq!(
-        count, 4,
+        count, PROG_COUNT,
         "Expected different count for processed program files"
     );
 

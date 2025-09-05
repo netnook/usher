@@ -1,5 +1,5 @@
 use super::{AstNode, Context, InternalProgramError, Span, Value};
-use crate::lang::{Eval, bad_type_error_op, value::ValueType};
+use crate::lang::{Eval, EvalStop, bad_type_error_op, value::ValueType};
 use std::fmt::Display;
 
 #[derive(PartialEq, Debug, Clone)]
@@ -59,7 +59,7 @@ impl BinaryOp {
     }
 }
 impl Eval for BinaryOp {
-    fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
+    fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
         // Do the logical short-circuiting ops first, taking care to only evaluate rhs
         // if necessary
         match self.op {

@@ -1,5 +1,6 @@
 use crate::lang::{
-    AstNode, Context, Eval, InternalProgramError, Span, Value, bad_type_error_op, value::ValueType,
+    AstNode, Context, Eval, EvalStop, InternalProgramError, Span, Value, bad_type_error_op,
+    value::ValueType,
 };
 use std::fmt::Display;
 
@@ -37,7 +38,7 @@ impl UnaryOp {
     }
 }
 impl Eval for UnaryOp {
-    fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
+    fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
         let on = self.on.eval(ctxt)?;
 
         let result = match self.op {

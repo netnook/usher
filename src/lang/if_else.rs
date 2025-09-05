@@ -1,4 +1,6 @@
-use crate::lang::{AstNode, Block, Context, Eval, InternalProgramError, Value, value::ValueType};
+use crate::lang::{
+    AstNode, Block, Context, Eval, EvalStop, InternalProgramError, Value, value::ValueType,
+};
 
 #[derive(PartialEq, Debug, Clone)]
 pub struct IfElseStmt {
@@ -7,17 +9,18 @@ pub struct IfElseStmt {
 }
 
 impl Eval for IfElseStmt {
-    fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
+    fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
         for cb in &self.conditional_blocks {
             let cond = cb.condition.eval(ctxt)?;
             let cond = match cond {
                 Value::Bool(v) => v,
                 other => {
-                    return Err(InternalProgramError::BadValueType {
+                    return InternalProgramError::BadValueType {
                         expected: ValueType::Boolean,
                         actual: other.value_type(),
                         span: cb.condition.span(),
-                    });
+                    }
+                    .into();
                 }
             };
             if !cond {

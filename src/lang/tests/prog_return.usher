@@ -1,0 +1,6 @@
+var a = 999
+if true {
+    return a
+}
+---
+999

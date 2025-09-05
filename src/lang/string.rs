@@ -1,6 +1,5 @@
+use crate::lang::{AstNode, Context, Eval, EvalStop, Value};
 use std::rc::Rc;
-
-use crate::lang::{AstNode, Context, Eval, InternalProgramError, Value};
 
 #[derive(PartialEq, Debug, Clone)]
 pub struct InterpolatedStr {
@@ -8,7 +7,7 @@ pub struct InterpolatedStr {
 }
 
 impl Eval for InterpolatedStr {
-    fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
+    fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
         if self.parts.len() == 1 {
             self.parts.first().expect("should be there").eval(ctxt)
         } else {

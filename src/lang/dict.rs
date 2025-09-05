@@ -1,4 +1,4 @@
-use crate::lang::{Context, Eval, InternalProgramError, KeyValue, Span, Value, value::Dict};
+use crate::lang::{Context, Eval, EvalStop, KeyValue, Span, Value, value::Dict};
 
 #[derive(PartialEq, Debug, Clone)]
 pub struct DictBuilder {
@@ -7,7 +7,7 @@ pub struct DictBuilder {
 }
 
 impl Eval for DictBuilder {
-    fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
+    fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
         let mut dict = Dict::new();
 
         for e in &self.entries {

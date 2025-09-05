@@ -1,5 +1,5 @@
 use super::Value;
-use crate::lang::{AstNode, Block, Eval, Identifier};
+use crate::lang::{AstNode, Block, Eval, EvalStop, Identifier, InternalProgramError};
 
 #[derive(PartialEq, Debug, Clone)]
 pub struct ForStmt {
@@ -10,7 +10,7 @@ pub struct ForStmt {
 }
 
 impl Eval for ForStmt {
-    fn eval(&self, ctxt: &mut super::Context) -> Result<Value, super::InternalProgramError> {
+    fn eval(&self, ctxt: &mut super::Context) -> Result<Value, EvalStop> {
         let loop_expr = self.loop_expr.eval(ctxt)?;
         let mut result = Value::Nil;
 
@@ -28,10 +28,11 @@ impl Eval for ForStmt {
             }
             Value::Dict(_) => todo!(),
             _ => {
-                return Err(crate::lang::InternalProgramError::CannotLoopOnValue {
+                return InternalProgramError::CannotLoopOnValue {
                     got: loop_expr.value_type(),
                     span: self.loop_expr.span(),
-                });
+                }
+                .into();
             }
         }
 
@@ -44,7 +45,7 @@ impl Eval for ForStmt {
 pub struct Break {}
 
 impl Break {
-    pub(crate) fn eval(_ctxt: &mut super::Context) -> Result<Value, super::InternalProgramError> {
+    pub(crate) fn eval(_ctxt: &mut super::Context) -> Result<Value, EvalStop> {
         todo!()
     }
 }

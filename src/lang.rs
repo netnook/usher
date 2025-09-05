@@ -137,7 +137,8 @@ impl<'a> Program<'a> {
     pub(crate) fn run(&self) -> Result<Value, ProgramError> {
         match self.do_run() {
             Ok(v) => Ok(v),
-            Err(e) => {
+            Err(EvalStop::Return(v)) => Ok(v),
+            Err(EvalStop::Error(e)) => {
                 let info = find_source_position(self.source, e.span().start);
                 Err(ProgramError {
                     msg: e.message(),
@@ -146,9 +147,10 @@ impl<'a> Program<'a> {
                     line: info.1.to_string(),
                 })
             }
+            Err(v) => panic!("unexpected program response {v:?}. This is a bug!"),
         }
     }
-    fn do_run(&self) -> Result<Value, InternalProgramError> {
+    fn do_run(&self) -> Result<Value, EvalStop> {
         let mut ctxt = Context::new();
         let mut res = Value::Nil;
         for stmt in &self.stmts {
@@ -186,15 +188,35 @@ pub enum AstNode {
 }
 
 trait Eval {
-    fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError>;
+    fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop>;
+}
+
+#[derive(Debug)]
+pub enum EvalStop {
+    Error(InternalProgramError),
+    Return(Value),
+    Break,
+    Continue,
+    End,
+}
+
+impl From<InternalProgramError> for EvalStop {
+    fn from(value: InternalProgramError) -> Self {
+        Self::Error(value)
+    }
+}
+impl<T> From<InternalProgramError> for Result<T, EvalStop> {
+    fn from(value: InternalProgramError) -> Self {
+        Err(value.into())
+    }
 }
 
 trait Setter {
-    fn set(&self, ctxt: &mut Context, value: Value) -> Result<(), InternalProgramError>;
+    fn set(&self, ctxt: &mut Context, value: Value) -> Result<(), EvalStop>;
 }
 
 impl AstNode {
-    pub fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
+    pub fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
         match self {
             AstNode::Declaration(v) => v.eval(ctxt),
             AstNode::Literal(v) => v.eval(ctxt),
@@ -213,12 +235,12 @@ impl AstNode {
             AstNode::IfElseStmt(v) => v.eval(ctxt),
             AstNode::ForStmt(v) => v.eval(ctxt),
             AstNode::Break => Break::eval(ctxt),
+            AstNode::ReturnStmt(v) => v.eval(ctxt),
+            AstNode::Continue => todo!(),
             // FIXME: finish eval
             // AstNode::This => todo!(),
             // AstNode::ChainCatch(chain_catch) => todo!(),
-            // AstNode::ReturnStmt(return_stmt) => todo!(),
             // AstNode::KeyValue(key_value) => todo!(),
-            // AstNode::Continue => todo!(),
             // AstNode::End => todo!(),
             n => todo!("eval not implemented for {n:?}"),
         }
@@ -354,7 +376,7 @@ pub enum Assignable<'a> {
 }
 
 impl<'a> Assignable<'a> {
-    pub fn set(&self, ctxt: &mut Context, value: Value) -> Result<(), InternalProgramError> {
+    pub fn set(&self, ctxt: &mut Context, value: Value) -> Result<(), EvalStop> {
         match self {
             Assignable::Identifier(v) => v.set(ctxt, value),
             Assignable::PropertyOf(v) => v.set(ctxt, value),
@@ -399,7 +421,7 @@ impl Literal {
     }
 }
 impl Eval for Literal {
-    fn eval(&self, _: &mut Context) -> Result<Value, InternalProgramError> {
+    fn eval(&self, _: &mut Context) -> Result<Value, EvalStop> {
         Ok(self.val.clone())
     }
 }
@@ -416,7 +438,7 @@ impl Identifier {
     }
 }
 impl Eval for Identifier {
-    fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
+    fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
         let value = ctxt
             .get(self)
             .or_else(|| BuiltInFunc::by_name(&self.name).map(|f| f.into()))
@@ -425,7 +447,7 @@ impl Eval for Identifier {
     }
 }
 impl Setter for Identifier {
-    fn set(&self, ctxt: &mut Context, value: Value) -> Result<(), InternalProgramError> {
+    fn set(&self, ctxt: &mut Context, value: Value) -> Result<(), EvalStop> {
         ctxt.set(self, value);
         Ok(())
     }
@@ -456,7 +478,7 @@ impl BuiltInFunc {
         ctxt: &mut Context,
         params: Vec<Value>,
         span: &Span,
-    ) -> Result<Value, InternalProgramError> {
+    ) -> Result<Value, EvalStop> {
         match self {
             BuiltInFunc::Print => {
                 for p in params {
@@ -474,11 +496,12 @@ impl BuiltInFunc {
                         }
                         Ok(Value::Nil)
                     }
-                    _ => Err(InternalProgramError::MethodNotApplicable {
+                    _ => InternalProgramError::MethodNotApplicable {
                         name: "add".to_string(),
                         to: this.value_type(),
                         span: *span,
-                    }),
+                    }
+                    .into(),
                 }
             }
         }
@@ -494,7 +517,7 @@ pub struct FunctionCall {
 }
 
 impl Eval for FunctionCall {
-    fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
+    fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
         let on = self.on.eval(ctxt)?;
 
         // get the method
@@ -506,34 +529,42 @@ impl Eval for FunctionCall {
                             .get(&method_name.name)
                             .map(|v| match v {
                                 Value::Func(f) => Ok(f),
-                                other => Err(InternalProgramError::ExpectedFunction {
+                                other => InternalProgramError::ExpectedFunction {
                                     got: other.value_type(),
                                     span: Span::new(0, 0),
-                                }),
+                                }
+                                .into(),
                             })
                             .transpose()?
                             .or_else(|| BuiltInFunc::by_name(&method_name.name).map(|f| f.into()))
-                            .ok_or_else(|| InternalProgramError::NoSuchMethod {
-                                name: method_name.clone(),
-                                from: ValueType::Dict,
-                                span: Span::new(0, 0), // FIXME: fix span
+                            .ok_or_else(|| {
+                                InternalProgramError::NoSuchMethod {
+                                    name: method_name.clone(),
+                                    from: ValueType::Dict,
+                                    span: Span::new(0, 0), // FIXME: fix span
+                                }
+                                .into_stop()
                             })?
                     }
                     Value::List(_) => {
                         BuiltInFunc::by_name(&method_name.name)
                             .map(|f| f.into())
-                            .ok_or_else(|| InternalProgramError::NoSuchMethod {
-                                name: method_name.clone(),
-                                from: ValueType::List,
-                                span: Span::new(0, 0), // FIXME: fix span
+                            .ok_or_else(|| {
+                                InternalProgramError::NoSuchMethod {
+                                    name: method_name.clone(),
+                                    from: ValueType::List,
+                                    span: Span::new(0, 0), // FIXME: fix span
+                                }
+                                .into_stop()
                             })?
                     }
                     _ => {
-                        return Err(InternalProgramError::NoSuchMethod {
+                        return InternalProgramError::NoSuchMethod {
                             name: method_name.clone(),
                             from: on.value_type(),
                             span: Span::new(0, 0), // FIXME: fix span
-                        });
+                        }
+                        .into();
                     }
                 };
                 (on, method)
@@ -542,10 +573,11 @@ impl Eval for FunctionCall {
                 let func = match on {
                     Value::Func(func) => func,
                     _ => {
-                        return Err(InternalProgramError::ExpectedFunction {
+                        return InternalProgramError::ExpectedFunction {
                             got: on.value_type(),
                             span: Span::new(0, 0),
-                        });
+                        }
+                        .into();
                     }
                 };
                 (Value::Nil, func)
@@ -562,7 +594,14 @@ impl Eval for FunctionCall {
         let mut context = Context::new();
         context.declare_this(this);
 
-        func.call(&mut context, args, &self.span)
+        match func.call(&mut context, args, &self.span) {
+            v @ Ok(_) => v,
+            e @ Err(EvalStop::Error(_)) => e,
+            Err(EvalStop::Return(value)) => Ok(value),
+            Err(EvalStop::Break) => todo!(),
+            Err(EvalStop::Continue) => todo!(),
+            Err(EvalStop::End) => todo!(),
+        }
     }
 }
 
@@ -573,7 +612,7 @@ pub struct Arg {
 }
 
 impl Arg {
-    pub fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
+    pub fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
         if self.name.is_some() {
             todo!("named arg not handleld");
         }
@@ -584,6 +623,17 @@ impl Arg {
 #[derive(PartialEq, Debug, Clone)]
 pub struct ReturnStmt {
     pub(crate) value: Option<Box<AstNode>>,
+}
+
+impl Eval for ReturnStmt {
+    fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
+        let val = match &self.value {
+            Some(v) => v.eval(ctxt)?,
+            None => Value::Nil,
+        };
+
+        Err(EvalStop::Return(val))
+    }
 }
 
 #[derive(PartialEq, Debug, Clone)]

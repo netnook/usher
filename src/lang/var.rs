@@ -1,4 +1,4 @@
-use crate::lang::{AstNode, Context, Eval, Identifier, InternalProgramError, Value};
+use crate::lang::{AstNode, Context, Eval, EvalStop, Identifier, InternalProgramError, Value};
 
 #[derive(PartialEq, Debug, Clone)]
 pub struct Declaration {
@@ -7,7 +7,7 @@ pub struct Declaration {
 }
 
 impl Eval for Declaration {
-    fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
+    fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
         let value = self.value.eval(ctxt)?;
         ctxt.declare(&self.ident, value);
         Ok(Value::Nil)
@@ -21,12 +21,13 @@ pub struct Assignment {
 }
 
 impl Eval for Assignment {
-    fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
+    fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
         let rhs = self.rhs.eval(ctxt)?;
         let Some(assignable) = self.lhs.as_assignable() else {
-            return Err(InternalProgramError::CannotAssignToLHS {
+            return InternalProgramError::CannotAssignToLHS {
                 span: self.lhs.span(),
-            });
+            }
+            .into();
         };
 
         assignable.set(ctxt, rhs)?;

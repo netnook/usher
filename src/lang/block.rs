@@ -1,4 +1,4 @@
-use crate::lang::{AstNode, Context, Eval, InternalProgramError, Span, Value};
+use crate::lang::{AstNode, Context, Eval, EvalStop, Span, Value};
 
 #[derive(PartialEq, Debug, Clone)]
 pub struct Block {
@@ -7,17 +7,14 @@ pub struct Block {
 }
 
 impl Eval for Block {
-    fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
+    fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
         let mut child_ctxt = ctxt.new_child();
         self.eval_with_context(&mut child_ctxt)
     }
 }
 
 impl Block {
-    pub(super) fn eval_with_context(
-        &self,
-        ctxt: &mut Context,
-    ) -> Result<Value, InternalProgramError> {
+    pub(super) fn eval_with_context(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
         let mut result = Value::Nil;
         for stmt in &self.stmts {
             result = stmt.eval(ctxt)?;

@@ -1,4 +1,4 @@
-use crate::lang::Context;
+use crate::lang::{Context, EvalStop};
 
 use super::{BuiltInFunc, FunctionDef, InternalProgramError, Span};
 use std::{borrow::Cow, cell::RefCell, collections::HashMap, fmt::Display, rc::Rc};
@@ -51,7 +51,7 @@ pub enum Value {
 }
 
 impl Value {
-    pub fn as_string(&'_ self) -> Result<Cow<'_, str>, InternalProgramError> {
+    pub fn as_string(&'_ self) -> Result<Cow<'_, str>, EvalStop> {
         Ok(match self {
             Value::Func(_) => {
                 let mut result = String::new();
@@ -79,13 +79,14 @@ impl Value {
         })
     }
 
-    fn write_to(&self, into: &mut String) -> Result<(), InternalProgramError> {
+    fn write_to(&self, into: &mut String) -> Result<(), EvalStop> {
         match self {
             Value::Func(_) => {
-                return Err(InternalProgramError::CannotConvertToString {
+                return InternalProgramError::CannotConvertToString {
                     typ: self.value_type(),
                     span: Span::new(0, 0), // FIXME: correct pos
-                });
+                }
+                .into();
             }
             Value::Str(v) => {
                 // FIXME: in write_to, str is quoted.  In as_string above it is not.  Unify ?
@@ -164,7 +165,7 @@ impl Func {
         ctxt: &mut Context,
         params: Vec<Value>,
         span: &Span,
-    ) -> Result<Value, InternalProgramError> {
+    ) -> Result<Value, EvalStop> {
         match self {
             Func::Func(f) => f.call(ctxt, params, span),
             Func::BuiltInFunc(f) => f.call(ctxt, params, span),

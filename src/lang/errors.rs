@@ -1,4 +1,4 @@
-use crate::lang::{Identifier, Span, value::ValueType};
+use crate::lang::{EvalStop, Identifier, Span, value::ValueType};
 
 #[derive(PartialEq, Debug)]
 pub struct ProgramError {
@@ -60,28 +60,31 @@ pub enum InternalProgramError {
 
 macro_rules! bad_type_error_op {
     ($op:expr, LHS, $expected:expr, $actual:expr) => {
-        Err(InternalProgramError::BadValueTypeOp {
+        InternalProgramError::BadValueTypeOp {
             op: $op.op.op_name(),
             expected: $expected,
             actual: $actual,
             span: $op.lhs.span().clone(),
-        })
+        }
+        .into()
     };
     ($op:expr, RHS, $expected:expr, $actual:expr) => {
-        Err(InternalProgramError::BadValueTypeOp {
+        InternalProgramError::BadValueTypeOp {
             op: $op.op.op_name(),
             expected: $expected,
             actual: $actual,
             span: $op.rhs.span().clone(),
-        })
+        }
+        .into()
     };
     ($op:expr, $expected:expr, $actual:expr) => {
-        Err(InternalProgramError::BadValueTypeOp {
+        InternalProgramError::BadValueTypeOp {
             op: $op.op.op_name(),
             expected: $expected,
             actual: $actual,
             span: $op.span().clone(),
-        })
+        }
+        .into()
     };
 }
 pub(crate) use bad_type_error_op;
@@ -178,5 +181,8 @@ impl InternalProgramError {
             InternalProgramError::CannotLoopOnValue { got: _, span } => span,
         }
     }
-    // pub fn
+
+    pub(crate) fn into_stop(self) -> EvalStop {
+        self.into()
+    }
 }

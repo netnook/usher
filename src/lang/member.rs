@@ -1,5 +1,5 @@
 use crate::lang::{
-    AstNode, Context, Eval, Identifier, InternalProgramError, Setter, Span, Value,
+    AstNode, Context, Eval, EvalStop, Identifier, InternalProgramError, Setter, Span, Value,
     value::{DictCell, ListCell, ValueType},
 };
 
@@ -11,15 +11,16 @@ pub struct PropertyOf {
 }
 
 impl PropertyOf {
-    fn of(&self, ctxt: &mut Context) -> Result<DictCell, InternalProgramError> {
+    fn of(&self, ctxt: &mut Context) -> Result<DictCell, EvalStop> {
         let of = self.of.eval(ctxt)?;
 
         let Value::Dict(of) = of else {
-            return Err(InternalProgramError::SuffixOperatorDoesNotSupportOperand {
+            return InternalProgramError::SuffixOperatorDoesNotSupportOperand {
                 op: "property-of",
                 got: of.value_type(),
                 span: self.of.span(),
-            });
+            }
+            .into();
         };
 
         Ok(of)
@@ -27,7 +28,7 @@ impl PropertyOf {
 }
 
 impl Eval for PropertyOf {
-    fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
+    fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
         let of = self.of(ctxt)?;
 
         let result = of.borrow().get(&self.property.name).unwrap_or(Value::Nil);
@@ -37,7 +38,7 @@ impl Eval for PropertyOf {
 }
 
 impl Setter for PropertyOf {
-    fn set(&self, ctxt: &mut Context, value: Value) -> Result<(), InternalProgramError> {
+    fn set(&self, ctxt: &mut Context, value: Value) -> Result<(), EvalStop> {
         let of = self.of(ctxt)?;
 
         of.borrow_mut().set(self.property.name.clone(), value);
@@ -54,29 +55,31 @@ pub struct IndexOf {
 }
 
 impl IndexOf {
-    fn of(&self, ctxt: &mut Context) -> Result<ListCell, InternalProgramError> {
+    fn of(&self, ctxt: &mut Context) -> Result<ListCell, EvalStop> {
         let of = self.of.eval(ctxt)?;
 
         let Value::List(of) = of else {
-            return Err(InternalProgramError::SuffixOperatorDoesNotSupportOperand {
+            return InternalProgramError::SuffixOperatorDoesNotSupportOperand {
                 op: "index-of",
                 got: of.value_type(),
                 span: self.of.span(),
-            });
+            }
+            .into();
         };
 
         Ok(of)
     }
 
-    fn index(&self, ctxt: &mut Context) -> Result<isize, InternalProgramError> {
+    fn index(&self, ctxt: &mut Context) -> Result<isize, EvalStop> {
         let index = self.index.eval(ctxt)?;
 
         let Value::Integer(index) = index else {
-            return Err(InternalProgramError::BadValueType {
+            return InternalProgramError::BadValueType {
                 expected: ValueType::Integer,
                 actual: index.value_type(),
                 span: self.index.span(),
-            });
+            }
+            .into();
         };
 
         Ok(index)
@@ -84,7 +87,7 @@ impl IndexOf {
 }
 
 impl Eval for IndexOf {
-    fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
+    fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
         let of = self.of(ctxt)?;
 
         let index = self.index(ctxt)?;
@@ -94,11 +97,12 @@ impl Eval for IndexOf {
         // FIXME: combine index validation for eval and set ?
         let index = {
             if index.is_negative() || index as usize >= of.len() {
-                return Err(InternalProgramError::IndexOutOfRange {
+                return InternalProgramError::IndexOutOfRange {
                     index,
                     len: of.len(),
                     span: self.index.span(),
-                });
+                }
+                .into();
             }
             index as usize
         };
@@ -110,7 +114,7 @@ impl Eval for IndexOf {
 }
 
 impl Setter for IndexOf {
-    fn set(&self, ctxt: &mut Context, value: Value) -> Result<(), InternalProgramError> {
+    fn set(&self, ctxt: &mut Context, value: Value) -> Result<(), EvalStop> {
         let of = self.of(ctxt)?;
 
         let index = self.index(ctxt)?;
@@ -120,11 +124,12 @@ impl Setter for IndexOf {
         // FIXME: combine index validation for eval and set ?
         let index = {
             if index.is_negative() || index as usize >= of.len() {
-                return Err(InternalProgramError::IndexOutOfRange {
+                return InternalProgramError::IndexOutOfRange {
                     index,
                     len: of.len(),
                     span: self.index.span(),
-                });
+                }
+                .into();
             }
             index as usize
         };
@@ -138,7 +143,7 @@ impl Setter for IndexOf {
 #[cfg(test)]
 mod tests {
     use crate::lang::{
-        AstNode, Context, InternalProgramError, Value,
+        AstNode, Context, EvalStop, InternalProgramError, Value,
         value::{Dict, List},
     };
 
@@ -186,11 +191,11 @@ mod tests {
         // assert_eq!(i9.eval(&mut ctxt).unwrap(), Value::Nil); // FIXME: or should this error ????
         assert!(i9.eval(&mut ctxt).is_err_and(|e| matches!(
             e,
-            InternalProgramError::IndexOutOfRange {
+            EvalStop::Error(InternalProgramError::IndexOutOfRange {
                 index: _,
                 len: _,
                 span: _
-            }
+            })
         ))); // FIXME: or should this error ????
     }
 }
