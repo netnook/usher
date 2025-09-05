@@ -1,10 +1,10 @@
 use super::{BuiltInFunc, FunctionDef, InternalProgramError, Span};
+use crate::lang::Context;
 use std::{borrow::Cow, cell::RefCell, collections::HashMap, fmt::Display, rc::Rc};
 
 #[derive(PartialEq, Debug, Clone)]
 pub enum ValueType {
     Function,
-    BuiltInFunction,
     String,
     Integer,
     Float,
@@ -24,7 +24,6 @@ impl ValueType {
     pub fn type_name(&self) -> &'static str {
         match self {
             ValueType::Function => "function",
-            ValueType::BuiltInFunction => "built-in-function",
             ValueType::String => "string",
             ValueType::Integer => "integer",
             ValueType::Float => "float",
@@ -38,8 +37,7 @@ impl ValueType {
 
 #[derive(PartialEq, Debug, Clone)]
 pub enum Value {
-    Func(Rc<FunctionDef>),
-    BuiltInFunc(BuiltInFunc),
+    Func(Func),
     Str(StringCell),
     Integer(isize),
     Float(f64),
@@ -53,11 +51,6 @@ impl Value {
     pub fn as_string(&'_ self) -> Result<Cow<'_, str>, InternalProgramError> {
         Ok(match self {
             Value::Func(_) => {
-                let mut result = String::new();
-                self.write_to(&mut result)?;
-                Cow::Owned(result)
-            }
-            Value::BuiltInFunc(_) => {
                 let mut result = String::new();
                 self.write_to(&mut result)?;
                 Cow::Owned(result)
@@ -86,13 +79,6 @@ impl Value {
     fn write_to(&self, into: &mut String) -> Result<(), InternalProgramError> {
         match self {
             Value::Func(_) => {
-                return Err(InternalProgramError {
-                    msg: "Cannot convert a function to a string.".to_string(),
-                    // FIXME: correct pos
-                    span: Span::new(0, 0),
-                });
-            }
-            Value::BuiltInFunc(_) => {
                 return Err(InternalProgramError {
                     msg: "Cannot convert a function to a string.".to_string(),
                     // FIXME: correct pos
@@ -153,7 +139,6 @@ impl Value {
     pub fn value_type(&self) -> ValueType {
         match self {
             Value::Func(_) => ValueType::Function,
-            Value::BuiltInFunc(_) => ValueType::BuiltInFunction,
             Value::Str(_) => ValueType::String,
             Value::Integer(_) => ValueType::Integer,
             Value::Float(_) => ValueType::Float,
@@ -162,6 +147,33 @@ impl Value {
             Value::Dict(_) => ValueType::Dict,
             Value::Nil => ValueType::Nil,
         }
+    }
+}
+
+#[derive(PartialEq, Debug, Clone)]
+pub enum Func {
+    Func(Rc<FunctionDef>),
+    BuiltInFunc(BuiltInFunc),
+}
+
+impl Func {
+    pub fn call(
+        &self,
+        ctxt: &mut Context,
+        this: Value,
+        params: Vec<Value>,
+        span: &Span,
+    ) -> Result<Value, InternalProgramError> {
+        match self {
+            Func::Func(f) => f.call(ctxt, this, params, span),
+            Func::BuiltInFunc(f) => f.call(ctxt, this, params, span),
+        }
+    }
+}
+
+impl From<BuiltInFunc> for Func {
+    fn from(value: BuiltInFunc) -> Self {
+        Self::BuiltInFunc(value)
     }
 }
 
@@ -247,13 +259,17 @@ impl Dict {
     }
 }
 
+impl From<BuiltInFunc> for Value {
+    fn from(value: BuiltInFunc) -> Self {
+        Self::Func(Func::BuiltInFunc(value))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::lang::BuiltInFunc;
-    use crate::lang::FunctionDef;
     use crate::lang::Value;
-    use crate::parser::tests::_block;
     use crate::parser::tests::ToValue;
 
     #[track_caller]
@@ -286,15 +302,10 @@ mod tests {
         // nil
         do_test_as_string(Value::Nil, "nil");
 
-        assert!(Value::BuiltInFunc(BuiltInFunc::Print).as_string().is_err());
         assert!(
-            Value::Func(Rc::new(FunctionDef {
-                name: None,
-                params: Vec::new(),
-                body: _block!()
-            }))
-            .as_string()
-            .is_err()
+            Value::Func(Func::BuiltInFunc(BuiltInFunc::Print))
+                .as_string()
+                .is_err()
         );
 
         {

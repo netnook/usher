@@ -1,7 +1,9 @@
-use crate::lang::{AstNode, Block, Context, Eval, Identifier, InternalProgramError, Value};
+use crate::lang::{
+    AstNode, Block, Context, Eval, Identifier, InternalProgramError, Span, Value, value::Func,
+};
 use std::rc::Rc;
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Debug)]
 pub struct FunctionDef {
     pub(crate) name: Option<Identifier>,
     pub(crate) params: Vec<Param>,
@@ -16,10 +18,11 @@ pub struct Param {
 
 impl Eval for Rc<FunctionDef> {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
+        let f = Value::Func(Func::Func(Rc::clone(self)));
         if let Some(name) = &self.name {
-            ctxt.set(name, Value::Func(Rc::clone(self)));
+            ctxt.set(name, f.clone());
         };
-        Ok(Value::Func(Rc::clone(self)))
+        Ok(f)
     }
 }
 
@@ -29,10 +32,12 @@ impl FunctionDef {
         ctxt: &mut Context,
         this: Value,
         params: Vec<Value>,
+        span: &Span,
     ) -> Result<Value, InternalProgramError> {
         let _ = params;
         let _ = ctxt;
         let _ = this;
+        let _ = span;
         todo!()
     }
 }

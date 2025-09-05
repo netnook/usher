@@ -9,7 +9,7 @@ mod unary_op;
 mod value;
 mod var;
 
-use crate::find_source_position;
+use crate::{find_source_position, lang::value::ValueType};
 pub use binary_op::{BinaryOp, BinaryOpCode};
 pub use block::Block;
 pub use dict::DictBuilder;
@@ -338,7 +338,7 @@ impl Eval for Identifier {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
         let value = ctxt
             .get(self)
-            .or_else(|| BuiltInFunc::by_name(&self.name).map(Value::BuiltInFunc))
+            .or_else(|| BuiltInFunc::by_name(&self.name).map(|f| f.into()))
             .unwrap_or(Value::Nil);
         Ok(value)
     }
@@ -434,17 +434,45 @@ impl Eval for FunctionCall {
         let on = self.on.eval(ctxt)?;
 
         // get the method
-        let (this, maybe_func) = match &self.method {
+        let (this, func) = match &self.method {
             Some(method_name) => {
                 let method = match &on {
-                    Value::Dict(on) => on
-                        .borrow()
-                        .get(&method_name.name)
-                        .or_else(|| BuiltInFunc::by_name(&method_name.name).map(Value::BuiltInFunc))
-                        .unwrap_or(Value::Nil),
-                    Value::List(_) => BuiltInFunc::by_name(&method_name.name)
-                        .map(Value::BuiltInFunc)
-                        .unwrap_or(Value::Nil),
+                    Value::Dict(on) => {
+                        on.borrow()
+                            .get(&method_name.name)
+                            .map(|v| match v {
+                                Value::Func(f) => Ok(f),
+                                other => {
+                                    Err(InternalProgramError {
+                                        msg: format!(
+                                            "expected function but found {}",
+                                            other.value_type()
+                                        ),
+                                        span: Span::new(0, 0), // FIXME: fix span
+                                    })
+                                }
+                            })
+                            .transpose()?
+                            .or_else(|| BuiltInFunc::by_name(&method_name.name).map(|f| f.into()))
+                            .ok_or_else(|| InternalProgramError {
+                                msg: format!(
+                                    "cannot find method {} on {}",
+                                    method_name.name,
+                                    ValueType::Dict,
+                                ),
+                                span: Span::new(0, 0), // FIXME: fix span
+                            })?
+                    }
+                    Value::List(_) => {
+                        BuiltInFunc::by_name(&method_name.name)
+                            .map(|f| f.into())
+                            .ok_or_else(|| {
+                                InternalProgramError {
+                                    msg: format!("cannot find method {}", method_name.name,),
+                                    span: Span::new(0, 0), // FIXME: fix span
+                                }
+                            })?
+                    }
                     _ => {
                         return Err(InternalProgramError {
                             msg: format!(
@@ -458,7 +486,18 @@ impl Eval for FunctionCall {
                 };
                 (on, method)
             }
-            None => (Value::Nil, on),
+            None => {
+                let func = match on {
+                    Value::Func(func) => func,
+                    _ => {
+                        return Err(InternalProgramError {
+                            msg: format!("expected function but found {}", on.value_type()),
+                            span: Span::new(0, 0), // FIXME: fix span
+                        });
+                    }
+                };
+                (Value::Nil, func)
+            }
         };
 
         // evaluate the args
@@ -467,23 +506,7 @@ impl Eval for FunctionCall {
             args.push(arg_def.eval(ctxt)?);
         }
 
-        match maybe_func {
-            Value::Func(func) => func.call(ctxt, this, args),
-            Value::BuiltInFunc(func) => func.call(ctxt, this, args, &self.span),
-            _ => match &self.method {
-                Some(name) => Err(InternalProgramError {
-                    msg: format!("property {} does not exist or is not a function", name.name,),
-                    span: name.span,
-                }),
-                None => Err(InternalProgramError {
-                    msg: format!(
-                        "expected a function but expression resulted in a {}",
-                        maybe_func.value_type()
-                    ),
-                    span: self.on.span(),
-                }),
-            },
-        }
+        func.call(ctxt, this, args, &self.span)
     }
 }
 
