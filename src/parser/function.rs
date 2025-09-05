@@ -60,13 +60,13 @@ impl<'a> Parser<'a> {
                 AstNode::Identifier(identifier) => {
                     params.push(Param {
                         name: identifier,
-                        value: None,
+                        default_value: None,
                     });
                 }
                 AstNode::KeyValue(KeyValue { key, value }) => {
                     params.push(Param {
                         name: key,
-                        value: Some(*value),
+                        default_value: Some(*value),
                     });
                 }
                 _ => {

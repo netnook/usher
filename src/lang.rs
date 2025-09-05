@@ -130,10 +130,26 @@ impl ContextInner {
     }
 }
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Clone)]
 pub struct Program<'a> {
     pub source: &'a str,
     pub stmts: Vec<AstNode>,
+}
+
+impl<'a> core::fmt::Debug for Program<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let minimal = f.sign_minus();
+        if minimal {
+            f.write_str("Program { ")?;
+            f.debug_list().entries(&self.stmts).finish()?;
+            f.write_str(" }")
+        } else {
+            f.debug_struct("Program")
+                .field("stmts", &self.stmts)
+                .field("source", &self.source)
+                .finish()
+        }
+    }
 }
 
 impl<'a> Program<'a> {
@@ -163,7 +179,7 @@ impl<'a> Program<'a> {
     }
 }
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Clone)]
 pub enum AstNode {
     This,
     Identifier(Identifier),
@@ -188,6 +204,111 @@ pub enum AstNode {
     Break,
     Continue,
     End,
+}
+
+macro_rules! node_debug_1 {
+    ($m:expr, $f:expr, $($name:ident),+) => {
+        match $m {
+            $(
+              AstNode::$name(v) => {v.fmt($f)?; true}
+            )+
+            _ => false
+        }
+    };
+}
+
+macro_rules! node_debug_2 {
+    ($m:expr, $f:expr, $($name:ident),+) => {
+        match $m {
+            $(
+              AstNode::$name(v) => {
+                  $f.write_str(concat!(stringify!($name), "("))?;
+                  v.fmt($f)?;
+                  $f.write_str(" )")?;
+                  true
+              }
+            )+
+            _ => false
+        }
+    };
+}
+
+macro_rules! node_debug_3 {
+    ($m:expr, $f:expr, $($name:ident),+) => {
+        match $m {
+            $(
+              AstNode::$name => { write!($f, stringify!($name))?; true }
+            )+
+            _ => false
+        }
+    };
+}
+
+impl core::fmt::Debug for AstNode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let minimal = f.sign_minus();
+        if minimal {
+            if node_debug_1!(
+                self,
+                f,
+                Literal,
+                Identifier,
+                InterpolatedStr,
+                ListBuilder,
+                DictBuilder,
+                PropertyOf,
+                IndexOf,
+                UnaryOp,
+                BinaryOp,
+                ChainCatch,
+                Block,
+                IfElseStmt,
+                ForStmt,
+                Declaration,
+                FunctionDef,
+                FunctionCall,
+                ReturnStmt,
+                Assignment,
+                KeyValue
+            ) {
+                return Ok(());
+            }
+            if node_debug_3!(self, f, This, Break, Continue, End) {
+                return Ok(());
+            }
+            panic!()
+        } else {
+            if node_debug_2!(
+                self,
+                f,
+                Literal,
+                Identifier,
+                InterpolatedStr,
+                ListBuilder,
+                DictBuilder,
+                PropertyOf,
+                IndexOf,
+                UnaryOp,
+                BinaryOp,
+                ChainCatch,
+                Block,
+                IfElseStmt,
+                ForStmt,
+                Declaration,
+                FunctionDef,
+                FunctionCall,
+                ReturnStmt,
+                Assignment,
+                KeyValue
+            ) {
+                return Ok(());
+            }
+            if node_debug_3!(self, f, This, Break, Continue, End) {
+                return Ok(());
+            }
+            panic!()
+        }
+    }
 }
 
 trait Eval {
@@ -412,10 +533,24 @@ impl Span {
     }
 }
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Clone)]
 pub struct Literal {
     pub(crate) val: Value,
     pub(crate) span: Span,
+}
+
+impl core::fmt::Debug for Literal {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let minimal = f.sign_minus();
+        if minimal {
+            write!(f, "Literal({:-#?})", self.val)
+        } else {
+            f.debug_struct("Literal")
+                .field("val", &self.val)
+                .field("span", &self.span)
+                .finish()
+        }
+    }
 }
 
 impl Literal {
@@ -423,16 +558,31 @@ impl Literal {
         Self { val, span }
     }
 }
+
 impl Eval for Literal {
     fn eval(&self, _: &mut Context) -> Result<Value, EvalStop> {
         Ok(self.val.clone())
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(PartialEq, Eq, Clone)]
 pub struct Identifier {
     pub(crate) name: String,
     pub(crate) span: Span,
+}
+
+impl core::fmt::Debug for Identifier {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let minimal = f.sign_minus();
+        if minimal {
+            write!(f, r#"Ident("{}")"#, self.name)
+        } else {
+            f.debug_struct("Identifier")
+                .field("name", &self.name)
+                .field("span", &self.span)
+                .finish()
+        }
+    }
 }
 
 impl Identifier {
@@ -440,6 +590,7 @@ impl Identifier {
         Self { name, span }
     }
 }
+
 impl Eval for Identifier {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
         let value = ctxt
@@ -449,6 +600,7 @@ impl Eval for Identifier {
         Ok(value)
     }
 }
+
 impl Setter for Identifier {
     fn set(&self, ctxt: &mut Context, value: Value) -> Result<(), EvalStop> {
         ctxt.set(self, value);
@@ -456,9 +608,24 @@ impl Setter for Identifier {
     }
 }
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Clone)]
 pub struct ChainCatch {
     pub(crate) inner: Box<AstNode>,
+}
+
+impl core::fmt::Debug for ChainCatch {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let minimal = f.sign_minus();
+        if minimal {
+            f.write_str("ChainCatch { ")?;
+            self.inner.fmt(f)?;
+            f.write_str(" }")
+        } else {
+            f.debug_struct("ChainCatch")
+                .field("inner", &self.inner)
+                .finish()
+        }
+    }
 }
 
 #[derive(PartialEq, Debug, Clone)]
@@ -511,12 +678,36 @@ impl BuiltInFunc {
     }
 }
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Clone)]
 pub struct FunctionCall {
     pub(crate) on: Box<AstNode>,
     pub(crate) method: Option<Identifier>,
     pub(crate) args: Vec<Arg>,
     pub(crate) span: Span,
+}
+
+impl core::fmt::Debug for FunctionCall {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let minimal = f.sign_minus();
+        if minimal {
+            let mut w = f.debug_struct("FunctionCall");
+            w.field("on", &self.on);
+            if let Some(method) = &self.method {
+                w.field("method", &method.name);
+            }
+            if !self.args.is_empty() {
+                w.field("args", &self.args);
+            }
+            w.finish()
+        } else {
+            f.debug_struct("FunctionCall")
+                .field("on", &self.on)
+                .field("method", &self.method)
+                .field("args", &self.args)
+                .field("span", &self.span)
+                .finish()
+        }
+    }
 }
 
 impl Eval for FunctionCall {
@@ -608,12 +799,31 @@ impl Eval for FunctionCall {
     }
 }
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Clone)]
 pub struct Arg {
     pub(crate) name: Option<Identifier>,
     pub(crate) value: AstNode,
 }
 
+impl core::fmt::Debug for Arg {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let minimal = f.sign_minus();
+        if minimal {
+            if let Some(name) = &self.name {
+                name.name.fmt(f)?;
+                f.write_str(": ")?;
+                self.value.fmt(f)
+            } else {
+                self.value.fmt(f)
+            }
+        } else {
+            f.debug_struct("Arg")
+                .field("name", &self.name)
+                .field("value", &self.value)
+                .finish()
+        }
+    }
+}
 impl Arg {
     pub fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
         if self.name.is_some() {
@@ -623,9 +833,29 @@ impl Arg {
     }
 }
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Clone)]
 pub struct ReturnStmt {
     pub(crate) value: Option<Box<AstNode>>,
+}
+
+impl core::fmt::Debug for ReturnStmt {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let minimal = f.sign_minus();
+        if minimal {
+            match &self.value {
+                Some(v) => {
+                    f.write_str("Return { ")?;
+                    v.fmt(f)?;
+                    f.write_str(" }")
+                }
+                None => write!(f, "Return"),
+            }
+        } else {
+            f.debug_struct("ReturnStmt")
+                .field("value", &self.value)
+                .finish()
+        }
+    }
 }
 
 impl Eval for ReturnStmt {

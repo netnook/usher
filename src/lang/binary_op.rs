@@ -45,7 +45,7 @@ impl BinaryOpCode {
     }
 }
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Clone)]
 pub struct BinaryOp {
     pub(crate) op: BinaryOpCode,
     pub(crate) lhs: Box<AstNode>,
@@ -53,11 +53,31 @@ pub struct BinaryOp {
     pub(crate) span: Span,
 }
 
+impl core::fmt::Debug for BinaryOp {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let minimal = f.sign_minus();
+        if minimal {
+            f.debug_struct(self.op.op_name())
+                .field("lhs", &self.lhs)
+                .field("rhs", &self.rhs)
+                .finish()
+        } else {
+            f.debug_struct("BinaryOp")
+                .field("op", &self.op)
+                .field("lhs", &self.lhs)
+                .field("rhs", &self.rhs)
+                .field("span", &self.span)
+                .finish()
+        }
+    }
+}
+
 impl BinaryOp {
     pub fn span(&self) -> Span {
         Span::merge(self.lhs.span(), self.rhs.span())
     }
 }
+
 impl Eval for BinaryOp {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
         // Do the logical short-circuiting ops first, taking care to only evaluate rhs

@@ -1,12 +1,35 @@
 use super::{Context, Value};
 use crate::lang::{AstNode, Block, Eval, EvalStop, Identifier, InternalProgramError};
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Clone)]
 pub struct ForStmt {
     pub(crate) loop_var_1: Identifier,
     pub(crate) loop_var_2: Option<Identifier>,
     pub(crate) loop_expr: Box<AstNode>,
     pub(crate) block: Block,
+}
+
+impl core::fmt::Debug for ForStmt {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let minimal = f.sign_minus();
+        if minimal {
+            let mut w = f.debug_struct("ForStmt");
+            w.field("loop_var_1", &self.loop_var_1.name);
+            if let Some(loop_var_2) = &self.loop_var_2 {
+                w.field("loop_var_2", &loop_var_2.name);
+            }
+            w.field("loop_expr", &self.loop_expr);
+            w.field("block", &self.block);
+            w.finish()
+        } else {
+            f.debug_struct("ForStmt")
+                .field("loop_var_1", &self.loop_var_1)
+                .field("loop_var_2", &self.loop_var_2)
+                .field("loop_expr", &self.loop_expr)
+                .field("block", &self.block)
+                .finish()
+        }
+    }
 }
 
 impl Eval for ForStmt {

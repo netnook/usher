@@ -1,9 +1,25 @@
 use crate::lang::{AstNode, Context, Eval, EvalStop, Span, Value, value::List};
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Clone)]
 pub struct ListBuilder {
     pub(crate) entries: Vec<AstNode>,
     pub(crate) span: Span,
+}
+
+impl core::fmt::Debug for ListBuilder {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let minimal = f.sign_minus();
+        if minimal {
+            f.write_str("ListBuilder {")?;
+            f.debug_list().entries(&self.entries).finish()?;
+            f.write_str("}")
+        } else {
+            f.debug_struct("ListBuilder ")
+                .field("entries", &self.entries)
+                .field("span", &self.span)
+                .finish()
+        }
+    }
 }
 
 impl ListBuilder {
@@ -11,6 +27,7 @@ impl ListBuilder {
         Self { entries, span }
     }
 }
+
 impl Eval for ListBuilder {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
         let mut list = List::new();

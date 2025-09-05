@@ -1,9 +1,26 @@
 use crate::lang::{AstNode, Context, Eval, EvalStop, Identifier, InternalProgramError, Value};
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Clone)]
 pub struct Declaration {
     pub(crate) ident: Identifier,
     pub(crate) value: Box<AstNode>,
+}
+
+impl core::fmt::Debug for Declaration {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let minimal = f.sign_minus();
+        if minimal {
+            f.debug_struct("Declaration")
+                .field("ident", &self.ident.name)
+                .field("value", &self.value)
+                .finish()
+        } else {
+            f.debug_struct("Declaration")
+                .field("ident", &self.ident)
+                .field("value", &self.value)
+                .finish()
+        }
+    }
 }
 
 impl Eval for Declaration {

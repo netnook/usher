@@ -2,10 +2,31 @@ use crate::lang::{
     AstNode, Block, Context, Eval, EvalStop, InternalProgramError, Value, value::ValueType,
 };
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Clone)]
 pub struct IfElseStmt {
     pub(crate) conditional_blocks: Vec<ConditionalBlock>,
     pub(crate) else_block: Option<Block>,
+}
+
+impl core::fmt::Debug for IfElseStmt {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let minimal = f.sign_minus();
+        if minimal {
+            let mut w = f.debug_struct("IfElseStmt");
+            for cb in &self.conditional_blocks {
+                w.field("conditional", cb);
+            }
+            if let Some(else_block) = &self.else_block {
+                w.field("else", else_block);
+            }
+            w.finish()
+        } else {
+            f.debug_struct("IfElseStmt")
+                .field("conditional_blocks", &self.conditional_blocks)
+                .field("else_block", &self.else_block)
+                .finish()
+        }
+    }
 }
 
 impl Eval for IfElseStmt {

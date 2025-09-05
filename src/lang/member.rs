@@ -3,11 +3,29 @@ use crate::lang::{
     value::{DictCell, ListCell, ValueType},
 };
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Clone)]
 pub struct PropertyOf {
     pub(crate) of: Box<AstNode>,
     pub(crate) property: Identifier,
     pub(crate) span: Span,
+}
+
+impl core::fmt::Debug for PropertyOf {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let minimal = f.sign_minus();
+        if minimal {
+            let mut w = f.debug_struct("PropertyOf");
+            w.field("of", &self.of);
+            w.field("property", &self.property);
+            w.finish()
+        } else {
+            f.debug_struct("PropertyOf")
+                .field("of", &self.of)
+                .field("property", &self.property)
+                .field("span", &self.span)
+                .finish()
+        }
+    }
 }
 
 impl PropertyOf {
@@ -47,11 +65,29 @@ impl Setter for PropertyOf {
     }
 }
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Clone)]
 pub struct IndexOf {
     pub(crate) of: Box<AstNode>,
     pub(crate) index: Box<AstNode>,
     pub(crate) span: Span,
+}
+
+impl core::fmt::Debug for IndexOf {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let minimal = f.sign_minus();
+        if minimal {
+            let mut w = f.debug_struct("IndexOf");
+            w.field("of", &self.of);
+            w.field("index", &self.index);
+            w.finish()
+        } else {
+            f.debug_struct("IndexOf")
+                .field("of", &self.of)
+                .field("index", &self.index)
+                .field("span", &self.span)
+                .finish()
+        }
+    }
 }
 
 impl IndexOf {

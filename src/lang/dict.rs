@@ -1,9 +1,28 @@
 use crate::lang::{Context, Eval, EvalStop, KeyValue, Span, Value, value::Dict};
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Clone)]
 pub struct DictBuilder {
     pub(crate) entries: Vec<KeyValue>,
     pub(crate) span: Span,
+}
+
+impl core::fmt::Debug for DictBuilder {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let minimal = f.sign_minus();
+        if minimal {
+            f.write_str("DictBuilder ")?;
+            let mut m = f.debug_map();
+            for e in &self.entries {
+                m.entry(&e.key.name, &e.value);
+            }
+            m.finish()
+        } else {
+            f.debug_struct("DictBuilder ")
+                .field("entries", &self.entries)
+                .field("span", &self.span)
+                .finish()
+        }
+    }
 }
 
 impl Eval for DictBuilder {

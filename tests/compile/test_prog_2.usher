@@ -1,0 +1,99 @@
+# comment
+lst = [1, "two", true, nil, b+c*d, dict(x: 42)]
+mip = dict (a:1, b:"two", c:[3,2,11])
+
+var foo = function() {
+  return 42
+}
+var foo = function(a, b, c:77) {
+  return 42
+}
+
+function foo(a: 1*2) {
+   return 42
+}
+
+foo("22", c:"ccc")
+a.foo("22", c:"ccc")
+---
+Program { [
+    Assignment {
+        lhs: Ident("lst"),
+        rhs: ListBuilder {[
+            Literal(1),
+            Literal("two"),
+            Literal(true),
+            Literal(nil),
+            addition {
+                lhs: Ident("b"),
+                rhs: multiplication {
+                    lhs: Ident("c"),
+                    rhs: Ident("d"),
+                },
+            },
+            DictBuilder {
+                "x": Literal(42),
+            },
+        ]},
+    },
+    Assignment {
+        lhs: Ident("mip"),
+        rhs: DictBuilder {
+            "a": Literal(1),
+            "b": Literal("two"),
+            "c": ListBuilder {[
+                Literal(3),
+                Literal(2),
+                Literal(11),
+            ]},
+        },
+    },
+    Declaration {
+        ident: "foo",
+        value: FunctionDef {
+            body: Block {[
+                Return { Literal(42) },
+            ]},
+        },
+    },
+    Declaration {
+        ident: "foo",
+        value: FunctionDef {
+            params: [
+                "a",
+                "b",
+                "c": Literal(77),
+            ],
+            body: Block {[
+                Return { Literal(42) },
+            ]},
+        },
+    },
+    FunctionDef {
+        name: "foo",
+        params: [
+            "a": multiplication {
+                lhs: Literal(1),
+                rhs: Literal(2),
+            },
+        ],
+        body: Block {[
+            Return { Literal(42) },
+        ]},
+    },
+    FunctionCall {
+        on: Ident("foo"),
+        args: [
+            Literal("22"),
+            "c": Literal("ccc"),
+        ],
+    },
+    FunctionCall {
+        on: Ident("a"),
+        method: "foo",
+        args: [
+            Literal("22"),
+            "c": Literal("ccc"),
+        ],
+    },
+] }

@@ -48,8 +48,9 @@ mod tests {
         let mut parser = Parser::new(input);
         parser.pos = 1;
 
-        let actual = parser.program().expect("parser should succeed").print();
-        let expected = expected.print();
+        let actual = parser.program().expect("parser should succeed");
+        let actual = format!("{actual:-#?}");
+        let expected = format!("{expected:-#?}");
 
         assert_eq!(actual, expected, "assert actual (left) == expected (right)");
 

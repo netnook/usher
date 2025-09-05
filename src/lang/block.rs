@@ -1,9 +1,25 @@
 use crate::lang::{AstNode, Context, Eval, EvalStop, Span, Value};
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Clone)]
 pub struct Block {
     pub(crate) stmts: Vec<AstNode>,
     pub(crate) span: Span,
+}
+
+impl core::fmt::Debug for Block {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let minimal = f.sign_minus();
+        if minimal {
+            f.write_str("Block {")?;
+            f.debug_list().entries(&self.stmts).finish()?;
+            f.write_str("}")
+        } else {
+            f.debug_struct("Block")
+                .field("stmts", &self.stmts)
+                .field("span", &self.span)
+                .finish()
+        }
+    }
 }
 
 impl Eval for Block {

@@ -74,8 +74,6 @@ impl<'a> Parser<'a> {
 #[cfg(test)]
 pub mod tests {
     mod nested_types;
-    pub mod printing;
-    mod programs;
     mod spans;
 
     use std::rc::Rc;
@@ -365,7 +363,7 @@ pub mod tests {
             use crate::lang::Span;
             Param {
                 name: Identifier::new($name.to_string(), Span::new(0,0)),
-                value: Some($val.into()),
+                default_value: Some($val.into()),
             }
         }};
         (@param $name:expr) => {{
@@ -373,7 +371,7 @@ pub mod tests {
             use crate::lang::Span;
             Param {
                 name: Identifier::new($name.to_string(),Span::new(0,0)),
-                value: None,
+                default_value: None,
             }
         }};
         ($body:expr) => {{
@@ -451,8 +449,8 @@ pub mod tests {
 
         let actual = func(&mut parser)
             .expect("parser should succeed")
-            .map(|a| a.print());
-        let expected = expected.map(|e| e.print());
+            .map(|a| format!("{a:-#?}"));
+        let expected = expected.map(|e| format!("{e:-#?}"));
 
         assert_eq!(actual, expected, "assert actual (left) == expected (right)");
 
