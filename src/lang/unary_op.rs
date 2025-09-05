@@ -1,4 +1,6 @@
-use crate::lang::{AstNode, Context, Eval, InternalProgramError, Span, Value, value::ValueType};
+use crate::lang::{
+    AstNode, Context, Eval, InternalProgramError, Span, Value, bad_type_error_op, value::ValueType,
+};
 use std::fmt::Display;
 
 #[derive(PartialEq, Debug, Clone)]
@@ -29,18 +31,6 @@ pub struct UnaryOp {
     pub(crate) span: Span,
 }
 
-macro_rules! bad_type_error {
-    ($op:expr, $expected:expr, $actual:expr) => {
-        return Err(InternalProgramError {
-            msg: format!(
-                "Expected {} argument for {} operation but got {}",
-                $expected, $op.op, $actual,
-            ),
-            span: $op.span().clone(),
-        })
-    };
-}
-
 impl UnaryOp {
     pub fn span(&self) -> Span {
         Span::merge(self.span, self.on.span())
@@ -53,16 +43,12 @@ impl Eval for UnaryOp {
         let result = match self.op {
             UnaryOpCode::Not => match on {
                 Value::Bool(v) => Value::Bool(!v),
-                on => {
-                    bad_type_error!(self, ValueType::Boolean, on.value_type())
-                }
+                on => return bad_type_error_op!(self, ValueType::Boolean, on.value_type()),
             },
             UnaryOpCode::Negative => match on {
                 Value::Integer(v) => Value::Integer(-v),
                 Value::Float(v) => Value::Float(-v),
-                on => {
-                    bad_type_error!(self, "number", on.value_type())
-                }
+                on => return bad_type_error_op!(self, ValueType::Number, on.value_type()),
             },
         };
 

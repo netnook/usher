@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::lang::{Eval, value::ValueType};
+use crate::lang::{Eval, bad_type_error_op, value::ValueType};
 
 use super::{AstNode, Context, InternalProgramError, Span, Value};
 
@@ -55,27 +55,6 @@ pub struct BinaryOp {
     pub(crate) span: Span,
 }
 
-macro_rules! bad_type_error {
-    ($op:expr, LHS, $expected:expr, $actual:expr) => {
-        return Err(InternalProgramError {
-            msg: format!(
-                "Expected {} arguments for {} operation but got {} on LHS",
-                $expected, $op.op, $actual,
-            ),
-            span: $op.lhs.span().clone(),
-        })
-    };
-    ($op:expr, RHS, $expected:expr, $actual:expr) => {
-        return Err(InternalProgramError {
-            msg: format!(
-                "Expected {} arguments for {} operation but got {} on RHS",
-                $expected, $op.op, $actual,
-            ),
-            span: $op.rhs.span().clone(),
-        })
-    };
-}
-
 impl BinaryOp {
     pub fn span(&self) -> Span {
         Span::merge(self.lhs.span(), self.rhs.span())
@@ -89,7 +68,7 @@ impl Eval for BinaryOp {
             BinaryOpCode::And => {
                 let lhs = self.lhs.eval(ctxt)?;
                 let Value::Bool(lhs) = lhs else {
-                    bad_type_error!(self, LHS, ValueType::Boolean, lhs.value_type());
+                    return bad_type_error_op!(self, LHS, ValueType::Boolean, lhs.value_type());
                 };
 
                 if !lhs {
@@ -98,7 +77,7 @@ impl Eval for BinaryOp {
 
                 let rhs = self.rhs.eval(ctxt)?;
                 let Value::Bool(rhs) = rhs else {
-                    bad_type_error!(self, RHS, ValueType::Boolean, rhs.value_type());
+                    return bad_type_error_op!(self, RHS, ValueType::Boolean, rhs.value_type());
                 };
 
                 return Ok(Value::Bool(rhs));
@@ -106,7 +85,7 @@ impl Eval for BinaryOp {
             BinaryOpCode::Or => {
                 let lhs = self.lhs.eval(ctxt)?;
                 let Value::Bool(lhs) = lhs else {
-                    bad_type_error!(self, LHS, ValueType::Boolean, lhs.value_type());
+                    return bad_type_error_op!(self, LHS, ValueType::Boolean, lhs.value_type());
                 };
 
                 if lhs {
@@ -115,7 +94,7 @@ impl Eval for BinaryOp {
 
                 let rhs = self.rhs.eval(ctxt)?;
                 let Value::Bool(rhs) = rhs else {
-                    bad_type_error!(self, RHS, ValueType::Boolean, rhs.value_type());
+                    return bad_type_error_op!(self, RHS, ValueType::Boolean, rhs.value_type());
                 };
 
                 return Ok(Value::Bool(rhs));
@@ -133,15 +112,10 @@ impl Eval for BinaryOp {
                     (Value::Float(lhs), Value::Float(rhs)) => Value::Float(lhs $op rhs),
                     (Value::Integer(lhs), Value::Float(rhs)) => Value::Float((lhs as f64) $op rhs),
                     (Value::Float(lhs), Value::Integer(rhs)) => Value::Float(lhs $op (rhs as f64)),
-                    (Value::Integer(_), rhs) => {
-                        bad_type_error!(self, RHS, "number", rhs.value_type());
-                    }
-                    (Value::Float(_), rhs) => {
-                        bad_type_error!(self, RHS, "number", rhs.value_type());
-                    }
-                    (lhs, _) => {
-                        bad_type_error!(self, LHS, "number", lhs.value_type());
-                    }
+                    (Value::Integer(_), rhs) => return bad_type_error_op!(self, RHS, ValueType::Number, rhs.value_type()),
+                    (Value::Float(_), rhs) => return bad_type_error_op!(self, RHS, ValueType::Number, rhs.value_type()),
+                    (lhs, _) => return bad_type_error_op!(self, LHS, ValueType::Number, lhs.value_type()),
+
                 }
             };
         }
@@ -153,15 +127,9 @@ impl Eval for BinaryOp {
                     (Value::Float(lhs), Value::Float(rhs)) => Value::Bool(lhs $op rhs),
                     (Value::Integer(lhs), Value::Float(rhs)) => Value::Bool((lhs as f64) $op rhs),
                     (Value::Float(lhs), Value::Integer(rhs)) => Value::Bool(lhs $op (rhs as f64)),
-                    (Value::Integer(_), rhs) => {
-                        bad_type_error!(self, RHS, "number", rhs.value_type());
-                    }
-                    (Value::Float(_), rhs) => {
-                        bad_type_error!(self, RHS, "number", rhs.value_type());
-                    }
-                    (lhs, _) => {
-                        bad_type_error!(self, LHS, "number", lhs.value_type());
-                    }
+                    (Value::Integer(_), rhs) => return bad_type_error_op!(self, RHS, ValueType::Number, rhs.value_type()),
+                    (Value::Float(_), rhs) => return bad_type_error_op!(self, RHS, ValueType::Number, rhs.value_type()),
+                    (lhs, _) => return bad_type_error_op!(self, LHS, ValueType::Number, lhs.value_type()),
                 }
             };
         }

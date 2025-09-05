@@ -15,10 +15,7 @@ impl Eval for InterpolatedStr {
             let mut res = String::new();
             for p in &self.parts {
                 let val = p.eval(ctxt)?;
-                let s = val.as_string().map_err(|e| InternalProgramError {
-                    msg: format!("Error interpolating string: {}", e.msg),
-                    span: p.span(),
-                })?;
+                let s = val.as_string()?;
                 res.push_str(&format!("{s}"));
             }
             Ok(Value::Str(Rc::new(res)))

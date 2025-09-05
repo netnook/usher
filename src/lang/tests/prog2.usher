@@ -4,7 +4,7 @@ cow
   .add("moo")
 ---
 ProgramError {
-    msg: "method 'add' not applicable to type dict",
+    msg: "Method 'add' not applicable to type dict",
     line_no: 3,
     char_no: 2,
     line: "  .add(\"moo\")",

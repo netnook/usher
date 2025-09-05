@@ -52,9 +52,9 @@ impl<'a> Program<'a> {
         match self.do_run() {
             Ok(v) => Ok(v),
             Err(e) => {
-                let info = find_source_position(self.source, e.span.start);
+                let info = find_source_position(self.source, e.span().start);
                 Err(ProgramError {
-                    msg: e.msg,
+                    msg: e.message(),
                     line_no: info.0.line,
                     char_no: info.0.char,
                     line: info.1.to_string(),
@@ -81,9 +81,168 @@ pub struct ProgramError {
 }
 
 #[derive(PartialEq, Debug)]
-pub struct InternalProgramError {
-    pub(crate) msg: String,
-    pub(crate) span: Span,
+pub enum InternalProgramError {
+    ExpectedFunction {
+        got: ValueType,
+        span: Span,
+    },
+    NoSuchMethod {
+        name: Identifier,
+        from: ValueType,
+        span: Span,
+    },
+    MethodNotApplicable {
+        name: String,
+        to: ValueType,
+        span: Span,
+    },
+    SuffixOperatorDoesNotSupportOperand {
+        op: &'static str,
+        got: ValueType,
+        span: Span,
+    },
+    BadValueType {
+        expected: ValueType,
+        actual: ValueType,
+        span: Span,
+    },
+    BadValueTypeOp {
+        op: &'static str,
+        expected: ValueType,
+        actual: ValueType,
+        span: Span,
+    },
+    IndexOutOfRange {
+        index: isize,
+        len: usize,
+        span: Span,
+    },
+    CannotAssignToLHS {
+        span: Span,
+    },
+    CannotConvertToString {
+        typ: ValueType,
+        span: Span,
+    },
+}
+
+macro_rules! bad_type_error_op {
+    ($op:expr, LHS, $expected:expr, $actual:expr) => {
+        Err(InternalProgramError::BadValueTypeOp {
+            op: $op.op.op_name(),
+            expected: $expected,
+            actual: $actual,
+            span: $op.lhs.span().clone(),
+        })
+    };
+    ($op:expr, RHS, $expected:expr, $actual:expr) => {
+        Err(InternalProgramError::BadValueTypeOp {
+            op: $op.op.op_name(),
+            expected: $expected,
+            actual: $actual,
+            span: $op.rhs.span().clone(),
+        })
+    };
+    ($op:expr, $expected:expr, $actual:expr) => {
+        Err(InternalProgramError::BadValueTypeOp {
+            op: $op.op.op_name(),
+            expected: $expected,
+            actual: $actual,
+            span: $op.span().clone(),
+        })
+    };
+}
+pub(crate) use bad_type_error_op;
+
+impl InternalProgramError {
+    pub fn message(&self) -> String {
+        match self {
+            InternalProgramError::ExpectedFunction { got, span: _ } => {
+                format!("Expected function but got {got}")
+            }
+            InternalProgramError::NoSuchMethod {
+                name,
+                from,
+                span: _,
+            } => {
+                format!("Cannot find method {name} on {from}", name = name.name)
+            }
+            InternalProgramError::MethodNotApplicable { name, to, span: _ } => {
+                format!("Method '{name}' not applicable to type {to}")
+            }
+            InternalProgramError::SuffixOperatorDoesNotSupportOperand { op, got, span: _ } => {
+                format!("'{op}' operator cannot be applied to a {got}")
+            }
+            InternalProgramError::BadValueType {
+                expected,
+                actual,
+                span: _,
+            } => {
+                format!("Bad type. Expected '{expected}' but got {actual}.",)
+            }
+            InternalProgramError::BadValueTypeOp {
+                op,
+                expected,
+                actual,
+                span: _,
+            } => {
+                format!("Operator {op} expected {expected} but got {actual}.",)
+            }
+            InternalProgramError::IndexOutOfRange {
+                index,
+                len,
+                span: _,
+            } => {
+                format!("Index out of range.  Got {index}, length: {len}")
+            }
+            InternalProgramError::CannotAssignToLHS { span: _ } => {
+                "LHS is not assignable.".to_string()
+            }
+            InternalProgramError::CannotConvertToString { typ, span: _ } => {
+                format!("Cannot convert a {typ} to a string.")
+            }
+        }
+    }
+
+    fn span(&self) -> &Span {
+        match self {
+            InternalProgramError::ExpectedFunction { got: _, span } => span,
+            InternalProgramError::NoSuchMethod {
+                name: _,
+                from: _,
+                span,
+            } => span,
+            InternalProgramError::MethodNotApplicable {
+                name: _,
+                to: _,
+                span,
+            } => span,
+            InternalProgramError::SuffixOperatorDoesNotSupportOperand {
+                op: _,
+                got: _,
+                span,
+            } => span,
+            InternalProgramError::BadValueType {
+                expected: _,
+                actual: _,
+                span,
+            } => span,
+            InternalProgramError::BadValueTypeOp {
+                op: _,
+                expected: _,
+                actual: _,
+                span,
+            } => span,
+            InternalProgramError::IndexOutOfRange {
+                index: _,
+                len: _,
+                span,
+            } => span,
+            InternalProgramError::CannotAssignToLHS { span } => span,
+            InternalProgramError::CannotConvertToString { typ: _, span } => span,
+        }
+    }
+    // pub fn
 }
 
 #[derive(PartialEq, Debug, Clone)]
@@ -412,8 +571,9 @@ impl BuiltInFunc {
                     }
                     Ok(Value::Nil)
                 }
-                _ => Err(InternalProgramError {
-                    msg: format!("method 'add' not applicable to type {}", this.value_type(),),
+                _ => Err(InternalProgramError::MethodNotApplicable {
+                    name: "add".to_string(),
+                    to: this.value_type(),
                     span: *span,
                 }),
             },
@@ -442,44 +602,32 @@ impl Eval for FunctionCall {
                             .get(&method_name.name)
                             .map(|v| match v {
                                 Value::Func(f) => Ok(f),
-                                other => {
-                                    Err(InternalProgramError {
-                                        msg: format!(
-                                            "expected function but found {}",
-                                            other.value_type()
-                                        ),
-                                        span: Span::new(0, 0), // FIXME: fix span
-                                    })
-                                }
+                                other => Err(InternalProgramError::ExpectedFunction {
+                                    got: other.value_type(),
+                                    span: Span::new(0, 0),
+                                }),
                             })
                             .transpose()?
                             .or_else(|| BuiltInFunc::by_name(&method_name.name).map(|f| f.into()))
-                            .ok_or_else(|| InternalProgramError {
-                                msg: format!(
-                                    "cannot find method {} on {}",
-                                    method_name.name,
-                                    ValueType::Dict,
-                                ),
+                            .ok_or_else(|| InternalProgramError::NoSuchMethod {
+                                name: method_name.clone(),
+                                from: ValueType::Dict,
                                 span: Span::new(0, 0), // FIXME: fix span
                             })?
                     }
                     Value::List(_) => {
                         BuiltInFunc::by_name(&method_name.name)
                             .map(|f| f.into())
-                            .ok_or_else(|| {
-                                InternalProgramError {
-                                    msg: format!("cannot find method {}", method_name.name,),
-                                    span: Span::new(0, 0), // FIXME: fix span
-                                }
+                            .ok_or_else(|| InternalProgramError::NoSuchMethod {
+                                name: method_name.clone(),
+                                from: ValueType::List,
+                                span: Span::new(0, 0), // FIXME: fix span
                             })?
                     }
                     _ => {
-                        return Err(InternalProgramError {
-                            msg: format!(
-                                "cannot find method {} of {} LHS",
-                                method_name.name,
-                                on.value_type()
-                            ),
+                        return Err(InternalProgramError::NoSuchMethod {
+                            name: method_name.clone(),
+                            from: on.value_type(),
                             span: Span::new(0, 0), // FIXME: fix span
                         });
                     }
@@ -490,9 +638,9 @@ impl Eval for FunctionCall {
                 let func = match on {
                     Value::Func(func) => func,
                     _ => {
-                        return Err(InternalProgramError {
-                            msg: format!("expected function but found {}", on.value_type()),
-                            span: Span::new(0, 0), // FIXME: fix span
+                        return Err(InternalProgramError::ExpectedFunction {
+                            got: on.value_type(),
+                            span: Span::new(0, 0),
                         });
                     }
                 };

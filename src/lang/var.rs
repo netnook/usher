@@ -24,8 +24,7 @@ impl Eval for Assignment {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
         let rhs = self.rhs.eval(ctxt)?;
         let Some(assignable) = self.lhs.as_assignable() else {
-            return Err(InternalProgramError {
-                msg: "LHS is not assignable.".to_string(),
+            return Err(InternalProgramError::CannotAssignToLHS {
                 span: self.lhs.span(),
             });
         };

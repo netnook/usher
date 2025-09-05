@@ -15,12 +15,9 @@ impl PropertyOf {
         let of = self.of.eval(ctxt)?;
 
         let Value::Dict(of) = of else {
-            return Err(InternalProgramError {
-                msg: format!(
-                    "property-of operator can only be applied to {} but got {} LHS",
-                    ValueType::Dict,
-                    of.value_type()
-                ),
+            return Err(InternalProgramError::SuffixOperatorDoesNotSupportOperand {
+                op: "property-of",
+                got: of.value_type(),
                 span: self.of.span(),
             });
         };
@@ -61,12 +58,9 @@ impl IndexOf {
         let of = self.of.eval(ctxt)?;
 
         let Value::List(of) = of else {
-            return Err(InternalProgramError {
-                msg: format!(
-                    "index-of operator can only be applied to {} but got {} LHS",
-                    ValueType::List,
-                    of.value_type()
-                ),
+            return Err(InternalProgramError::SuffixOperatorDoesNotSupportOperand {
+                op: "index-of",
+                got: of.value_type(),
                 span: self.of.span(),
             });
         };
@@ -78,12 +72,9 @@ impl IndexOf {
         let index = self.index.eval(ctxt)?;
 
         let Value::Integer(index) = index else {
-            return Err(InternalProgramError {
-                msg: format!(
-                    "index-of operator requires a {} index but got {}.",
-                    ValueType::Integer,
-                    index.value_type()
-                ),
+            return Err(InternalProgramError::BadValueType {
+                expected: ValueType::Integer,
+                actual: index.value_type(),
                 span: self.index.span(),
             });
         };
@@ -103,8 +94,9 @@ impl Eval for IndexOf {
         // FIXME: combine index validation for eval and set ?
         let index = {
             if index.is_negative() || index as usize >= of.len() {
-                return Err(InternalProgramError {
-                    msg: format!("index {} out of range", index),
+                return Err(InternalProgramError::IndexOutOfRange {
+                    index,
+                    len: of.len(),
                     span: self.index.span(),
                 });
             }
@@ -128,8 +120,9 @@ impl Setter for IndexOf {
         // FIXME: combine index validation for eval and set ?
         let index = {
             if index.is_negative() || index as usize >= of.len() {
-                return Err(InternalProgramError {
-                    msg: format!("index {} out of range", index),
+                return Err(InternalProgramError::IndexOutOfRange {
+                    index,
+                    len: of.len(),
                     span: self.index.span(),
                 });
             }
@@ -145,7 +138,7 @@ impl Setter for IndexOf {
 #[cfg(test)]
 mod tests {
     use crate::lang::{
-        AstNode, Context, Value,
+        AstNode, Context, InternalProgramError, Value,
         value::{Dict, List},
     };
 
@@ -191,9 +184,13 @@ mod tests {
         assert_eq!(i0.eval(&mut ctxt).unwrap(), 7.to_value());
         assert_eq!(i1.eval(&mut ctxt).unwrap(), "aaa".to_value());
         // assert_eq!(i9.eval(&mut ctxt).unwrap(), Value::Nil); // FIXME: or should this error ????
-        assert!(
-            i9.eval(&mut ctxt)
-                .is_err_and(|e| e.msg.contains("out of range"))
-        ); // FIXME: or should this error ????
+        assert!(i9.eval(&mut ctxt).is_err_and(|e| matches!(
+            e,
+            InternalProgramError::IndexOutOfRange {
+                index: _,
+                len: _,
+                span: _
+            }
+        ))); // FIXME: or should this error ????
     }
 }

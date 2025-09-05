@@ -8,6 +8,7 @@ pub enum ValueType {
     String,
     Integer,
     Float,
+    Number,
     Boolean,
     List,
     Dict,
@@ -27,6 +28,7 @@ impl ValueType {
             ValueType::String => "string",
             ValueType::Integer => "integer",
             ValueType::Float => "float",
+            ValueType::Number => "number",
             ValueType::Boolean => "boolean",
             ValueType::List => "list",
             ValueType::Dict => "dict",
@@ -79,10 +81,9 @@ impl Value {
     fn write_to(&self, into: &mut String) -> Result<(), InternalProgramError> {
         match self {
             Value::Func(_) => {
-                return Err(InternalProgramError {
-                    msg: "Cannot convert a function to a string.".to_string(),
-                    // FIXME: correct pos
-                    span: Span::new(0, 0),
+                return Err(InternalProgramError::CannotConvertToString {
+                    typ: self.value_type(),
+                    span: Span::new(0, 0), // FIXME: correct pos
                 });
             }
             Value::Str(v) => {
