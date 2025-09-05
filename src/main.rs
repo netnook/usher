@@ -1,4 +1,3 @@
-use parser::error::find_source_position;
 use std::fs;
 
 mod lang;

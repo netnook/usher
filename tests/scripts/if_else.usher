@@ -41,9 +41,4 @@ if a {
 results.add(x)
 results
 ---
-list[
-  "c"
-  "b"
-  "a"
-  "xx"
-]
+["c","b","a","xx"]

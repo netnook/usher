@@ -13,11 +13,11 @@ mod value;
 mod var;
 
 use crate::{
-    find_source_position,
     lang::{
         loops::{Break, Continue},
         value::ValueType,
     },
+    parser::error::find_source_position,
 };
 pub use binary_op::{BinaryOp, BinaryOpCode};
 pub use block::Block;
@@ -137,7 +137,7 @@ pub struct Program<'a> {
 }
 
 impl<'a> Program<'a> {
-    pub(crate) fn run(&self) -> Result<Value, ProgramError> {
+    pub fn run(&self) -> Result<Value, ProgramError> {
         match self.do_run() {
             Ok(v) => Ok(v),
             Err(EvalStop::Return(v)) => Ok(v),
@@ -646,6 +646,4 @@ pub struct KeyValue {
 }
 
 #[cfg(test)]
-mod tests {
-    mod programs;
-}
+mod tests {}

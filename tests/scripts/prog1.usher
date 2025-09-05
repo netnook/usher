@@ -27,7 +27,4 @@ l
 #   "bar"
 # )
 ---
-list[
-  "cow"
-  "moo"
-]
+["cow","moo"]

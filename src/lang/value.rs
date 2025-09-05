@@ -1,7 +1,13 @@
 use crate::lang::{Context, EvalStop};
 
 use super::{BuiltInFunc, FunctionDef, InternalProgramError, Span};
-use std::{borrow::Cow, cell::RefCell, collections::HashMap, fmt::Display, rc::Rc};
+use std::{
+    borrow::Cow,
+    cell::RefCell,
+    collections::HashMap,
+    fmt::{Display, Write},
+    rc::Rc,
+};
 
 #[derive(PartialEq, Debug, Clone)]
 pub enum ValueType {
@@ -38,7 +44,7 @@ impl ValueType {
     }
 }
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Clone)]
 pub enum Value {
     Func(Func),
     Str(StringCell),
@@ -150,6 +156,45 @@ impl Value {
             Value::Dict(_) => ValueType::Dict,
             Value::Nil => ValueType::Nil,
         }
+    }
+}
+
+impl core::fmt::Debug for Value {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Value::Func(_) => todo!(),
+            Value::Str(v) => {
+                f.write_char('"')?;
+                f.write_str(v)?;
+                f.write_char('"')?;
+            }
+            Value::Integer(v) => write!(f, "{v}")?,
+            Value::Float(v) => write!(f, "{v}")?,
+            Value::Bool(v) => write!(f, "{v}")?,
+            Value::List(v) => {
+                f.write_char('[')?;
+                let v = v.borrow();
+                let mut it = v.content.iter().peekable();
+                while let Some(e) = it.next() {
+                    e.fmt(f)?;
+                    if it.peek().is_some() {
+                        f.write_char(',')?;
+                    }
+                }
+                f.write_char(']')?;
+            }
+            Value::Dict(v) => {
+                f.write_str("dict(")?;
+                for (k, v) in &v.borrow().content {
+                    f.write_str(k)?;
+                    f.write_char(':')?;
+                    v.fmt(f)?;
+                }
+                f.write_char(')')?;
+            }
+            Value::Nil => f.write_str("nil")?,
+        }
+        Ok(())
     }
 }
 
