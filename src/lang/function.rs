@@ -27,10 +27,12 @@ impl FunctionDef {
     pub fn call(
         &self,
         ctxt: &mut Context,
+        this: Value,
         params: Vec<Value>,
     ) -> Result<Value, InternalProgramError> {
         let _ = params;
         let _ = ctxt;
+        let _ = this;
         todo!()
     }
 }

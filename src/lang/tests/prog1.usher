@@ -1,0 +1,33 @@
+var e = dict(foo: 1, bar:42)
+e.foo = "bar"
+e.fee = ["moo", "sheep"]
+e.fee[1] = "cow"
+print("e={e}")
+var l = []
+l.add(e.fee[1])
+l.add("moo")
+# for k in e.keys().sorted() {
+# 	l.add(k)
+# 	l.add(e[k])
+# }
+#for k in e.keys().sorted() {
+#	l.add(k)
+#	l.add(e[k])
+#}
+l
+# - --
+# dict(  bar:
+#   42
+#   fee:
+#   list[    "moo"
+#     "cow"
+#   ]
+
+#   foo:
+#   "bar"
+# )
+---
+list[
+  "cow"
+  "moo"
+]

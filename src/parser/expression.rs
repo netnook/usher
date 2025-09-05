@@ -263,15 +263,6 @@ impl<'a> Parser<'a> {
             let savepoint = self.pos;
             self.linespace();
 
-            if let Some((property, span)) = self.property_of()? {
-                node = AstNode::PropertyOf(PropertyOf {
-                    of: node.into(),
-                    property,
-                    span,
-                });
-                continue;
-            }
-
             if let Some((index, span)) = self.index_of()? {
                 node = AstNode::IndexOf(IndexOf {
                     of: node.into(),
@@ -281,16 +272,39 @@ impl<'a> Parser<'a> {
                 continue;
             }
 
-            if let Some(args) = self.call_of()? {
-                node = AstNode::FunctionCall(FunctionCall {
-                    on: node.into(),
-                    args,
-                });
+            if let Some((args, span)) = self.call_of()? {
+                node = match node {
+                    AstNode::PropertyOf(node) => AstNode::FunctionCall(FunctionCall {
+                        on: node.of,
+                        method: Some(node.property),
+                        args,
+                        span: Span::merge(node.span, span),
+                    }),
+                    AstNode::IndexOf(_) => todo!(),
+                    AstNode::ChainCatch(_) => todo!(),
+                    _ => AstNode::FunctionCall(FunctionCall {
+                        on: node.into(),
+                        method: None,
+                        args,
+                        span,
+                    }),
+                };
                 continue;
             }
 
             if self.chain_catch() {
                 node = AstNode::ChainCatch(ChainCatch { inner: node.into() });
+                continue;
+            }
+
+            // dot '.' operator can appear on new line
+            self.whitespace_comments();
+            if let Some((property, span)) = self.property_of()? {
+                node = AstNode::PropertyOf(PropertyOf {
+                    of: node.into(),
+                    property,
+                    span,
+                });
                 continue;
             }
 
@@ -428,7 +442,7 @@ impl<'a> Parser<'a> {
         Ok(Some((index, Span::start_end(start, self.pos))))
     }
 
-    fn call_of(&mut self) -> ParseResult<Option<Vec<Arg>>> {
+    fn call_of(&mut self) -> ParseResult<Option<(Vec<Arg>, Span)>> {
         let start = self.pos;
         if !self.char(b'(') {
             return Ok(None);
@@ -491,7 +505,7 @@ impl<'a> Parser<'a> {
             });
         }
 
-        Ok(Some(args))
+        Ok(Some((args, Span::start_end(start, self.pos))))
     }
 
     fn chain_catch(&mut self) -> bool {
@@ -542,7 +556,8 @@ pub mod tests {
         do_test_expr_ok(
             r#" foo.bar(a,"33",c:7*2) "#,
             _call!(
-                prop_of(id("foo"), "bar"),
+                id("foo"),
+                method("bar"),
                 arg(id("a")),
                 arg(s("33")),
                 arg(id("c"), mul(i(7), i(2)).into()),
@@ -584,13 +599,24 @@ pub mod tests {
             ),
             -2,
         );
-        do_test_expr_ok(" aa #comment\n . foo  ", id("aa"), 3);
+        do_test_expr_ok(" aa #comment\n . foo  ", prop_of(id("aa"), "foo"), -2);
         do_test_expr_ok(" aa #comment\n [1]  ", id("aa"), 3);
         do_test_expr_ok(" aa #comment\n ?  ", id("aa"), 3);
         do_test_expr_ok(
-            " foo.bar(#comment\n a#comment\n ,#comment\n 7#comment\n ,#comment\n c :#comment\n 7*2) ",
+            " foo(#comment\n a#comment\n ,#comment\n 7#comment\n ,#comment\n c :#comment\n 7*2) ",
             _call!(
-                prop_of(id("foo"), "bar"),
+                id("foo"),
+                arg(id("a")),
+                arg(i(7)),
+                arg(id("c"), mul(i(7), i(2)).into()),
+            ),
+            -1,
+        );
+        do_test_expr_ok(
+            " foo.bar().baz(#comment\n a#comment\n ,#comment\n 7#comment\n ,#comment\n c :#comment\n 7*2) ",
+            _call!(
+                _call!(id("foo"), method("bar"),),
+                method("baz"),
                 arg(id("a")),
                 arg(i(7)),
                 arg(id("c"), mul(i(7), i(2)).into()),

@@ -237,10 +237,10 @@ end
 )
 (call
   (on
-    (property
-      (id a)
-      (id foo)
-    )
+    (id a)
+  )
+  (method
+    (id foo)
   )
   (args
     "22"

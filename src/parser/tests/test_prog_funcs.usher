@@ -5,7 +5,7 @@ var foo = function(a, b, c:77) {
   return 42
 }
 
-a.foo("22", c:"cc")
+a.b().foo("22", c:"cc")
 
 function foo(a:1*2) {
    return 42
@@ -42,10 +42,17 @@ function foo(a:1*2) {
 )
 (call
   (on
-    (property
-      (id a)
-      (id foo)
+    (call
+      (on
+        (id a)
+      )
+      (method
+        (id b)
+      )
     )
+  )
+  (method
+    (id foo)
   )
   (args
     "22"

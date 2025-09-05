@@ -135,6 +135,18 @@ fn test_stmt_spanneds() {
     );
     do_test_parser_exact(
         Parser::stmt,
+        r#" aaa(123).bbb(456) "#,
+        _call!(
+            _call!(id("aaa").spanned(1, 3), arg(i(123).spanned(5, 3)),).spanned(4, 5),
+            method(id("bbb").spanned(10, 3)),
+            arg(i(456).spanned(14, 3)),
+        )
+        .spanned(9, 4)
+        .into(),
+        -1,
+    );
+    do_test_parser_exact(
+        Parser::stmt,
         " { \n abc = 2 \n 42 \n } ",
         _block!(
             assign(id("abc").spanned(5, 3), i(2).spanned(11, 1)),

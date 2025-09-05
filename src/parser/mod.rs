@@ -84,8 +84,8 @@ pub mod tests {
     use crate::{
         lang::{
             Assignment, AstNode, BinaryOp, BinaryOpCode, Block, ChainCatch, Declaration,
-            DictBuilder, ForStmt, Identifier, IndexOf, KeyValue, ListBuilder, Literal, PropertyOf,
-            Span, UnaryOp, UnaryOpCode, Value,
+            DictBuilder, ForStmt, FunctionCall, Identifier, IndexOf, KeyValue, ListBuilder,
+            Literal, PropertyOf, Span, UnaryOp, UnaryOpCode, Value,
         },
         parser::Parser,
     };
@@ -395,6 +395,11 @@ pub mod tests {
                 ..c
             }
         }};
+        (@inner method($name:expr), $($rest:tt)*) => {{
+            let mut c = _call!(@inner $($rest)*);
+            c.method = Some($name.into());
+            c
+        }};
         (@inner arg($name:expr, $value:expr), $($rest:tt)*) => {{
             use crate::lang::Arg;
             let mut c = _call!(@inner $($rest)*);
@@ -418,7 +423,9 @@ pub mod tests {
             use crate::lang::AstNode;
             FunctionCall{
                  on: AstNode::Break.into(), // dummy value
-                 args: Vec::new()
+                 method: None,
+                 args: Vec::new(),
+                span: Span::new(999, 9999),
             }
         }};
     }
@@ -636,4 +643,5 @@ pub mod tests {
     with_span!(ListBuilder);
     with_span!(IndexOf);
     with_span!(Block);
+    with_span!(FunctionCall);
 }

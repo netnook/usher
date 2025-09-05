@@ -11,6 +11,7 @@ fn test_prog_funcs() {
     do_test_program_ok(include_str!("test_prog_funcs.usher"));
 }
 
+#[track_caller]
 fn do_test_program_ok(src: &str) {
     let (input, expected) = src.split_once("---").expect("split ok");
 

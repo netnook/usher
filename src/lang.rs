@@ -3,23 +3,24 @@ mod block;
 mod dict;
 mod function;
 mod list;
+mod member;
 mod string;
 mod unary_op;
 mod value;
 mod var;
 
+use crate::find_source_position;
 pub use binary_op::{BinaryOp, BinaryOpCode};
 pub use block::Block;
-pub use dict::{DictBuilder, PropertyOf};
+pub use dict::DictBuilder;
 pub use function::{FunctionDef, Param};
-pub use list::{IndexOf, ListBuilder};
+pub use list::ListBuilder;
+pub use member::{IndexOf, PropertyOf};
 use std::{collections::HashMap, rc::Rc};
 pub use string::InterpolatedStr;
 pub use unary_op::{UnaryOp, UnaryOpCode};
 pub use value::Value;
 pub use var::{Assignment, Declaration};
-
-use crate::find_source_position;
 
 #[derive(Debug, Clone, Default)]
 pub struct Context {
@@ -31,11 +32,12 @@ impl Context {
         Self::default()
     }
 
+    pub fn get(&mut self, ident: &Identifier) -> Option<Value> {
+        self.vars.get(&ident.name).cloned()
+    }
+
     pub fn set(&mut self, ident: &Identifier, value: Value) {
         self.vars.insert(ident.name.clone(), value);
-    }
-    pub fn get(&mut self, ident: &Identifier) -> Value {
-        self.vars.get(&ident.name).cloned().unwrap_or(Value::Nil)
     }
 }
 
@@ -46,7 +48,7 @@ pub struct Program<'a> {
 }
 
 impl<'a> Program<'a> {
-    pub(crate) fn run(&self) -> Result<(), ProgramError> {
+    pub(crate) fn run(&self) -> Result<Value, ProgramError> {
         match self.do_run() {
             Ok(v) => Ok(v),
             Err(e) => {
@@ -60,12 +62,13 @@ impl<'a> Program<'a> {
             }
         }
     }
-    fn do_run(&self) -> Result<(), InternalProgramError> {
+    fn do_run(&self) -> Result<Value, InternalProgramError> {
         let mut ctxt = Context::new();
+        let mut res = Value::Nil;
         for stmt in &self.stmts {
-            stmt.eval(&mut ctxt)?;
+            res = stmt.eval(&mut ctxt)?;
         }
-        Ok(())
+        Ok(res)
     }
 }
 
@@ -333,11 +336,11 @@ impl Identifier {
 }
 impl Eval for Identifier {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
-        if self.name == "print" {
-            Ok(Value::BuiltInFunc(BuiltInFunc::Print))
-        } else {
-            Ok(ctxt.get(self))
-        }
+        let value = ctxt
+            .get(self)
+            .or_else(|| BuiltInFunc::by_name(&self.name).map(Value::BuiltInFunc))
+            .unwrap_or(Value::Nil);
+        Ok(value)
     }
 }
 impl Setter for Identifier {
@@ -375,13 +378,24 @@ pub struct ForStmt {
 #[derive(PartialEq, Debug, Clone)]
 pub enum BuiltInFunc {
     Print,
+    Add,
 }
 
 impl BuiltInFunc {
+    pub fn by_name(key: &str) -> Option<BuiltInFunc> {
+        match key {
+            "print" => Some(BuiltInFunc::Print),
+            "add" => Some(BuiltInFunc::Add),
+            _ => None,
+        }
+    }
+
     pub fn call(
         &self,
         _ctxt: &mut Context,
+        this: Value,
         params: Vec<Value>,
+        span: &Span,
     ) -> Result<Value, InternalProgramError> {
         match self {
             BuiltInFunc::Print => {
@@ -390,6 +404,19 @@ impl BuiltInFunc {
                 }
                 Ok(Value::Nil)
             }
+            BuiltInFunc::Add => match this {
+                Value::List(list) => {
+                    let mut list = list.borrow_mut();
+                    for v in params {
+                        list.add(v);
+                    }
+                    Ok(Value::Nil)
+                }
+                _ => Err(InternalProgramError {
+                    msg: format!("method 'add' not applicable to type {}", this.value_type(),),
+                    span: *span,
+                }),
+            },
         }
     }
 }
@@ -397,13 +424,42 @@ impl BuiltInFunc {
 #[derive(PartialEq, Debug, Clone)]
 pub struct FunctionCall {
     pub(crate) on: Box<AstNode>,
+    pub(crate) method: Option<Identifier>,
     pub(crate) args: Vec<Arg>,
+    pub(crate) span: Span,
 }
 
 impl Eval for FunctionCall {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
-        // get the function
-        let maybe_func = self.on.eval(ctxt)?;
+        let on = self.on.eval(ctxt)?;
+
+        // get the method
+        let (this, maybe_func) = match &self.method {
+            Some(method_name) => {
+                let method = match &on {
+                    Value::Dict(on) => on
+                        .borrow()
+                        .get(&method_name.name)
+                        .or_else(|| BuiltInFunc::by_name(&method_name.name).map(Value::BuiltInFunc))
+                        .unwrap_or(Value::Nil),
+                    Value::List(_) => BuiltInFunc::by_name(&method_name.name)
+                        .map(Value::BuiltInFunc)
+                        .unwrap_or(Value::Nil),
+                    _ => {
+                        return Err(InternalProgramError {
+                            msg: format!(
+                                "cannot find method {} of {} LHS",
+                                method_name.name,
+                                on.value_type()
+                            ),
+                            span: Span::new(0, 0), // FIXME: fix span
+                        });
+                    }
+                };
+                (on, method)
+            }
+            None => (Value::Nil, on),
+        };
 
         // evaluate the args
         let mut args = Vec::with_capacity(self.args.len());
@@ -411,14 +467,22 @@ impl Eval for FunctionCall {
             args.push(arg_def.eval(ctxt)?);
         }
 
-        // call the function
-        // func.call(ctxt, args)
         match maybe_func {
-            Value::Func(func) => func.call(ctxt, args),
-            Value::BuiltInFunc(func) => func.call(ctxt, args),
-            _ => {
-                todo!()
-            }
+            Value::Func(func) => func.call(ctxt, this, args),
+            Value::BuiltInFunc(func) => func.call(ctxt, this, args, &self.span),
+            _ => match &self.method {
+                Some(name) => Err(InternalProgramError {
+                    msg: format!("property {} does not exist or is not a function", name.name,),
+                    span: name.span,
+                }),
+                None => Err(InternalProgramError {
+                    msg: format!(
+                        "expected a function but expression resulted in a {}",
+                        maybe_func.value_type()
+                    ),
+                    span: self.on.span(),
+                }),
+            },
         }
     }
 }
@@ -450,4 +514,6 @@ pub struct KeyValue {
 }
 
 #[cfg(test)]
-mod tests {}
+mod tests {
+    mod programs;
+}
