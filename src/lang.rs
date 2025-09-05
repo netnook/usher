@@ -99,7 +99,7 @@ impl ContextInner {
         if let Some(parent) = &self.parent {
             return parent.borrow_mut().do_set(ident, value);
         }
-        return Some(value);
+        Some(value)
     }
 
     fn declare(&mut self, ident: &Identifier, value: Value) {
@@ -284,6 +284,11 @@ impl From<ForStmt> for AstNode {
 impl From<Declaration> for AstNode {
     fn from(value: Declaration) -> Self {
         Self::Declaration(value)
+    }
+}
+impl From<Assignment> for AstNode {
+    fn from(value: Assignment) -> Self {
+        Self::Assignment(value)
     }
 }
 impl From<FunctionDef> for AstNode {

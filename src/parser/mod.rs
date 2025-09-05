@@ -117,7 +117,7 @@ pub mod tests {
     }
 
     pub fn s(val: &str) -> Literal {
-        Literal::new(Value::Str(Rc::new(val.to_string())), Span::new(999, 9999))
+        Literal::new(val.to_value(), Span::new(999, 9999))
     }
     pub fn i(val: isize) -> Literal {
         Literal::new(Value::Integer(val), Span::new(999, 9999))
@@ -253,11 +253,11 @@ pub mod tests {
             value: value.into().into(),
         }
     }
-    pub(crate) fn assign(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> AstNode {
-        AstNode::Assignment(Assignment {
+    pub(crate) fn assign(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> Assignment {
+        Assignment {
             lhs: lhs.into().into(),
             rhs: rhs.into().into(),
-        })
+        }
     }
     pub(crate) fn _for(
         ident1: Identifier,

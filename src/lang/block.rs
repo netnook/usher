@@ -8,7 +8,16 @@ pub struct Block {
 
 impl Eval for Block {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
-        // FIXME: need new context to separate scope !!!
+        let mut child_ctxt = ctxt.new_child();
+        self.eval_with_context(&mut child_ctxt)
+    }
+}
+
+impl Block {
+    pub(super) fn eval_with_context(
+        &self,
+        ctxt: &mut Context,
+    ) -> Result<Value, InternalProgramError> {
         let mut result = Value::Nil;
         for stmt in &self.stmts {
             result = stmt.eval(ctxt)?;
@@ -22,7 +31,7 @@ mod tests {
 
     use crate::{
         lang::{Block, Context, Eval, Value},
-        parser::tests::{_block, add, i},
+        parser::tests::{_block, ToValue, add, assign, i, id, var},
     };
 
     #[track_caller]
@@ -43,5 +52,21 @@ mod tests {
 
         block.stmts.push(add(i(42), i(7)).into());
         do_test_block(&block, Value::Integer(49));
+    }
+
+    #[test]
+    fn test_block_eval_ctxt() {
+        let mut ctxt = Context::new();
+        ctxt.set(&id("a"), "a-initial".to_value());
+        ctxt.set(&id("b"), "b-initial".to_value());
+
+        let mut block = _block!();
+        block.stmts.push(var(id("a"), i(1)).into());
+        block.stmts.push(assign(id("a"), i(42)).into());
+        block.stmts.push(assign(id("b"), i(42)).into());
+
+        block.eval(&mut ctxt).expect("return ok");
+        assert_eq!(ctxt.get(&id("a")), Some("a-initial".to_value()));
+        assert_eq!(ctxt.get(&id("b")), Some(42.to_value()));
     }
 }

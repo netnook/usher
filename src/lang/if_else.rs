@@ -8,8 +8,6 @@ pub struct IfElseStmt {
 
 impl Eval for IfElseStmt {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
-        let mut child_ctxt = ctxt.new_child();
-
         for cb in &self.conditional_blocks {
             let cond = cb.condition.eval(ctxt)?;
             let cond = match cond {
@@ -25,11 +23,11 @@ impl Eval for IfElseStmt {
             if !cond {
                 continue;
             }
-            return cb.block.eval(&mut child_ctxt);
+            return cb.block.eval(ctxt);
         }
 
         if let Some(else_block) = &self.else_block {
-            return else_block.eval(&mut child_ctxt);
+            return else_block.eval(ctxt);
         }
 
         Ok(Value::Nil)

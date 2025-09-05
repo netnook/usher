@@ -169,18 +169,22 @@ pub(super) mod tests {
     }
 
     #[track_caller]
-    fn do_test_assign_or_expr_ok(input: &'static str, expected: AstNode, expected_end: isize) {
+    fn do_test_assign_or_expr_ok<T: Into<AstNode>>(
+        input: &'static str,
+        expected: T,
+        expected_end: isize,
+    ) {
         do_test_parser_ok(
             Parser::assignment_or_expression,
             input,
-            Some(expected),
+            Some(expected.into()),
             expected_end,
         );
     }
 
     #[test]
     fn test_assignment_or_expr() {
-        do_test_assign_or_expr_ok(" a ", id("a").into(), -1);
+        do_test_assign_or_expr_ok(" a ", id("a"), -1);
         do_test_assign_or_expr_ok(" a = 1 + 2 ", assign(id("a"), add(i(1), i(2))), -1);
         do_test_assign_or_expr_ok(
             " a[3].b.c = 1 + 2 ",
@@ -213,30 +217,30 @@ pub(super) mod tests {
     }
 
     #[track_caller]
-    pub(crate) fn do_test_stmt_ok(input: &'static str, expected: AstNode, expected_end: isize) {
-        do_test_parser_ok(Parser::stmt, input, Some(expected), expected_end);
+    pub(crate) fn do_test_stmt_ok<T: Into<AstNode>>(
+        input: &'static str,
+        expected: T,
+        expected_end: isize,
+    ) {
+        do_test_parser_ok(Parser::stmt, input, Some(expected.into()), expected_end);
     }
 
     #[test]
     fn test_stmt() {
-        do_test_stmt_ok(
-            " if true { 2 } ",
-            _if!(cond(b(true) => _block![i(2)])).into(),
-            -1,
-        );
+        do_test_stmt_ok(" if true { 2 } ", _if!(cond(b(true) => _block![i(2)])), -1);
         do_test_stmt_ok(
             " for a in b { 2 } ",
-            _for(id("a"), None, id("b"), _block![i(2)]).into(),
+            _for(id("a"), None, id("b"), _block![i(2)]),
             -1,
         );
-        do_test_stmt_ok(" var a = 1 ", var(id("a"), i(1)).into(), -1);
+        do_test_stmt_ok(" var a = 1 ", var(id("a"), i(1)), -1);
         do_test_stmt_ok(" a = 1 ", assign(id("a"), i(1)), -1);
-        do_test_stmt_ok(" a + 2 ", add(id("a"), i(2)).into(), -1);
+        do_test_stmt_ok(" a + 2 ", add(id("a"), i(2)), -1);
 
         // check that vars starting with keywords are not mistaken for those keywords
-        do_test_stmt_ok(" iffy + 2 ", add(id("iffy"), i(2)).into(), -1);
-        do_test_stmt_ok(" for_me + 2 ", add(id("for_me"), i(2)).into(), -1);
-        do_test_stmt_ok(" vario + 2 ", add(id("vario"), i(2)).into(), -1);
+        do_test_stmt_ok(" iffy + 2 ", add(id("iffy"), i(2)), -1);
+        do_test_stmt_ok(" for_me + 2 ", add(id("for_me"), i(2)), -1);
+        do_test_stmt_ok(" vario + 2 ", add(id("vario"), i(2)), -1);
         do_test_stmt_ok(" break ", AstNode::Break, -1);
         do_test_stmt_ok(" continue ", AstNode::Continue, -1);
         do_test_stmt_ok(" end ", AstNode::End, -1);

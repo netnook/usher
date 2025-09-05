@@ -23,7 +23,7 @@ impl Eval for ForStmt {
                 for val in list.iter() {
                     child_ctxt.reset();
                     child_ctxt.declare(&self.loop_var_1, val);
-                    result = self.block.eval(&mut child_ctxt)?;
+                    result = self.block.eval_with_context(&mut child_ctxt)?;
                 }
             }
             Value::Dict(_) => todo!(),
