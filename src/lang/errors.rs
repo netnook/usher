@@ -52,6 +52,10 @@ pub enum InternalProgramError {
         typ: ValueType,
         span: Span,
     },
+    CannotLoopOnValue {
+        got: ValueType,
+        span: Span,
+    },
 }
 
 macro_rules! bad_type_error_op {
@@ -129,6 +133,9 @@ impl InternalProgramError {
             InternalProgramError::CannotConvertToString { typ, span: _ } => {
                 format!("Cannot convert a {typ} to a string.")
             }
+            InternalProgramError::CannotLoopOnValue { got, span: _ } => {
+                format!("Cannot iterate on {got}.")
+            }
         }
     }
 
@@ -168,6 +175,7 @@ impl InternalProgramError {
             } => span,
             InternalProgramError::CannotAssignToLHS { span } => span,
             InternalProgramError::CannotConvertToString { typ: _, span } => span,
+            InternalProgramError::CannotLoopOnValue { got: _, span } => span,
         }
     }
     // pub fn

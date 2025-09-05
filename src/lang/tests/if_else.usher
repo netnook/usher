@@ -1,37 +1,49 @@
 var a = false
 var b = false
+var x = "xx"
 var results = []
 
 if a {
+    var x="-"
 	results.add("a")
 } else if b {
+    var x="-"
 	results.add("b")
 } else {
+    var x="-"
 	results.add("c")
 }
 
 b=true
 if a {
+    var x="-"
 	results.add("a")
 } else if b {
+    var x="-"
 	results.add("b")
 } else {
+    var x="-"
 	results.add("c")
 }
 
 a=true
 if a {
+    var x="-"
 	results.add("a")
 } else if b {
+    var x="-"
 	results.add("b")
 } else {
+    var x="-"
 	results.add("c")
 }
 
+results.add(x)
 results
 ---
 list[
   "c"
   "b"
   "a"
+  "xx"
 ]

@@ -232,6 +232,33 @@ impl List {
     pub fn len(&self) -> usize {
         self.content.len()
     }
+
+    pub fn iter<'a>(&'a self) -> ListIter<'a> {
+        ListIter {
+            list: self,
+            next: 0,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct ListIter<'a> {
+    list: &'a List,
+    next: usize,
+}
+
+impl<'a> Iterator for ListIter<'a> {
+    type Item = Value;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.next >= self.list.len() {
+            return Option::None;
+        }
+
+        let r = self.list.get(self.next);
+        self.next += 1;
+        Some(r.unwrap_or(Value::Nil))
+    }
 }
 
 pub type DictCell = Rc<RefCell<Dict>>;

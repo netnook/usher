@@ -5,13 +5,17 @@ mod errors;
 mod function;
 mod if_else;
 mod list;
+mod loops;
 mod member;
 mod string;
 mod unary_op;
 mod value;
 mod var;
 
-use crate::{find_source_position, lang::value::ValueType};
+use crate::{
+    find_source_position,
+    lang::{loops::Break, value::ValueType},
+};
 pub use binary_op::{BinaryOp, BinaryOpCode};
 pub use block::Block;
 pub use dict::DictBuilder;
@@ -20,16 +24,17 @@ pub use errors::{InternalProgramError, ProgramError};
 pub use function::{FunctionDef, Param};
 pub use if_else::{ConditionalBlock, IfElseStmt};
 pub use list::ListBuilder;
+pub use loops::ForStmt;
 pub use member::{IndexOf, PropertyOf};
-use std::{collections::HashMap, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 pub use string::InterpolatedStr;
 pub use unary_op::{UnaryOp, UnaryOpCode};
 pub use value::Value;
 pub use var::{Assignment, Declaration};
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Default)]
 pub struct Context {
-    pub vars: HashMap<String, Value>,
+    pub inner: Rc<RefCell<ContextInner>>,
 }
 
 impl Context {
@@ -38,11 +43,71 @@ impl Context {
     }
 
     pub fn get(&mut self, ident: &Identifier) -> Option<Value> {
-        self.vars.get(&ident.name).cloned()
+        self.inner.borrow().get(ident)
     }
 
     pub fn set(&mut self, ident: &Identifier, value: Value) {
+        self.inner.borrow_mut().set(ident, value);
+    }
+
+    pub fn declare(&mut self, ident: &Identifier, value: Value) {
+        self.inner.borrow_mut().declare(ident, value);
+    }
+
+    pub fn reset(&mut self) {
+        self.inner.borrow_mut().reset();
+    }
+
+    fn new_child(&self) -> Self {
+        Self {
+            inner: Rc::new(RefCell::new(ContextInner {
+                parent: Some(Rc::clone(&self.inner)),
+                vars: HashMap::default(),
+            })),
+        }
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct ContextInner {
+    pub parent: Option<Rc<RefCell<ContextInner>>>,
+    pub vars: HashMap<String, Value>,
+}
+
+impl ContextInner {
+    fn get(&self, ident: &Identifier) -> Option<Value> {
+        if let Some(v) = self.vars.get(&ident.name) {
+            return Some(v.clone());
+        }
+        if let Some(parent) = &self.parent {
+            return parent.borrow().get(ident);
+        }
+        None
+    }
+
+    fn set(&mut self, ident: &Identifier, value: Value) {
+        if let Some(v) = self.do_set(ident, value) {
+            self.vars.insert(ident.name.clone(), v);
+        }
+    }
+
+    fn do_set(&mut self, ident: &Identifier, value: Value) -> Option<Value> {
+        if self.vars.contains_key(&ident.name) {
+            self.vars.insert(ident.name.clone(), value);
+            return None;
+        }
+        if let Some(parent) = &self.parent {
+            return parent.borrow_mut().do_set(ident, value);
+        }
+        return Some(value);
+    }
+
+    fn declare(&mut self, ident: &Identifier, value: Value) {
         self.vars.insert(ident.name.clone(), value);
+    }
+
+    fn reset(&mut self) {
+        self.vars.clear();
     }
 }
 
@@ -130,9 +195,10 @@ impl AstNode {
             AstNode::FunctionDef(v) => v.eval(ctxt),
             AstNode::Assignment(v) => v.eval(ctxt),
             AstNode::IfElseStmt(v) => v.eval(ctxt),
+            AstNode::ForStmt(v) => v.eval(ctxt),
+            AstNode::Break => Break::eval(ctxt),
             // FIXME: finish eval
             // AstNode::ChainCatch(chain_catch) => todo!(),
-            // AstNode::ForStmt(for_stmt) => todo!(),
             // AstNode::ReturnStmt(return_stmt) => todo!(),
             // AstNode::KeyValue(key_value) => todo!(),
             n => todo!("eval not implemented for {n:?}"),
@@ -344,14 +410,6 @@ impl Setter for Identifier {
 #[derive(PartialEq, Debug, Clone)]
 pub struct ChainCatch {
     pub(crate) inner: Box<AstNode>,
-}
-
-#[derive(PartialEq, Debug, Clone)]
-pub struct ForStmt {
-    pub(crate) loop_var_1: Identifier,
-    pub(crate) loop_var_2: Option<Identifier>,
-    pub(crate) loop_expr: Box<AstNode>,
-    pub(crate) block: Block,
 }
 
 #[derive(PartialEq, Debug, Clone)]

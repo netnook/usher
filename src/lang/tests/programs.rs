@@ -33,7 +33,7 @@ fn test_progs() -> Result<(), std::io::Error> {
     }
 
     assert_eq!(
-        count, 3,
+        count, 4,
         "Expected different count for processed program files"
     );
 

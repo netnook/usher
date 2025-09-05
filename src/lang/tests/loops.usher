@@ -1,0 +1,29 @@
+var lst = [ 1, 3, 5 ]
+var sum1 = 0
+var sum2 = 0
+var i = "i"
+var a = "a"
+
+# FIXME: this won't parse because of assigment/declaration at the beginning
+#var a = for i in lst {
+#  sum = sum + i
+#}
+
+for i in lst {
+  sum1 = sum1 + i
+}
+
+for i in lst {
+  var a = 2
+  a = 3
+  sum2 = sum2 + i
+}
+
+[sum1,sum2,i,a]
+---
+list[
+  9
+  9
+  "i"
+  "a"
+]

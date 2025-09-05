@@ -9,7 +9,7 @@ pub struct Declaration {
 impl Eval for Declaration {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, InternalProgramError> {
         let value = self.value.eval(ctxt)?;
-        ctxt.set(&self.ident, value);
+        ctxt.declare(&self.ident, value);
         Ok(Value::Nil)
     }
 }
