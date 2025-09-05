@@ -1,4 +1,5 @@
-use crate::lang::{EvalStop, Identifier, Span, value::ValueType};
+use crate::lang::{EvalStop, Span, value::ValueType};
+use thiserror::Error;
 
 #[derive(PartialEq, Debug)]
 pub struct ProgramError {
@@ -8,54 +9,53 @@ pub struct ProgramError {
     pub(crate) line: String,
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(Error, PartialEq, Debug)]
 pub enum InternalProgramError {
-    ExpectedFunction {
-        got: ValueType,
-        span: Span,
-    },
+    #[error("Expected function but got {got}")]
+    ExpectedFunction { got: ValueType, span: Span },
+    #[error("Cannot find method {name} on {from}")]
     NoSuchMethod {
-        name: Identifier,
+        name: String,
         from: ValueType,
         span: Span,
     },
+    #[error("Method '{name}' not applicable to type {to}")]
     MethodNotApplicable {
         name: String,
         to: ValueType,
         span: Span,
     },
+    #[error("'{op}' operator cannot be applied to a {got}")]
     SuffixOperatorDoesNotSupportOperand {
         op: &'static str,
         got: ValueType,
         span: Span,
     },
+    #[error("Bad type. Expected '{expected}' but got {actual}.")]
     BadValueType {
         expected: ValueType,
         actual: ValueType,
         span: Span,
     },
+    #[error("Operator {op} expected {expected} but got {actual}.")]
     BadValueTypeOp {
         op: &'static str,
         expected: ValueType,
         actual: ValueType,
         span: Span,
     },
+    #[error("Index out of range.  Got {index}, length: {len}")]
     IndexOutOfRange {
         index: isize,
         len: usize,
         span: Span,
     },
-    CannotAssignToLHS {
-        span: Span,
-    },
-    CannotConvertToString {
-        typ: ValueType,
-        span: Span,
-    },
-    CannotLoopOnValue {
-        got: ValueType,
-        span: Span,
-    },
+    #[error("LHS is not assignable.")]
+    CannotAssignToLHS { span: Span },
+    #[error("Cannot convert a {typ} to a string.")]
+    CannotConvertToString { typ: ValueType, span: Span },
+    #[error("Cannot iterate on {got}.")]
+    CannotLoopOnValue { got: ValueType, span: Span },
 }
 
 macro_rules! bad_type_error_op {
@@ -90,58 +90,6 @@ macro_rules! bad_type_error_op {
 pub(crate) use bad_type_error_op;
 
 impl InternalProgramError {
-    pub fn message(&self) -> String {
-        match self {
-            InternalProgramError::ExpectedFunction { got, span: _ } => {
-                format!("Expected function but got {got}")
-            }
-            InternalProgramError::NoSuchMethod {
-                name,
-                from,
-                span: _,
-            } => {
-                format!("Cannot find method {name} on {from}", name = name.name)
-            }
-            InternalProgramError::MethodNotApplicable { name, to, span: _ } => {
-                format!("Method '{name}' not applicable to type {to}")
-            }
-            InternalProgramError::SuffixOperatorDoesNotSupportOperand { op, got, span: _ } => {
-                format!("'{op}' operator cannot be applied to a {got}")
-            }
-            InternalProgramError::BadValueType {
-                expected,
-                actual,
-                span: _,
-            } => {
-                format!("Bad type. Expected '{expected}' but got {actual}.",)
-            }
-            InternalProgramError::BadValueTypeOp {
-                op,
-                expected,
-                actual,
-                span: _,
-            } => {
-                format!("Operator {op} expected {expected} but got {actual}.",)
-            }
-            InternalProgramError::IndexOutOfRange {
-                index,
-                len,
-                span: _,
-            } => {
-                format!("Index out of range.  Got {index}, length: {len}")
-            }
-            InternalProgramError::CannotAssignToLHS { span: _ } => {
-                "LHS is not assignable.".to_string()
-            }
-            InternalProgramError::CannotConvertToString { typ, span: _ } => {
-                format!("Cannot convert a {typ} to a string.")
-            }
-            InternalProgramError::CannotLoopOnValue { got, span: _ } => {
-                format!("Cannot iterate on {got}.")
-            }
-        }
-    }
-
     pub(crate) fn span(&self) -> &Span {
         match self {
             InternalProgramError::ExpectedFunction { got: _, span } => span,

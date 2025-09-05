@@ -160,7 +160,7 @@ impl<'a> Program<'a> {
             Err(EvalStop::Error(e)) => {
                 let info = find_source_position(self.source, e.span().start);
                 Err(ProgramError {
-                    msg: e.message(),
+                    msg: format!("{e}"),
                     line_no: info.0.line,
                     char_no: info.0.char,
                     line: info.1.to_string(),
@@ -169,6 +169,7 @@ impl<'a> Program<'a> {
             Err(v) => panic!("unexpected program response {v:?}. This is a bug!"),
         }
     }
+
     fn do_run(&self) -> Result<Value, EvalStop> {
         let mut ctxt = Context::new();
         let mut res = Value::Nil;
@@ -733,7 +734,7 @@ impl Eval for FunctionCall {
                             .or_else(|| BuiltInFunc::by_name(&method_name.name).map(|f| f.into()))
                             .ok_or_else(|| {
                                 InternalProgramError::NoSuchMethod {
-                                    name: method_name.clone(),
+                                    name: method_name.name.clone(),
                                     from: ValueType::Dict,
                                     span: Span::new(0, 0), // FIXME: fix span
                                 }
@@ -745,7 +746,7 @@ impl Eval for FunctionCall {
                             .map(|f| f.into())
                             .ok_or_else(|| {
                                 InternalProgramError::NoSuchMethod {
-                                    name: method_name.clone(),
+                                    name: method_name.name.clone(),
                                     from: ValueType::List,
                                     span: Span::new(0, 0), // FIXME: fix span
                                 }
@@ -754,7 +755,7 @@ impl Eval for FunctionCall {
                     }
                     _ => {
                         return InternalProgramError::NoSuchMethod {
-                            name: method_name.clone(),
+                            name: method_name.name.clone(),
                             from: on.value_type(),
                             span: Span::new(0, 0), // FIXME: fix span
                         }
