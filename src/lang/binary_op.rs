@@ -1,8 +1,6 @@
-use std::fmt::Display;
-
-use crate::lang::{Eval, bad_type_error_op, value::ValueType};
-
 use super::{AstNode, Context, InternalProgramError, Span, Value};
+use crate::lang::{Eval, bad_type_error_op, value::ValueType};
+use std::fmt::Display;
 
 #[derive(PartialEq, Debug, Clone)]
 pub enum BinaryOpCode {

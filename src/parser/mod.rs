@@ -300,6 +300,7 @@ pub mod tests {
             }
         }};
         ($(cond($cond:expr => $block:expr)),+ , else($else_block:expr)) => {{
+            use crate::lang::IfElseStmt;
             let stmt =_if!($(cond($cond => $block)),*);
             IfElseStmt {
                 conditional_blocks : stmt.conditional_blocks ,

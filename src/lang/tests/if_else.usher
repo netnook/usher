@@ -1,0 +1,37 @@
+var a = false
+var b = false
+var results = []
+
+if a {
+	results.add("a")
+} else if b {
+	results.add("b")
+} else {
+	results.add("c")
+}
+
+b=true
+if a {
+	results.add("a")
+} else if b {
+	results.add("b")
+} else {
+	results.add("c")
+}
+
+a=true
+if a {
+	results.add("a")
+} else if b {
+	results.add("b")
+} else {
+	results.add("c")
+}
+
+results
+---
+list[
+  "c"
+  "b"
+  "a"
+]
