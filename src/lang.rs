@@ -37,21 +37,37 @@ pub struct Context {
     pub inner: Rc<RefCell<ContextInner>>,
 }
 
+const THIS: &str = "this";
+
 impl Context {
     pub fn new() -> Self {
         Self::default()
     }
 
     pub fn get(&mut self, ident: &Identifier) -> Option<Value> {
-        self.inner.borrow().get(ident)
+        self.inner.borrow().get(&ident.name)
     }
 
     pub fn set(&mut self, ident: &Identifier, value: Value) {
-        self.inner.borrow_mut().set(ident, value);
+        if ident.name == THIS {
+            panic!("should not be able to modify 'this'")
+        }
+        self.inner.borrow_mut().set(&ident.name, value);
     }
 
     pub fn declare(&mut self, ident: &Identifier, value: Value) {
-        self.inner.borrow_mut().declare(ident, value);
+        if ident.name == THIS {
+            panic!("should not be able to declare 'this'")
+        }
+        self.inner.borrow_mut().declare(&ident.name, value);
+    }
+
+    fn get_this(&self) -> Option<Value> {
+        self.inner.borrow().get(THIS)
+    }
+
+    fn declare_this(&self, value: Value) {
+        self.inner.borrow_mut().declare(THIS, value);
     }
 
     pub fn reset(&mut self) {
@@ -75,8 +91,8 @@ pub struct ContextInner {
 }
 
 impl ContextInner {
-    fn get(&self, ident: &Identifier) -> Option<Value> {
-        if let Some(v) = self.vars.get(&ident.name) {
+    fn get(&self, ident: &str) -> Option<Value> {
+        if let Some(v) = self.vars.get(ident) {
             return Some(v.clone());
         }
         if let Some(parent) = &self.parent {
@@ -85,15 +101,15 @@ impl ContextInner {
         None
     }
 
-    fn set(&mut self, ident: &Identifier, value: Value) {
+    fn set(&mut self, ident: &str, value: Value) {
         if let Some(v) = self.do_set(ident, value) {
-            self.vars.insert(ident.name.clone(), v);
+            self.vars.insert(ident.to_string(), v);
         }
     }
 
-    fn do_set(&mut self, ident: &Identifier, value: Value) -> Option<Value> {
-        if self.vars.contains_key(&ident.name) {
-            self.vars.insert(ident.name.clone(), value);
+    fn do_set(&mut self, ident: &str, value: Value) -> Option<Value> {
+        if self.vars.contains_key(ident) {
+            self.vars.insert(ident.to_string(), value);
             return None;
         }
         if let Some(parent) = &self.parent {
@@ -102,8 +118,8 @@ impl ContextInner {
         Some(value)
     }
 
-    fn declare(&mut self, ident: &Identifier, value: Value) {
-        self.vars.insert(ident.name.clone(), value);
+    fn declare(&mut self, ident: &str, value: Value) {
+        self.vars.insert(ident.to_string(), value);
     }
 
     fn reset(&mut self) {
@@ -198,9 +214,12 @@ impl AstNode {
             AstNode::ForStmt(v) => v.eval(ctxt),
             AstNode::Break => Break::eval(ctxt),
             // FIXME: finish eval
+            // AstNode::This => todo!(),
             // AstNode::ChainCatch(chain_catch) => todo!(),
             // AstNode::ReturnStmt(return_stmt) => todo!(),
             // AstNode::KeyValue(key_value) => todo!(),
+            // AstNode::Continue => todo!(),
+            // AstNode::End => todo!(),
             n => todo!("eval not implemented for {n:?}"),
         }
     }
@@ -392,7 +411,7 @@ pub struct Identifier {
 }
 
 impl Identifier {
-    pub(crate) fn new(name: String, span: Span) -> Self {
+    pub(crate) const fn new(name: String, span: Span) -> Self {
         Self { name, span }
     }
 }
@@ -434,8 +453,7 @@ impl BuiltInFunc {
 
     pub fn call(
         &self,
-        _ctxt: &mut Context,
-        this: Value,
+        ctxt: &mut Context,
         params: Vec<Value>,
         span: &Span,
     ) -> Result<Value, InternalProgramError> {
@@ -446,20 +464,23 @@ impl BuiltInFunc {
                 }
                 Ok(Value::Nil)
             }
-            BuiltInFunc::Add => match this {
-                Value::List(list) => {
-                    let mut list = list.borrow_mut();
-                    for v in params {
-                        list.add(v);
+            BuiltInFunc::Add => {
+                let this = ctxt.get_this().unwrap_or(Value::Nil);
+                match this {
+                    Value::List(list) => {
+                        let mut list = list.borrow_mut();
+                        for v in params {
+                            list.add(v);
+                        }
+                        Ok(Value::Nil)
                     }
-                    Ok(Value::Nil)
+                    _ => Err(InternalProgramError::MethodNotApplicable {
+                        name: "add".to_string(),
+                        to: this.value_type(),
+                        span: *span,
+                    }),
                 }
-                _ => Err(InternalProgramError::MethodNotApplicable {
-                    name: "add".to_string(),
-                    to: this.value_type(),
-                    span: *span,
-                }),
-            },
+            }
         }
     }
 }
@@ -537,7 +558,11 @@ impl Eval for FunctionCall {
             args.push(arg_def.eval(ctxt)?);
         }
 
-        func.call(ctxt, this, args, &self.span)
+        // FIXME: normal function call should have a new context, but what about closures ?
+        let mut context = Context::new();
+        context.declare_this(this);
+
+        func.call(&mut context, args, &self.span)
     }
 }
 

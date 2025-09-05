@@ -1,5 +1,6 @@
-use super::{BuiltInFunc, FunctionDef, InternalProgramError, Span};
 use crate::lang::Context;
+
+use super::{BuiltInFunc, FunctionDef, InternalProgramError, Span};
 use std::{borrow::Cow, cell::RefCell, collections::HashMap, fmt::Display, rc::Rc};
 
 #[derive(PartialEq, Debug, Clone)]
@@ -161,13 +162,12 @@ impl Func {
     pub fn call(
         &self,
         ctxt: &mut Context,
-        this: Value,
         params: Vec<Value>,
         span: &Span,
     ) -> Result<Value, InternalProgramError> {
         match self {
-            Func::Func(f) => f.call(ctxt, this, params, span),
-            Func::BuiltInFunc(f) => f.call(ctxt, this, params, span),
+            Func::Func(f) => f.call(ctxt, params, span),
+            Func::BuiltInFunc(f) => f.call(ctxt, params, span),
         }
     }
 }
