@@ -1,4 +1,4 @@
-use super::Value;
+use super::{Context, Value};
 use crate::lang::{AstNode, Block, Eval, EvalStop, Identifier, InternalProgramError};
 
 #[derive(PartialEq, Debug, Clone)]
@@ -10,7 +10,7 @@ pub struct ForStmt {
 }
 
 impl Eval for ForStmt {
-    fn eval(&self, ctxt: &mut super::Context) -> Result<Value, EvalStop> {
+    fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
         let loop_expr = self.loop_expr.eval(ctxt)?;
         let mut result = Value::Nil;
 
@@ -23,7 +23,12 @@ impl Eval for ForStmt {
                 for val in list.iter() {
                     child_ctxt.reset();
                     child_ctxt.declare(&self.loop_var_1, val);
-                    result = self.block.eval_with_context(&mut child_ctxt)?;
+                    result = match self.block.eval_with_context(&mut child_ctxt) {
+                        Ok(v) => v,
+                        Err(EvalStop::Break) => todo!(),
+                        Err(EvalStop::Continue) => Value::Nil,
+                        other @ Err(_) => return other,
+                    };
                 }
             }
             Value::Dict(_) => todo!(),
@@ -41,12 +46,21 @@ impl Eval for ForStmt {
     }
 }
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Debug)]
 pub struct Break {}
 
 impl Break {
-    pub(crate) fn eval(_ctxt: &mut super::Context) -> Result<Value, EvalStop> {
+    pub(crate) fn eval(_ctxt: &mut Context) -> Result<Value, EvalStop> {
         todo!()
+    }
+}
+
+#[derive(PartialEq, Debug)]
+pub struct Continue {}
+
+impl Continue {
+    pub(crate) fn eval(_ctxt: &mut Context) -> Result<Value, EvalStop> {
+        Err(EvalStop::Continue)
     }
 }
 

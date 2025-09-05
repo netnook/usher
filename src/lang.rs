@@ -14,7 +14,10 @@ mod var;
 
 use crate::{
     find_source_position,
-    lang::{loops::Break, value::ValueType},
+    lang::{
+        loops::{Break, Continue},
+        value::ValueType,
+    },
 };
 pub use binary_op::{BinaryOp, BinaryOpCode};
 pub use block::Block;
@@ -235,8 +238,8 @@ impl AstNode {
             AstNode::IfElseStmt(v) => v.eval(ctxt),
             AstNode::ForStmt(v) => v.eval(ctxt),
             AstNode::Break => Break::eval(ctxt),
+            AstNode::Continue => Continue::eval(ctxt),
             AstNode::ReturnStmt(v) => v.eval(ctxt),
-            AstNode::Continue => todo!(),
             // FIXME: finish eval
             // AstNode::This => todo!(),
             // AstNode::ChainCatch(chain_catch) => todo!(),
