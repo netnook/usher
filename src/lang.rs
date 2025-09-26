@@ -21,9 +21,9 @@ pub use dict::DictBuilder;
 pub(crate) use errors::bad_type_error_op;
 pub use errors::{InternalProgramError, ProgramError};
 pub use function::{FunctionDef, Param};
-pub use if_else::{ConditionalBlock, IfElseStmt};
+pub use if_else::{ConditionalBlock, IfElse};
 pub use list::ListBuilder;
-pub use loops::{Break, Continue, ForStmt};
+pub use loops::{Break, Continue, For};
 pub use member::{IndexOf, PropertyOf};
 pub use program::Program;
 use std::rc::Rc;
@@ -52,8 +52,8 @@ pub enum AstNode {
     BinaryOp(BinaryOp),
     ChainCatch(ChainCatch),
     Block(Block),
-    IfElseStmt(IfElseStmt),
-    ForStmt(ForStmt),
+    IfElse(IfElse),
+    For(For),
     Declaration(Declaration),
     FunctionDef(Rc<FunctionDef>),
     FunctionCall(FunctionCall),
@@ -107,8 +107,8 @@ impl core::fmt::Debug for AstNode {
                 BinaryOp,
                 ChainCatch,
                 Block,
-                IfElseStmt,
-                ForStmt,
+                IfElse,
+                For,
                 Declaration,
                 FunctionDef,
                 FunctionCall,
@@ -135,8 +135,8 @@ impl core::fmt::Debug for AstNode {
                 BinaryOp,
                 ChainCatch,
                 Block,
-                IfElseStmt,
-                ForStmt,
+                IfElse,
+                For,
                 Declaration,
                 FunctionDef,
                 FunctionCall,
@@ -196,8 +196,8 @@ impl AstNode {
             AstNode::Block(v) => v.eval(ctxt),
             AstNode::FunctionDef(v) => v.eval(ctxt),
             AstNode::Assignment(v) => v.eval(ctxt),
-            AstNode::IfElseStmt(v) => v.eval(ctxt),
-            AstNode::ForStmt(v) => v.eval(ctxt),
+            AstNode::IfElse(v) => v.eval(ctxt),
+            AstNode::For(v) => v.eval(ctxt),
             AstNode::ReturnStmt(v) => v.eval(ctxt),
             AstNode::This(v) => v.eval(ctxt),
             AstNode::Break(v) => v.eval(ctxt),
@@ -276,14 +276,14 @@ impl From<DictBuilder> for AstNode {
     }
 }
 
-impl From<IfElseStmt> for AstNode {
-    fn from(value: IfElseStmt) -> Self {
-        Self::IfElseStmt(value)
+impl From<IfElse> for AstNode {
+    fn from(value: IfElse) -> Self {
+        Self::IfElse(value)
     }
 }
-impl From<ForStmt> for AstNode {
-    fn from(value: ForStmt) -> Self {
-        Self::ForStmt(value)
+impl From<For> for AstNode {
+    fn from(value: For) -> Self {
+        Self::For(value)
     }
 }
 impl From<Declaration> for AstNode {

@@ -1,5 +1,5 @@
 use super::{ParseResult, Parser, SyntaxError, comment::EXPECTED_WS_OR_COMMENT};
-use crate::lang::{AstNode, ConditionalBlock, IfElseStmt};
+use crate::lang::{AstNode, ConditionalBlock, IfElse};
 
 const EXPECTED_CONDITION_EXPRESSION: &str = "Expected condition expression following if/else.";
 const EXPECTED_BLOCK_OR_IF: &str = "Expected else block or 'if' keyword.";
@@ -52,7 +52,7 @@ impl<'a> Parser<'a> {
             };
         };
 
-        Ok(AstNode::IfElseStmt(IfElseStmt {
+        Ok(AstNode::IfElse(IfElse {
             conditional_blocks,
             else_block,
         }))
@@ -77,13 +77,13 @@ impl<'a> Parser<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::lang::IfElseStmt;
+    use crate::lang::IfElse;
     use crate::parser::comment::EXPECTED_WS_OR_COMMENT;
     use crate::parser::stmt::EXPECTED_NEW_LINE_AFTER_STMT;
     use crate::parser::tests::*;
 
     #[track_caller]
-    fn do_test_if_ok(input: &'static str, expected: IfElseStmt, expected_end: isize) {
+    fn do_test_if_ok(input: &'static str, expected: IfElse, expected_end: isize) {
         do_test_parser_ok(Parser::stmt, input, Some(expected.into()), expected_end);
     }
 

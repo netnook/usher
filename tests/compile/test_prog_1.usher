@@ -24,7 +24,7 @@ Program { [
         ident: "a",
         value: Literal(1),
     },
-    IfElseStmt {
+    IfElse {
         conditional: ConditionalBlock {
             condition: equal-to {
                 lhs: IndexOf {
@@ -62,11 +62,11 @@ Program { [
             },
         ]},
     },
-    ForStmt {
-        loop_var_1: "a",
-        loop_expr: Ident("b"),
+    For {
+        iterable: Ident("b"),
+        loop_item: "a",
         block: Block {[
-            IfElseStmt {
+            IfElse {
                 conditional: ConditionalBlock {
                     condition: Ident("a"),
                     block: Block {[

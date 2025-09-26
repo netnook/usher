@@ -4,50 +4,50 @@ use super::{Context, Value};
 use crate::lang::{AstNode, Block, Eval, EvalStop, Identifier, InternalProgramError, KeyValue};
 
 #[derive(PartialEq, Clone)]
-pub struct ForStmt {
-    pub(crate) loop_var_1: Identifier,
-    pub(crate) loop_var_2: Option<Identifier>,
-    pub(crate) loop_expr: Box<AstNode>,
+pub struct For {
+    pub(crate) iterable: Box<AstNode>,
+    pub(crate) loop_item: Identifier,
+    pub(crate) loop_info: Option<Identifier>,
     pub(crate) block: Block,
 }
 
-impl core::fmt::Debug for ForStmt {
+impl core::fmt::Debug for For {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let minimal = f.sign_minus();
         if minimal {
-            let mut w = f.debug_struct("ForStmt");
-            w.field("loop_var_1", &self.loop_var_1.name);
-            if let Some(loop_var_2) = &self.loop_var_2 {
-                w.field("loop_var_2", &loop_var_2.name);
+            let mut w = f.debug_struct("For");
+            w.field("iterable", &self.iterable);
+            w.field("loop_item", &self.loop_item.name);
+            if let Some(loop_info) = &self.loop_info {
+                w.field("loop_info", &loop_info.name);
             }
-            w.field("loop_expr", &self.loop_expr);
             w.field("block", &self.block);
             w.finish()
         } else {
-            f.debug_struct("ForStmt")
-                .field("loop_var_1", &self.loop_var_1)
-                .field("loop_var_2", &self.loop_var_2)
-                .field("loop_expr", &self.loop_expr)
+            f.debug_struct("For")
+                .field("iterable", &self.iterable)
+                .field("loop_item", &self.loop_item)
+                .field("loop_info", &self.loop_info)
                 .field("block", &self.block)
                 .finish()
         }
     }
 }
 
-impl Eval for ForStmt {
+impl Eval for For {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
-        let loop_expr = self.loop_expr.eval(ctxt)?;
+        let iterable = self.iterable.eval(ctxt)?;
         let mut result = Value::Nil;
 
         let mut child_ctxt = ctxt.new_child();
 
-        match loop_expr {
+        match iterable {
             Value::List(list) => {
                 // FIXME: what happen if list is modified during iteration ???
                 let list = list.borrow();
                 for val in list.iter() {
                     child_ctxt.reset();
-                    child_ctxt.declare(&self.loop_var_1, val);
+                    child_ctxt.declare(&self.loop_item, val);
                     result = match self.block.eval_with_context(&mut child_ctxt) {
                         Ok(v) => v,
                         Err(EvalStop::Break) => todo!(),
@@ -62,8 +62,7 @@ impl Eval for ForStmt {
                 for (k, val) in dict.iter() {
                     let loop_val = Value::KeyValue(Rc::new(KeyValue::new(k.clone(), val.clone())));
                     child_ctxt.reset();
-                    child_ctxt.declare(&self.loop_var_1, loop_val);
-                    // child_ctxt.declare(&self.loop_var_1);
+                    child_ctxt.declare(&self.loop_item, loop_val);
                     result = match self.block.eval_with_context(&mut child_ctxt) {
                         Ok(v) => v,
                         Err(EvalStop::Break) => todo!(),
@@ -74,8 +73,8 @@ impl Eval for ForStmt {
             }
             _ => {
                 return InternalProgramError::CannotLoopOnValue {
-                    got: loop_expr.value_type(),
-                    span: self.loop_expr.span(),
+                    got: iterable.value_type(),
+                    span: self.iterable.span(),
                 }
                 .into();
             }

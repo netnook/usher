@@ -3,16 +3,16 @@ use crate::lang::{
 };
 
 #[derive(PartialEq, Clone)]
-pub struct IfElseStmt {
+pub struct IfElse {
     pub(crate) conditional_blocks: Vec<ConditionalBlock>,
     pub(crate) else_block: Option<Block>,
 }
 
-impl core::fmt::Debug for IfElseStmt {
+impl core::fmt::Debug for IfElse {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let minimal = f.sign_minus();
         if minimal {
-            let mut w = f.debug_struct("IfElseStmt");
+            let mut w = f.debug_struct("IfElse");
             for cb in &self.conditional_blocks {
                 w.field("conditional", cb);
             }
@@ -21,7 +21,7 @@ impl core::fmt::Debug for IfElseStmt {
             }
             w.finish()
         } else {
-            f.debug_struct("IfElseStmt")
+            f.debug_struct("IfElse")
                 .field("conditional_blocks", &self.conditional_blocks)
                 .field("else_block", &self.else_block)
                 .finish()
@@ -29,7 +29,7 @@ impl core::fmt::Debug for IfElseStmt {
     }
 }
 
-impl Eval for IfElseStmt {
+impl Eval for IfElse {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
         for cb in &self.conditional_blocks {
             let cond = cb.condition.eval(ctxt)?;

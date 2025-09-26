@@ -1,14 +1,14 @@
 mod chars;
 mod comment;
-mod declaration_stmt;
+mod declaration;
 mod dict;
 pub mod error;
 mod expression;
-mod for_stmt;
 mod function;
 mod identifier;
-mod if_stmt;
+mod if_else;
 mod list;
+mod loops;
 mod numbers;
 mod program;
 mod return_stmt;
@@ -82,8 +82,8 @@ pub mod tests {
     use crate::{
         lang::{
             Assignment, AstNode, BinaryOp, BinaryOpCode, Block, ChainCatch, Declaration, Dict,
-            DictBuilder, ForStmt, FunctionCall, Identifier, IndexOf, KeyValue, KeyValueBuilder,
-            List, ListBuilder, Literal, PropertyOf, Span, This, UnaryOp, UnaryOpCode, Value,
+            DictBuilder, For, FunctionCall, Identifier, IndexOf, KeyValue, KeyValueBuilder, List,
+            ListBuilder, Literal, PropertyOf, Span, This, UnaryOp, UnaryOpCode, Value,
         },
         parser::Parser,
     };
@@ -277,11 +277,11 @@ pub mod tests {
         ident2: Option<Identifier>,
         expr: impl Into<AstNode>,
         block: Block,
-    ) -> ForStmt {
-        ForStmt {
-            loop_var_1: ident1,
-            loop_var_2: ident2,
-            loop_expr: expr.into().into(),
+    ) -> For {
+        For {
+            loop_item: ident1,
+            loop_info: ident2,
+            iterable: expr.into().into(),
             block,
         }
     }
@@ -298,7 +298,7 @@ pub mod tests {
     macro_rules! _if {
         ($(cond($cond:expr => $block:expr)),+) => {{
             use crate::lang::ConditionalBlock;
-            use crate::lang::IfElseStmt;
+            use crate::lang::IfElse;
             let conditional_blocks = vec![
                 $(
                     ConditionalBlock {
@@ -307,15 +307,15 @@ pub mod tests {
                     }
                 ),+
             ];
-            IfElseStmt{
+            IfElse {
                 conditional_blocks,
                 else_block: None,
             }
         }};
         ($(cond($cond:expr => $block:expr)),+ , else($else_block:expr)) => {{
-            use crate::lang::IfElseStmt;
+            use crate::lang::IfElse;
             let stmt =_if!($(cond($cond => $block)),*);
-            IfElseStmt {
+            IfElse {
                 conditional_blocks : stmt.conditional_blocks ,
                 else_block: $else_block.into(),
             }

@@ -1,5 +1,5 @@
 use super::{ParseResult, Parser, SyntaxError};
-use crate::lang::{AstNode, ForStmt};
+use crate::lang::{AstNode, For};
 
 const EXPECTED_VARIABLE: &str = "Expected loop variable after 'for'.";
 const EXPECTED_2ND_VARIABLE: &str = "Expected second loop variable after comma.";
@@ -15,22 +15,22 @@ impl<'a> Parser<'a> {
 
         self.req_whitespace_comments()?;
 
-        let Some(loop_var_1) = self.declaration_identifier()? else {
+        let Some(loop_item) = self.declaration_identifier()? else {
             return Err(SyntaxError {
                 pos: self.pos,
                 msg: EXPECTED_VARIABLE,
             });
         };
 
-        let mut loop_var_2 = None;
+        let mut loop_info = None;
 
         self.whitespace_comments();
 
         if self.char(b',') {
             self.whitespace_comments();
-            loop_var_2 = self.declaration_identifier()?;
+            loop_info = self.declaration_identifier()?;
 
-            if loop_var_2.is_none() {
+            if loop_info.is_none() {
                 return Err(SyntaxError {
                     pos: self.pos,
                     msg: EXPECTED_2ND_VARIABLE,
@@ -49,7 +49,7 @@ impl<'a> Parser<'a> {
 
         self.whitespace_comments();
 
-        let Some(loop_expr) = self.expression()? else {
+        let Some(iterable) = self.expression()? else {
             return Err(SyntaxError {
                 pos: self.pos,
                 msg: EXPECTED_EXPRESSION,
@@ -65,10 +65,10 @@ impl<'a> Parser<'a> {
             });
         };
 
-        Ok(AstNode::ForStmt(ForStmt {
-            loop_var_1,
-            loop_var_2,
-            loop_expr: loop_expr.into(),
+        Ok(AstNode::For(For {
+            iterable: iterable.into(),
+            loop_item,
+            loop_info,
             block,
         }))
     }
@@ -83,7 +83,7 @@ mod tests {
     };
 
     #[track_caller]
-    fn do_test_for_ok(input: &'static str, expected: ForStmt, expected_end: isize) {
+    fn do_test_for_ok(input: &'static str, expected: For, expected_end: isize) {
         do_test_parser_ok(Parser::stmt, input, Some(expected.into()), expected_end);
     }
 
