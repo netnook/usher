@@ -1,0 +1,10 @@
+# var a = dict(
+#     f: function() {
+#         this
+#     }
+# )
+# a.f()
+#- --
+# dict[f:func..]
+---
+nil

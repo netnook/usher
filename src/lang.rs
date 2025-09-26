@@ -40,7 +40,7 @@ const THIS: &str = "this";
 
 #[derive(PartialEq, Clone)]
 pub enum AstNode {
-    This,
+    This(This),
     Identifier(Identifier),
     Literal(Literal),
     InterpolatedStr(InterpolatedStr),
@@ -128,11 +128,12 @@ impl core::fmt::Debug for AstNode {
                 FunctionCall,
                 ReturnStmt,
                 Assignment,
-                KeyValue
+                KeyValue,
+                This
             ) {
                 return Ok(());
             }
-            if node_debug_3!(self, f, This, Break, Continue, End) {
+            if node_debug_3!(self, f, Break, Continue, End) {
                 return Ok(());
             }
             panic!()
@@ -158,11 +159,12 @@ impl core::fmt::Debug for AstNode {
                 FunctionCall,
                 ReturnStmt,
                 Assignment,
-                KeyValue
+                KeyValue,
+                This
             ) {
                 return Ok(());
             }
-            if node_debug_3!(self, f, This, Break, Continue, End) {
+            if node_debug_3!(self, f, Break, Continue, End) {
                 return Ok(());
             }
             panic!()
@@ -217,11 +219,11 @@ impl AstNode {
             AstNode::IfElseStmt(v) => v.eval(ctxt),
             AstNode::ForStmt(v) => v.eval(ctxt),
             AstNode::ReturnStmt(v) => v.eval(ctxt),
+            AstNode::This(v) => v.eval(ctxt),
             AstNode::Break => Break::eval(ctxt),
             AstNode::Continue => Continue::eval(ctxt),
             AstNode::End => End::eval(ctxt),
             // FIXME: finish eval
-            // AstNode::This => todo!(),
             // AstNode::ChainCatch(chain_catch) => todo!(),
             // AstNode::KeyValue(key_value) => todo!(),
             n => todo!("eval not implemented for {n:?}"),
@@ -463,6 +465,24 @@ impl Setter for Identifier {
     fn set(&self, ctxt: &mut Context, value: Value) -> Result<(), EvalStop> {
         ctxt.set(self, value);
         Ok(())
+    }
+}
+
+#[derive(PartialEq, Debug, Clone)]
+pub struct This {}
+
+impl This {
+    pub(crate) fn new() -> Self {
+        Self {}
+    }
+}
+
+impl Eval for This {
+    fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
+        match ctxt.get_this() {
+            Some(this) => Ok(this),
+            None => Err(EvalStop::Error(InternalProgramError::ThisNotAvailable)),
+        }
     }
 }
 

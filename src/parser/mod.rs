@@ -83,7 +83,7 @@ pub mod tests {
         lang::{
             Assignment, AstNode, BinaryOp, BinaryOpCode, Block, ChainCatch, Declaration,
             DictBuilder, ForStmt, FunctionCall, Identifier, IndexOf, KeyValue, ListBuilder,
-            Literal, PropertyOf, Span, UnaryOp, UnaryOpCode, Value,
+            Literal, PropertyOf, Span, This, UnaryOp, UnaryOpCode, Value,
         },
         parser::Parser,
     };
@@ -130,7 +130,7 @@ pub mod tests {
         Literal::new(Value::Nil, Span::new(999, 9999))
     }
     pub(crate) fn this() -> AstNode {
-        AstNode::This
+        AstNode::This(This::new())
     }
     pub fn id(val: &str) -> Identifier {
         Identifier::new(val.to_string(), Span::new(999, 9999))

@@ -56,6 +56,8 @@ pub enum InternalProgramError {
     CannotConvertToString { typ: ValueType, span: Span },
     #[error("Cannot iterate on {got}.")]
     CannotLoopOnValue { got: ValueType, span: Span },
+    #[error("This not available in current scope.")]
+    ThisNotAvailable,
 }
 
 macro_rules! bad_type_error_op {
@@ -127,6 +129,7 @@ impl InternalProgramError {
             InternalProgramError::CannotAssignToLHS { span } => span,
             InternalProgramError::CannotConvertToString { typ: _, span } => span,
             InternalProgramError::CannotLoopOnValue { got: _, span } => span,
+            InternalProgramError::ThisNotAvailable => todo!(),
         }
     }
 

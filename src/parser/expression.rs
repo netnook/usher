@@ -3,7 +3,7 @@ use std::rc::Rc;
 use super::{ParseResult, Parser, SyntaxError, chars::is_digit};
 use crate::lang::{
     Arg, AstNode, BinaryOp, BinaryOpCode, ChainCatch, FunctionCall, Identifier, IndexOf, KeyValue,
-    Literal, PropertyOf, Span, UnaryOp, UnaryOpCode, Value,
+    Literal, PropertyOf, Span, This, UnaryOp, UnaryOpCode, Value,
 };
 
 pub(crate) const EXPECTED_EXPRESSION: &str = "Expected expression.";
@@ -216,7 +216,7 @@ impl<'a> Parser<'a> {
             if self.char(b'!') {
                 ops.push(UnaryOp {
                     op: UnaryOpCode::Not,
-                    on: Box::new(AstNode::This), // dummy
+                    on: Box::new(AstNode::End), // dummy
                     span: Span::new(self.pos - 1, 1),
                 });
                 continue;
@@ -228,7 +228,7 @@ impl<'a> Parser<'a> {
                 }
                 ops.push(UnaryOp {
                     op: UnaryOpCode::Negative,
-                    on: Box::new(AstNode::This), // dummy
+                    on: Box::new(AstNode::End), // dummy
                     span: Span::new(self.pos - 1, 1),
                 });
                 continue;
@@ -322,7 +322,7 @@ impl<'a> Parser<'a> {
     fn primary_expression(&mut self) -> ParseResult<Option<AstNode>> {
         let start = self.pos;
         match self.unchecked_identifier() {
-            Some("this") => return Ok(Some(AstNode::This)),
+            Some("this") => return Ok(Some(AstNode::This(This::new()))),
             Some("nil") => {
                 return Ok(Some(AstNode::Literal(Literal::new(
                     Value::Nil,
