@@ -1,4 +1,5 @@
-use crate::lang::{EvalStop, Identifier, Span, Value, value::ValueType};
+use crate::lang::{Dict, EvalStop, Identifier, KeyValue, Span, value::ValueType};
+use std::{cell::RefCell, fmt::Display, rc::Rc};
 use thiserror::Error;
 
 #[derive(PartialEq, Debug)]
@@ -58,12 +59,40 @@ pub enum InternalProgramError {
     CannotLoopOnValue { got: ValueType, span: Span },
     #[error("This not available in current scope.")]
     ThisNotAvailable,
-    #[error("No such property ....")]
+    #[error("Property '{prop}' not found. The following properties are available: {available}", prop = prop.name, available = from)]
     NoSuchProperty {
         prop: Identifier,
-        from: Value,
+        from: PropertyList,
         span: Span,
     },
+}
+
+#[derive(Debug, PartialEq)]
+pub enum PropertyList {
+    Dict(Rc<RefCell<Dict>>),
+    KeyValue(Rc<KeyValue>),
+}
+
+impl Display for PropertyList {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PropertyList::Dict(v) => {
+                let mut first = true;
+                let v = v.borrow();
+                let mut keys: Vec<_> = v.keys().collect::<Vec<_>>();
+                keys.sort();
+                for key in keys {
+                    match first {
+                        true => first = false,
+                        false => f.write_str(", ")?,
+                    }
+                    f.write_str(key)?
+                }
+                Ok(())
+            }
+            PropertyList::KeyValue(_) => f.write_str("key, value"),
+        }
+    }
 }
 
 macro_rules! bad_type_error_op {

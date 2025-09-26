@@ -151,7 +151,7 @@ pub mod tests {
             $(
                 d.set($key.to_string(), $value.to_value());
             )*
-            d.to_value()
+            d
         }};
     }
     pub(crate) use dict;

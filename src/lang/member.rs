@@ -1,3 +1,4 @@
+use super::errors::PropertyList;
 use crate::lang::{
     Accept, AstNode, Context, Eval, EvalStop, Identifier, InternalProgramError, Setter, Span,
     Value, Visitor, VisitorResult,
@@ -60,7 +61,7 @@ impl Eval for PropertyOf {
                     } else {
                         return Err(InternalProgramError::NoSuchProperty {
                             prop: self.property.clone(),
-                            from: Value::Dict(of),
+                            from: PropertyList::Dict(of),
                             span: self.span,
                         }
                         .into_stop());
@@ -78,7 +79,7 @@ impl Eval for PropertyOf {
                     } else {
                         return Err(InternalProgramError::NoSuchProperty {
                             prop: self.property.clone(),
-                            from: Value::KeyValue(of),
+                            from: PropertyList::KeyValue(of),
                             span: self.span,
                         }
                         .into_stop());
@@ -255,6 +256,7 @@ impl Setter for IndexOf {
 mod tests {
     use crate::lang::{
         AstNode, Context, EvalStop, InternalProgramError, Span,
+        errors::PropertyList,
         value::{Dict, List},
     };
 
@@ -281,7 +283,7 @@ mod tests {
             prop_c.eval(&mut ctxt).unwrap_err(),
             InternalProgramError::NoSuchProperty {
                 prop: id("c"),
-                from: dict!("a" => 1, "b" => "bbb"),
+                from: PropertyList::Dict(dict!("a" => 1, "b" => "bbb").into()),
                 span: Span::new(999, 9999)
             }
             .into_stop()

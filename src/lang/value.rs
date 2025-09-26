@@ -3,7 +3,10 @@ use crate::lang::{Context, EvalStop};
 use std::{
     borrow::Cow,
     cell::RefCell,
-    collections::{HashMap, hash_map::Iter},
+    collections::{
+        HashMap,
+        hash_map::{Iter, Keys},
+    },
     fmt::{Display, Write},
     rc::Rc,
 };
@@ -386,6 +389,10 @@ impl Dict {
 
     pub fn iter(&self) -> Iter<'_, String, Value> {
         self.content.iter()
+    }
+
+    pub fn keys(&self) -> Keys<String, Value> {
+        self.content.keys()
     }
 }
 

@@ -1,15 +1,17 @@
 # error variant 1
 var a = dict(
   b: dict(
-    c: "foo"
-  )
+    c: "foo",
+    d: "bar",
+  ),
+  e: 1,
 )
 
 var a = a.x
 ----------------
 ProgramError {
-    msg: "No such property ....",
-    line_no: 7,
+    msg: "Property 'x' not found. The following properties are available: b, e",
+    line_no: 9,
     char_no: 9,
     line: "var a = a.x",
 }
@@ -17,15 +19,17 @@ ProgramError {
 # error variant 2
 var a = dict(
   b: dict(
-    c: "foo"
-  )
+    c: "foo",
+    d: "bar",
+  ),
+  e: 1,
 )
 
 var a = a.b.x
 ----------------
 ProgramError {
-    msg: "No such property ....",
-    line_no: 7,
+    msg: "Property 'x' not found. The following properties are available: c, d",
+    line_no: 9,
     char_no: 11,
     line: "var a = a.b.x",
 }
@@ -33,15 +37,17 @@ ProgramError {
 # error variant 3
 var a = dict(
   b: dict(
-    c: "foo"
-  )
+    c: "foo",
+    d: "bar",
+  ),
+  e: 1,
 )
 
 var a = a.x.b
 ----------------
 ProgramError {
-    msg: "No such property ....",
-    line_no: 7,
+    msg: "Property 'x' not found. The following properties are available: b, e",
+    line_no: 9,
     char_no: 9,
     line: "var a = a.x.b",
 }
@@ -49,8 +55,10 @@ ProgramError {
 # catch variant 1
 var a = dict(
   b: dict(
-    c: "foo"
-  )
+    c: "foo",
+    d: "bar",
+  ),
+  e: 1,
 )
 
 var a = a.x?
@@ -60,8 +68,10 @@ nil
 # catch variant 2
 var a = dict(
   b: dict(
-    c: "foo"
-  )
+    c: "foo",
+    d: "bar",
+  ),
+  e: 1,
 )
 
 var a = a.b.x?
@@ -71,8 +81,10 @@ nil
 # catch variant 3
 var a = dict(
   b: dict(
-    c: "foo"
-  )
+    c: "foo",
+    d: "bar",
+  ),
+  e: 1,
 )
 
 var a = a.x?.b
