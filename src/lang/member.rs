@@ -1,6 +1,8 @@
+use std::rc::Rc;
+
 use crate::lang::{
     AstNode, Context, Eval, EvalStop, Identifier, InternalProgramError, Setter, Span, Value,
-    value::{DictCell, ListCell, ValueType},
+    value::{ListCell, ValueType},
 };
 
 #[derive(PartialEq, Clone)]
@@ -28,28 +30,28 @@ impl core::fmt::Debug for PropertyOf {
     }
 }
 
-impl PropertyOf {
-    fn of(&self, ctxt: &mut Context) -> Result<DictCell, EvalStop> {
-        let of = self.of.eval(ctxt)?;
-
-        let Value::Dict(of) = of else {
-            return InternalProgramError::SuffixOperatorDoesNotSupportOperand {
-                op: "property-of",
-                got: of.value_type(),
-                span: self.of.span(),
-            }
-            .into();
-        };
-
-        Ok(of)
-    }
-}
-
 impl Eval for PropertyOf {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
-        let of = self.of(ctxt)?;
+        let of = self.of.eval(ctxt)?;
 
-        let result = of.borrow().get(&self.property.name).unwrap_or(Value::Nil);
+        let result = match of {
+            Value::Dict(of) => of.borrow().get(&self.property.name).unwrap_or(Value::Nil),
+            Value::KeyValue(of) => match self.property.name.as_ref() {
+                "key" => Value::Str(Rc::new(of.key.clone())),
+                "value" => of.value.clone(),
+                other => {
+                    todo!("error for {other:?}")
+                }
+            },
+            _ => {
+                return InternalProgramError::SuffixOperatorDoesNotSupportOperand {
+                    op: "property-of",
+                    got: of.value_type(),
+                    span: self.of.span(),
+                }
+                .into();
+            }
+        };
 
         Ok(result)
     }
@@ -57,9 +59,19 @@ impl Eval for PropertyOf {
 
 impl Setter for PropertyOf {
     fn set(&self, ctxt: &mut Context, value: Value) -> Result<(), EvalStop> {
-        let of = self.of(ctxt)?;
+        let of = self.of.eval(ctxt)?;
 
-        of.borrow_mut().set(self.property.name.clone(), value);
+        match of {
+            Value::Dict(of) => of.borrow_mut().set(self.property.name.clone(), value),
+            _ => {
+                return InternalProgramError::SuffixOperatorDoesNotSupportOperand {
+                    op: "property-of",
+                    got: of.value_type(),
+                    span: self.of.span(),
+                }
+                .into();
+            }
+        };
 
         Ok(())
     }

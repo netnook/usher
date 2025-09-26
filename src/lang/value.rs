@@ -1,10 +1,9 @@
-use crate::lang::{Context, EvalStop};
-
 use super::{BuiltInFunc, FunctionDef, InternalProgramError, Span};
+use crate::lang::{Context, EvalStop};
 use std::{
     borrow::Cow,
     cell::RefCell,
-    collections::HashMap,
+    collections::{HashMap, hash_map::Iter},
     fmt::{Display, Write},
     rc::Rc,
 };
@@ -331,6 +330,7 @@ impl List {
         self.content.is_empty()
     }
 
+    // FIXME: why my own Iter implementation rather that collection::Iter ..
     pub fn iter<'a>(&'a self) -> ListIter<'a> {
         ListIter {
             list: self,
@@ -382,6 +382,10 @@ impl Dict {
     #[allow(dead_code)] // FIXME: remove later
     pub fn remove(&mut self, key: &str) -> Option<Value> {
         self.content.remove(key)
+    }
+
+    pub fn iter(&self) -> Iter<'_, String, Value> {
+        self.content.iter()
     }
 }
 

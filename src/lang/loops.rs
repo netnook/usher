@@ -1,5 +1,7 @@
+use std::rc::Rc;
+
 use super::{Context, Value};
-use crate::lang::{AstNode, Block, Eval, EvalStop, Identifier, InternalProgramError};
+use crate::lang::{AstNode, Block, Eval, EvalStop, Identifier, InternalProgramError, KeyValue};
 
 #[derive(PartialEq, Clone)]
 pub struct ForStmt {
@@ -54,7 +56,22 @@ impl Eval for ForStmt {
                     };
                 }
             }
-            Value::Dict(_) => todo!(),
+            Value::Dict(dict) => {
+                // FIXME: what happen if list is modified during iteration ???
+                let dict = dict.borrow();
+                for (k, val) in dict.iter() {
+                    let loop_val = Value::KeyValue(Rc::new(KeyValue::new(k.clone(), val.clone())));
+                    child_ctxt.reset();
+                    child_ctxt.declare(&self.loop_var_1, loop_val);
+                    // child_ctxt.declare(&self.loop_var_1);
+                    result = match self.block.eval_with_context(&mut child_ctxt) {
+                        Ok(v) => v,
+                        Err(EvalStop::Break) => todo!(),
+                        Err(EvalStop::Continue) => Value::Nil,
+                        other @ Err(_) => return other,
+                    };
+                }
+            }
             _ => {
                 return InternalProgramError::CannotLoopOnValue {
                     got: loop_expr.value_type(),

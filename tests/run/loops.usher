@@ -27,7 +27,14 @@ for i in lst {
   sum3 = sum3 + i
 }
 
-[sum1,sum2,sum3,i,a]
+var data = dict(a:1)
+var out = []
+for kv in data {
+  out.add(kv.key)
+  out.add(kv.value)
+}
+
+[sum1,sum2,sum3,i,a,out]
 ---
-[16,16,12,"i","a"]
+[16,16,12,"i","a",["a",1]]
 
