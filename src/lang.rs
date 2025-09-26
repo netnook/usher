@@ -14,7 +14,6 @@ mod unary_op;
 mod value;
 mod var;
 
-use crate::lang::value::ValueType;
 pub use binary_op::{BinaryOp, BinaryOpCode};
 pub use block::Block;
 pub use context::Context;
@@ -30,8 +29,12 @@ pub use program::Program;
 use std::rc::Rc;
 pub use string::InterpolatedStr;
 pub use unary_op::{UnaryOp, UnaryOpCode};
-pub use value::Value;
+use value::ValueType;
+pub use value::{KeyValue, Value};
 pub use var::{Assignment, Declaration};
+
+#[allow(unused_imports)]
+pub(crate) use value::{Dict, List};
 
 const THIS: &str = "this";
 
@@ -56,7 +59,7 @@ pub enum AstNode {
     FunctionCall(FunctionCall),
     ReturnStmt(ReturnStmt),
     Assignment(Assignment),
-    KeyValue(KeyValue),
+    KeyValue(KeyValueBuilder),
     Break(Break),
     Continue(Continue),
     End(End),
@@ -200,9 +203,9 @@ impl AstNode {
             AstNode::Break(v) => v.eval(ctxt),
             AstNode::Continue(v) => v.eval(ctxt),
             AstNode::End(v) => v.eval(ctxt),
+            AstNode::KeyValue(v) => v.eval(ctxt),
             // FIXME: finish eval
             // AstNode::ChainCatch(chain_catch) => todo!(),
-            // AstNode::KeyValue(key_value) => todo!(),
             n => todo!("eval not implemented for {n:?}"),
         }
     }
@@ -739,9 +742,18 @@ impl Eval for ReturnStmt {
 }
 
 #[derive(PartialEq, Debug, Clone)]
-pub struct KeyValue {
+pub struct KeyValueBuilder {
     pub(crate) key: Identifier,
     pub(crate) value: Box<AstNode>,
+}
+
+impl Eval for KeyValueBuilder {
+    fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
+        Ok(Value::KeyValue(Rc::new(KeyValue::new(
+            self.key.name.clone(),
+            self.value.eval(ctxt)?,
+        ))))
+    }
 }
 
 #[derive(PartialEq, Debug, Clone)]

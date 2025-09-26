@@ -19,6 +19,7 @@ pub enum ValueType {
     Boolean,
     List,
     Dict,
+    KeyValue,
     Nil,
     // FIXME: special ??? think of a better name
     Special,
@@ -41,6 +42,7 @@ impl ValueType {
             ValueType::Boolean => "boolean",
             ValueType::List => "list",
             ValueType::Dict => "dict",
+            ValueType::KeyValue => "key-value",
             ValueType::Nil => "nil",
             ValueType::Special => "special",
         }
@@ -48,6 +50,7 @@ impl ValueType {
 }
 
 #[derive(PartialEq, Clone)]
+#[allow(clippy::enum_variant_names)]
 pub enum Value {
     Func(Func),
     Str(StringCell),
@@ -56,6 +59,7 @@ pub enum Value {
     Bool(bool),
     List(ListCell),
     Dict(DictCell),
+    KeyValue(KeyValueCell),
     Nil,
     End,
 }
@@ -109,6 +113,13 @@ impl core::fmt::Debug for Value {
 
                 f.write_char(')')?;
             }
+            Value::KeyValue(kv) => {
+                f.write_str("(")?;
+                f.write_str(&kv.key)?;
+                f.write_char(':')?;
+                kv.value.fmt(f)?;
+                f.write_str(")")?;
+            }
             Value::Nil => f.write_str("nil")?,
             Value::End => f.write_str("end")?,
         }
@@ -137,6 +148,11 @@ impl Value {
                 Cow::Owned(result)
             }
             Value::Dict(_) => {
+                let mut result = String::new();
+                self.write_to(&mut result)?;
+                Cow::Owned(result)
+            }
+            Value::KeyValue(_) => {
                 let mut result = String::new();
                 self.write_to(&mut result)?;
                 Cow::Owned(result)
@@ -201,6 +217,13 @@ impl Value {
 
                 into.push(')');
             }
+            Value::KeyValue(v) => {
+                into.push_str("(\"");
+                into.push_str(&v.key);
+                into.push_str("\":");
+                v.value.write_to(into)?;
+                into.push(')');
+            }
             Value::Nil => into.push_str("nil"),
             Value::End => into.push_str("end"),
         }
@@ -216,6 +239,7 @@ impl Value {
             Value::Bool(_) => ValueType::Boolean,
             Value::List(_) => ValueType::List,
             Value::Dict(_) => ValueType::Dict,
+            Value::KeyValue(_) => ValueType::KeyValue,
             Value::Nil => ValueType::Nil,
             Value::End => ValueType::Special,
         }
@@ -303,6 +327,10 @@ impl List {
         self.content.len()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.content.is_empty()
+    }
+
     pub fn iter<'a>(&'a self) -> ListIter<'a> {
         ListIter {
             list: self,
@@ -354,6 +382,20 @@ impl Dict {
     #[allow(dead_code)] // FIXME: remove later
     pub fn remove(&mut self, key: &str) -> Option<Value> {
         self.content.remove(key)
+    }
+}
+
+pub type KeyValueCell = Rc<KeyValue>;
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct KeyValue {
+    pub key: String,
+    pub value: Value,
+}
+
+impl KeyValue {
+    pub(crate) fn new(key: String, value: Value) -> Self {
+        Self { key, value }
     }
 }
 
@@ -483,5 +525,58 @@ mod tests {
         assert_eq!(l.get(0), Some(42.to_value()));
         assert_eq!(l.get(1), Some("aaa".to_value()));
         assert_eq!(l.len(), 2);
+    }
+
+    #[track_caller]
+    fn do_test_debug_str(val: impl Into<Value>, expected: &str) {
+        let val = val.into();
+        let actual = format!("{val:?}");
+        assert_eq!(actual, expected);
+    }
+    #[test]
+    fn test_debug_str() {
+        // strings
+        do_test_debug_str("abc".to_value(), r#""abc""#);
+        do_test_debug_str(123.to_value(), r#"123"#);
+        do_test_debug_str(12.3.to_value(), r#"12.3"#);
+        do_test_debug_str(true.to_value(), r#"true"#);
+        do_test_debug_str(false.to_value(), r#"false"#);
+        do_test_debug_str(Value::Nil, r#"nil"#);
+        do_test_debug_str(Value::End, r#"end"#);
+        do_test_debug_str(
+            KeyValue::new("a".to_string(), 123.to_value()).to_value(),
+            r#"(a:123)"#,
+        );
+        {
+            let mut list = List::new();
+            list.add(1.to_value());
+            list.add(Value::Nil);
+            do_test_debug_str(list.to_value(), r#"[1,nil]"#);
+        }
+
+        {
+            let mut dict = Dict::new();
+            dict.set("one".to_string(), 1.to_value());
+            dict.set("two".to_string(), Value::Nil);
+            do_test_debug_str(dict.to_value(), r#"dict(one:1,two:nil)"#);
+        }
+        {
+            let mut dict = Dict::new();
+            dict.set("one".to_string(), Value::Integer(1));
+            dict.set("nil".to_string(), Value::Nil);
+            let dict_a = Dict::new();
+            dict.set("dict_a".to_string(), dict_a.into());
+            let mut dict_b = Dict::new();
+            dict_b.set("foo".to_string(), "bar".to_value());
+            dict.set("dict_b".to_string(), dict_b.into());
+            let mut list_a = List::new();
+            list_a.add(42.to_value());
+            list_a.add(43.to_value());
+            dict.set("list_a".to_string(), list_a.into());
+            do_test_debug_str(
+                dict.to_value(),
+                r#"dict(dict_a:dict(),dict_b:dict(foo:"bar"),list_a:[42,43],nil:nil,one:1)"#,
+            );
+        }
     }
 }

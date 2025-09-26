@@ -3,7 +3,7 @@ use std::rc::Rc;
 use super::{ParseResult, Parser, SyntaxError, chars::is_digit};
 use crate::lang::{
     Arg, AstNode, BinaryOp, BinaryOpCode, ChainCatch, End, FunctionCall, Identifier, IndexOf,
-    KeyValue, Literal, PropertyOf, Span, This, UnaryOp, UnaryOpCode, Value,
+    KeyValueBuilder, Literal, PropertyOf, Span, This, UnaryOp, UnaryOpCode, Value,
 };
 
 pub(crate) const EXPECTED_EXPRESSION: &str = "Expected expression.";
@@ -61,7 +61,7 @@ impl<'a> Parser<'a> {
             });
         };
 
-        Ok(Some(AstNode::KeyValue(KeyValue {
+        Ok(Some(AstNode::KeyValue(KeyValueBuilder {
             key: id,
             value: rhs.into(),
         })))
@@ -477,7 +477,7 @@ impl<'a> Parser<'a> {
             };
 
             let arg = match expr {
-                AstNode::KeyValue(KeyValue { key, value }) => Arg {
+                AstNode::KeyValue(KeyValueBuilder { key, value }) => Arg {
                     name: Some(key),
                     value: *value,
                 },

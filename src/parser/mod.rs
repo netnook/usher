@@ -76,14 +76,14 @@ pub mod tests {
     mod nested_types;
     mod spans;
 
-    use std::rc::Rc;
+    use std::{cell::RefCell, rc::Rc};
 
     use super::SyntaxError;
     use crate::{
         lang::{
-            Assignment, AstNode, BinaryOp, BinaryOpCode, Block, ChainCatch, Declaration,
-            DictBuilder, ForStmt, FunctionCall, Identifier, IndexOf, KeyValue, ListBuilder,
-            Literal, PropertyOf, Span, This, UnaryOp, UnaryOpCode, Value,
+            Assignment, AstNode, BinaryOp, BinaryOpCode, Block, ChainCatch, Declaration, Dict,
+            DictBuilder, ForStmt, FunctionCall, Identifier, IndexOf, KeyValue, KeyValueBuilder,
+            List, ListBuilder, Literal, PropertyOf, Span, This, UnaryOp, UnaryOpCode, Value,
         },
         parser::Parser,
     };
@@ -113,6 +113,21 @@ pub mod tests {
             Value::Bool(self)
         }
     }
+    impl ToValue for KeyValue {
+        fn to_value(self) -> Value {
+            Value::KeyValue(Rc::new(self))
+        }
+    }
+    impl ToValue for List {
+        fn to_value(self) -> Value {
+            Value::List(Rc::new(RefCell::new(self)))
+        }
+    }
+    impl ToValue for Dict {
+        fn to_value(self) -> Value {
+            Value::Dict(Rc::new(RefCell::new(self)))
+        }
+    }
 
     pub fn s(val: &str) -> Literal {
         Literal::new(val.to_value(), Span::new(999, 9999))
@@ -136,13 +151,13 @@ pub mod tests {
         Identifier::new(val.to_string(), Span::new(999, 9999))
     }
 
-    pub(crate) fn kv(key: impl Into<Identifier>, value: impl Into<AstNode>) -> KeyValue {
-        KeyValue {
+    pub(crate) fn kv(key: impl Into<Identifier>, value: impl Into<AstNode>) -> KeyValueBuilder {
+        KeyValueBuilder {
             key: key.into(),
             value: value.into().into(),
         }
     }
-    pub(crate) fn dict(entries: Vec<KeyValue>) -> DictBuilder {
+    pub(crate) fn dict(entries: Vec<KeyValueBuilder>) -> DictBuilder {
         DictBuilder {
             entries,
             span: Span::new(999, 9999),

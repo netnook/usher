@@ -1,5 +1,5 @@
 use super::{ParseResult, Parser, SyntaxError};
-use crate::lang::{AstNode, FunctionDef, KeyValue, Param};
+use crate::lang::{AstNode, FunctionDef, KeyValueBuilder, Param};
 
 const EXPECTED_OPEN_PARENS: &str = "Expected '('.";
 const EXPECTED_PARAM_IDENT: &str = "Expected parameter name.";
@@ -63,7 +63,7 @@ impl<'a> Parser<'a> {
                         default_value: None,
                     });
                 }
-                AstNode::KeyValue(KeyValue { key, value }) => {
+                AstNode::KeyValue(KeyValueBuilder { key, value }) => {
                     params.push(Param {
                         name: key,
                         default_value: Some(*value),

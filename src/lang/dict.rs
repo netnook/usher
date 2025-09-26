@@ -1,8 +1,8 @@
-use crate::lang::{Context, Eval, EvalStop, KeyValue, Span, Value, value::Dict};
+use crate::lang::{Context, Eval, EvalStop, KeyValueBuilder, Span, Value, value::Dict};
 
 #[derive(PartialEq, Clone)]
 pub struct DictBuilder {
-    pub(crate) entries: Vec<KeyValue>,
+    pub(crate) entries: Vec<KeyValueBuilder>,
     pub(crate) span: Span,
 }
 
