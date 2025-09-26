@@ -1,5 +1,5 @@
 use super::{ParseResult, Parser, SyntaxError};
-use crate::lang::{Assignment, AstNode, Block, Span};
+use crate::lang::{Assignment, AstNode, Block, Break, Continue, End, Span};
 
 pub(crate) const MISSING_BLOCK_END: &str = "Missing closing brace to end block.";
 pub(crate) const EXPECTED_NEW_LINE_AFTER_STMT: &str = "Expected new line after statement.";
@@ -23,13 +23,13 @@ impl<'a> Parser<'a> {
                     return Ok(Some(self.var_stmt()?));
                 }
                 "break" => {
-                    return Ok(Some(AstNode::Break));
+                    return Ok(Some(Break::new().into()));
                 }
                 "end" => {
-                    return Ok(Some(AstNode::End));
+                    return Ok(Some(End::new().into()));
                 }
                 "continue" => {
-                    return Ok(Some(AstNode::Continue));
+                    return Ok(Some(Continue::new().into()));
                 }
                 "return" => {
                     return Ok(Some(self.return_stmt()?));
@@ -241,8 +241,8 @@ pub(super) mod tests {
         do_test_stmt_ok(" iffy + 2 ", add(id("iffy"), i(2)), -1);
         do_test_stmt_ok(" for_me + 2 ", add(id("for_me"), i(2)), -1);
         do_test_stmt_ok(" vario + 2 ", add(id("vario"), i(2)), -1);
-        do_test_stmt_ok(" break ", AstNode::Break, -1);
-        do_test_stmt_ok(" continue ", AstNode::Continue, -1);
-        do_test_stmt_ok(" end ", AstNode::End, -1);
+        do_test_stmt_ok(" break ", Break::new(), -1);
+        do_test_stmt_ok(" continue ", Continue::new(), -1);
+        do_test_stmt_ok(" end ", End::new(), -1);
     }
 }

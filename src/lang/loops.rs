@@ -69,20 +69,32 @@ impl Eval for ForStmt {
     }
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub struct Break {}
 
 impl Break {
-    pub(crate) fn eval(_ctxt: &mut Context) -> Result<Value, EvalStop> {
+    pub(crate) fn new() -> Self {
+        Self {}
+    }
+}
+
+impl Eval for Break {
+    fn eval(&self, _: &mut Context) -> Result<Value, EvalStop> {
         todo!()
     }
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub struct Continue {}
 
 impl Continue {
-    pub(crate) fn eval(_ctxt: &mut Context) -> Result<Value, EvalStop> {
+    pub(crate) fn new() -> Self {
+        Self {}
+    }
+}
+
+impl Eval for Continue {
+    fn eval(&self, _: &mut Context) -> Result<Value, EvalStop> {
         Err(EvalStop::Continue)
     }
 }

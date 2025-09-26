@@ -2,8 +2,8 @@ use std::rc::Rc;
 
 use super::{ParseResult, Parser, SyntaxError, chars::is_digit};
 use crate::lang::{
-    Arg, AstNode, BinaryOp, BinaryOpCode, ChainCatch, FunctionCall, Identifier, IndexOf, KeyValue,
-    Literal, PropertyOf, Span, This, UnaryOp, UnaryOpCode, Value,
+    Arg, AstNode, BinaryOp, BinaryOpCode, ChainCatch, End, FunctionCall, Identifier, IndexOf,
+    KeyValue, Literal, PropertyOf, Span, This, UnaryOp, UnaryOpCode, Value,
 };
 
 pub(crate) const EXPECTED_EXPRESSION: &str = "Expected expression.";
@@ -216,7 +216,7 @@ impl<'a> Parser<'a> {
             if self.char(b'!') {
                 ops.push(UnaryOp {
                     op: UnaryOpCode::Not,
-                    on: Box::new(AstNode::End), // dummy
+                    on: Box::new(End::new().into()), // dummy
                     span: Span::new(self.pos - 1, 1),
                 });
                 continue;
@@ -228,7 +228,7 @@ impl<'a> Parser<'a> {
                 }
                 ops.push(UnaryOp {
                     op: UnaryOpCode::Negative,
-                    on: Box::new(AstNode::End), // dummy
+                    on: Box::new(End::new().into()), // dummy
                     span: Span::new(self.pos - 1, 1),
                 });
                 continue;

@@ -14,10 +14,7 @@ mod unary_op;
 mod value;
 mod var;
 
-use crate::lang::{
-    loops::{Break, Continue},
-    value::ValueType,
-};
+use crate::lang::value::ValueType;
 pub use binary_op::{BinaryOp, BinaryOpCode};
 pub use block::Block;
 pub use context::Context;
@@ -27,7 +24,7 @@ pub use errors::{InternalProgramError, ProgramError};
 pub use function::{FunctionDef, Param};
 pub use if_else::{ConditionalBlock, IfElseStmt};
 pub use list::ListBuilder;
-pub use loops::ForStmt;
+pub use loops::{Break, Continue, ForStmt};
 pub use member::{IndexOf, PropertyOf};
 pub use program::Program;
 use std::rc::Rc;
@@ -60,18 +57,17 @@ pub enum AstNode {
     ReturnStmt(ReturnStmt),
     Assignment(Assignment),
     KeyValue(KeyValue),
-    Break,
-    Continue,
-    End,
+    Break(Break),
+    Continue(Continue),
+    End(End),
 }
 
 macro_rules! node_debug_1 {
     ($m:expr, $f:expr, $($name:ident),+) => {
         match $m {
             $(
-              AstNode::$name(v) => {v.fmt($f)?; true}
+              AstNode::$name(v) => v.fmt($f),
             )+
-            _ => false
         }
     };
 }
@@ -83,22 +79,9 @@ macro_rules! node_debug_2 {
               AstNode::$name(v) => {
                   $f.write_str(concat!(stringify!($name), "("))?;
                   v.fmt($f)?;
-                  $f.write_str(" )")?;
-                  true
+                  $f.write_str(" )")
               }
             )+
-            _ => false
-        }
-    };
-}
-
-macro_rules! node_debug_3 {
-    ($m:expr, $f:expr, $($name:ident),+) => {
-        match $m {
-            $(
-              AstNode::$name => { write!($f, stringify!($name))?; true }
-            )+
-            _ => false
         }
     };
 }
@@ -107,7 +90,7 @@ impl core::fmt::Debug for AstNode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let minimal = f.sign_minus();
         if minimal {
-            if node_debug_1!(
+            node_debug_1!(
                 self,
                 f,
                 Literal,
@@ -129,16 +112,13 @@ impl core::fmt::Debug for AstNode {
                 ReturnStmt,
                 Assignment,
                 KeyValue,
-                This
-            ) {
-                return Ok(());
-            }
-            if node_debug_3!(self, f, Break, Continue, End) {
-                return Ok(());
-            }
-            panic!()
+                This,
+                Break,
+                Continue,
+                End
+            )
         } else {
-            if node_debug_2!(
+            node_debug_2!(
                 self,
                 f,
                 Literal,
@@ -160,14 +140,11 @@ impl core::fmt::Debug for AstNode {
                 ReturnStmt,
                 Assignment,
                 KeyValue,
-                This
-            ) {
-                return Ok(());
-            }
-            if node_debug_3!(self, f, Break, Continue, End) {
-                return Ok(());
-            }
-            panic!()
+                This,
+                Break,
+                Continue,
+                End
+            )
         }
     }
 }
@@ -220,9 +197,9 @@ impl AstNode {
             AstNode::ForStmt(v) => v.eval(ctxt),
             AstNode::ReturnStmt(v) => v.eval(ctxt),
             AstNode::This(v) => v.eval(ctxt),
-            AstNode::Break => Break::eval(ctxt),
-            AstNode::Continue => Continue::eval(ctxt),
-            AstNode::End => End::eval(ctxt),
+            AstNode::Break(v) => v.eval(ctxt),
+            AstNode::Continue(v) => v.eval(ctxt),
+            AstNode::End(v) => v.eval(ctxt),
             // FIXME: finish eval
             // AstNode::ChainCatch(chain_catch) => todo!(),
             // AstNode::KeyValue(key_value) => todo!(),
@@ -349,6 +326,21 @@ impl From<PropertyOf> for AstNode {
 impl From<IndexOf> for AstNode {
     fn from(value: IndexOf) -> Self {
         Self::IndexOf(value)
+    }
+}
+impl From<Break> for AstNode {
+    fn from(value: Break) -> Self {
+        Self::Break(value)
+    }
+}
+impl From<Continue> for AstNode {
+    fn from(value: Continue) -> Self {
+        Self::Continue(value)
+    }
+}
+impl From<End> for AstNode {
+    fn from(value: End) -> Self {
+        Self::End(value)
     }
 }
 
@@ -752,11 +744,17 @@ pub struct KeyValue {
     pub(crate) value: Box<AstNode>,
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub struct End {}
 
 impl End {
-    pub(crate) fn eval(_: &mut Context) -> Result<Value, EvalStop> {
+    pub(crate) fn new() -> Self {
+        Self {}
+    }
+}
+
+impl Eval for End {
+    fn eval(&self, _: &mut Context) -> Result<Value, EvalStop> {
         Ok(Value::End)
     }
 }

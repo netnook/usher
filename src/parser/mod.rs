@@ -420,8 +420,9 @@ pub mod tests {
         (@inner) => {{
             use crate::lang::FunctionCall;
             use crate::lang::AstNode;
+            use crate::lang::Break;
             FunctionCall{
-                 on: AstNode::Break.into(), // dummy value
+                 on: AstNode::Break(Break::new()).into(), // dummy value
                  method: None,
                  args: Vec::new(),
                 span: Span::new(999, 9999),
