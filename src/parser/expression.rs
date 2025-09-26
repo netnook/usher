@@ -1,10 +1,10 @@
-use std::rc::Rc;
-
 use super::{ParseResult, Parser, SyntaxError, chars::is_digit};
 use crate::lang::{
-    Arg, AstNode, BinaryOp, BinaryOpCode, ChainCatch, End, FunctionCall, Identifier, IndexOf,
-    KeyValueBuilder, Literal, PropertyOf, Span, This, UnaryOp, UnaryOpCode, Value,
+    Accept, Arg, AstNode, BinaryOp, BinaryOpCode, ChainCatch, End, FunctionCall, Identifier,
+    IndexOf, KeyValueBuilder, Literal, PropertyOf, Span, This, UnaryOp, UnaryOpCode, Value,
+    Visitor, VisitorResult,
 };
+use std::rc::Rc;
 
 pub(crate) const EXPECTED_EXPRESSION: &str = "Expected expression.";
 pub(crate) const EXPECTED_COSING_PARENS: &str = "Expected closing parenthesis ')'";
@@ -264,16 +264,19 @@ impl<'a> Parser<'a> {
             self.linespace();
 
             if let Some((index, span)) = self.index_of()? {
+                let throw_on_missing_prop = self.chain_catch();
                 node = AstNode::IndexOf(IndexOf {
                     of: node.into(),
                     index: index.into(),
-                    span,
+                    throw_on_missing_prop,
+                    span: span.extended(self.pos),
                 });
                 continue;
             }
 
             if let Some((args, span)) = self.call_of()? {
                 node = match node {
+                    // FIXME: what if property-of has the `throw_on_missing_prop` flag set !!!
                     AstNode::PropertyOf(node) => AstNode::FunctionCall(FunctionCall {
                         on: node.of,
                         method: Some(node.property),
@@ -292,24 +295,42 @@ impl<'a> Parser<'a> {
                 continue;
             }
 
-            if self.chain_catch() {
-                node = AstNode::ChainCatch(ChainCatch { inner: node.into() });
-                continue;
-            }
-
             // dot '.' operator can appear on new line
             self.whitespace_comments();
             if let Some((property, span)) = self.property_of()? {
+                let throw_on_missing_prop = self.chain_catch();
                 node = AstNode::PropertyOf(PropertyOf {
                     of: node.into(),
                     property,
-                    span,
+                    span: span.extended(self.pos),
+                    throw_on_missing_prop,
                 });
                 continue;
             }
 
             self.pos = savepoint;
             break;
+        }
+
+        struct ContainsThrowOnMissing;
+        impl Visitor<bool> for ContainsThrowOnMissing {
+            fn visit_property_of(&mut self, v: &PropertyOf) -> VisitorResult<bool> {
+                if v.throw_on_missing_prop {
+                    return VisitorResult::Stop(true);
+                }
+                v.accept(self)
+            }
+            fn visit_index_of(&mut self, v: &IndexOf) -> VisitorResult<bool> {
+                if v.throw_on_missing_prop {
+                    return VisitorResult::Stop(true);
+                }
+                v.accept(self)
+            }
+        }
+
+        let contains_throw_on_missing = ContainsThrowOnMissing.go(&node).unwrap_or(false);
+        if contains_throw_on_missing {
+            node = AstNode::ChainCatch(ChainCatch { inner: node.into() });
         }
 
         Ok(Some(node))
@@ -570,39 +591,67 @@ pub mod tests {
             ),
             -1,
         );
-        do_test_expr_ok(" foo? ", chain_catch(id("foo")), -1);
         do_test_expr_ok(" foo.map ", prop_of(id("foo"), "map"), -1);
         do_test_expr_ok(
-            " aa.bb[cc].dd[\"ee\"]?[66] ",
-            index_of(
-                chain_catch(index_of(
-                    prop_of(index_of(prop_of(id("aa"), "bb"), id("cc")), "dd"),
-                    s("ee"),
-                )),
-                i(66),
-            ),
+            " foo.bar? ",
+            chain_catch(prop_of(id("foo"), "bar").with_throw_on_missing_prop(true)),
             -1,
         );
         do_test_expr_ok(
-            " aa . bb [ cc ] . dd [ \"ee\" ] ? [ 66 ]  ",
-            index_of(
-                chain_catch(index_of(
+            " foo.bar?.baz ",
+            chain_catch(prop_of(
+                prop_of(id("foo"), "bar").with_throw_on_missing_prop(true),
+                "baz",
+            )),
+            -1,
+        );
+        do_test_expr_ok(
+            " foo[0]? ",
+            chain_catch(index_of(id("foo"), i(0)).with_throw_on_missing_prop(true)),
+            -1,
+        );
+        do_test_expr_ok(
+            " foo[0]?[1] ",
+            chain_catch(index_of(
+                index_of(id("foo"), i(0)).with_throw_on_missing_prop(true),
+                i(1),
+            )),
+            -1,
+        );
+        do_test_expr_ok(
+            " aa.bb[cc].dd[\"ee\"]?[66] ",
+            chain_catch(index_of(
+                index_of(
                     prop_of(index_of(prop_of(id("aa"), "bb"), id("cc")), "dd"),
                     s("ee"),
-                )),
+                )
+                .with_throw_on_missing_prop(true),
                 i(66),
-            ),
+            )),
+            -1,
+        );
+        do_test_expr_ok(
+            " aa . bb [ cc ] . dd [ \"ee\" ]? [ 66 ]  ",
+            chain_catch(index_of(
+                index_of(
+                    prop_of(index_of(prop_of(id("aa"), "bb"), id("cc")), "dd"),
+                    s("ee"),
+                )
+                .with_throw_on_missing_prop(true),
+                i(66),
+            )),
             -2,
         );
         do_test_expr_ok(
-            " aa . #comment\n bb [ #comment\n cc #comment\n ] . #comment\n dd [ \"ee\" ] ? [ 66 ]  ",
-            index_of(
-                chain_catch(index_of(
+            " aa . #comment\n bb [ #comment\n cc #comment\n ] . #comment\n dd [ \"ee\" ]? [ 66 ]  ",
+            chain_catch(index_of(
+                index_of(
                     prop_of(index_of(prop_of(id("aa"), "bb"), id("cc")), "dd"),
                     s("ee"),
-                )),
+                )
+                .with_throw_on_missing_prop(true),
                 i(66),
-            ),
+            )),
             -2,
         );
         do_test_expr_ok(" aa #comment\n . foo  ", prop_of(id("aa"), "foo"), -2);
@@ -714,11 +763,14 @@ pub mod tests {
         do_test_expr_ok(" 1>2+3 ", greater(i(1), add(i(2), i(3))), -1);
 
         do_test_expr_ok(
-            r#" foo?.bar["baz" + 7] + 32 * 7 >= b.c * (x + y % z) || (3>4)+7 "#,
+            r#" foo.bar?["baz" + 7] + 32 * 7 >= b.c * (x + y % z) || (3>4)+7 "#,
             or(
                 greater_equal(
                     add(
-                        index_of(prop_of(chain_catch(id("foo")), "bar"), add(s("baz"), i(7))),
+                        chain_catch(index_of(
+                            prop_of(id("foo"), "bar").with_throw_on_missing_prop(true),
+                            add(s("baz"), i(7)),
+                        )),
                         mul(i(32), i(7)),
                     ),
                     mul(

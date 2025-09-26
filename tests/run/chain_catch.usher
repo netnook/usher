@@ -1,0 +1,80 @@
+# error variant 1
+var a = dict(
+  b: dict(
+    c: "foo"
+  )
+)
+
+var a = a.x
+----------------
+ProgramError {
+    msg: "No such property ....",
+    line_no: 7,
+    char_no: 9,
+    line: "var a = a.x",
+}
+*******************************************
+# error variant 2
+var a = dict(
+  b: dict(
+    c: "foo"
+  )
+)
+
+var a = a.b.x
+----------------
+ProgramError {
+    msg: "No such property ....",
+    line_no: 7,
+    char_no: 11,
+    line: "var a = a.b.x",
+}
+*******************************************
+# error variant 3
+var a = dict(
+  b: dict(
+    c: "foo"
+  )
+)
+
+var a = a.x.b
+----------------
+ProgramError {
+    msg: "No such property ....",
+    line_no: 7,
+    char_no: 9,
+    line: "var a = a.x.b",
+}
+*******************************************
+# catch variant 1
+var a = dict(
+  b: dict(
+    c: "foo"
+  )
+)
+
+var a = a.x?
+----------------
+nil
+*******************************************
+# catch variant 2
+var a = dict(
+  b: dict(
+    c: "foo"
+  )
+)
+
+var a = a.b.x?
+----------------
+nil
+*******************************************
+# catch variant 3
+var a = dict(
+  b: dict(
+    c: "foo"
+  )
+)
+
+var a = a.x?.b
+----------------
+nil

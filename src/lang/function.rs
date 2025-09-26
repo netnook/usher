@@ -1,4 +1,7 @@
-use crate::lang::{AstNode, Block, Context, Eval, EvalStop, Identifier, Span, Value, value::Func};
+use crate::lang::{
+    Accept, AstNode, Block, Context, Eval, EvalStop, Identifier, Span, Value, Visitor,
+    VisitorResult, value::Func,
+};
 use std::rc::Rc;
 
 #[derive(PartialEq)]
@@ -64,6 +67,34 @@ impl Eval for Rc<FunctionDef> {
             ctxt.set(name, f.clone());
         };
         Ok(f)
+    }
+}
+
+impl<T> Accept<T> for FunctionDef {
+    fn accept(&self, visitor: &mut impl Visitor<T>) -> VisitorResult<T> {
+        if let Some(name) = &self.name {
+            match visitor.visit_identifier(name) {
+                v @ VisitorResult::Stop(_) => return v,
+                VisitorResult::Continue => {}
+            }
+        }
+        for param in &self.params {
+            match visitor.visit_identifier(&param.name) {
+                v @ VisitorResult::Stop(_) => return v,
+                VisitorResult::Continue => {}
+            }
+            if let Some(default_value) = &param.default_value {
+                match visitor.visit_node(default_value) {
+                    v @ VisitorResult::Stop(_) => return v,
+                    VisitorResult::Continue => {}
+                }
+            }
+        }
+        match visitor.visit_block(&self.body) {
+            v @ VisitorResult::Stop(_) => return v,
+            VisitorResult::Continue => {}
+        }
+        VisitorResult::Continue
     }
 }
 

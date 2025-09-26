@@ -1,5 +1,6 @@
 use crate::lang::{
-    AstNode, Block, Context, Eval, EvalStop, InternalProgramError, Value, value::ValueType,
+    Accept, AstNode, Block, Context, Eval, EvalStop, InternalProgramError, Value, Visitor,
+    VisitorResult, value::ValueType,
 };
 
 #[derive(PartialEq, Clone)]
@@ -55,6 +56,27 @@ impl Eval for IfElse {
         }
 
         Ok(Value::Nil)
+    }
+}
+
+impl<T> Accept<T> for IfElse {
+    fn accept(&self, visitor: &mut impl Visitor<T>) -> VisitorResult<T> {
+        for cb in &self.conditional_blocks {
+            match visitor.visit_node(&cb.condition) {
+                v @ VisitorResult::Stop(_) => return v,
+                VisitorResult::Continue => {}
+            }
+            match visitor.visit_block(&cb.block) {
+                v @ VisitorResult::Stop(_) => return v,
+                VisitorResult::Continue => {}
+            }
+        }
+        if let Some(else_block) = &self.else_block
+            && let v @ VisitorResult::Stop(_) = visitor.visit_block(else_block)
+        {
+            return v;
+        }
+        VisitorResult::Continue
     }
 }
 

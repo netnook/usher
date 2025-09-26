@@ -1,7 +1,8 @@
 use super::{ParseResult, Parser, SyntaxError};
 use crate::lang::Program;
 
-pub(crate) const EXPECTED_NEW_LINE_AFTER_STMT: &str = "Expected new line after statement.";
+pub(crate) const EXPECTED_NEW_LINE_AFTER_STMT: &str =
+    "Unexpected character. Expected new line after statement.";
 pub(crate) const UNEXPECTED_CHAR: &str = "Unexpected character.";
 
 impl<'a> Parser<'a> {
@@ -30,10 +31,12 @@ impl<'a> Parser<'a> {
             stmts.push(stmt);
         }
 
-        Ok(Program {
+        let prog = Program {
             source: self.input_str,
             stmts,
-        })
+        };
+
+        Ok(prog)
     }
 }
 

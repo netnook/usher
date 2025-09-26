@@ -1,4 +1,4 @@
-use crate::lang::{AstNode, Context, Eval, EvalStop, Span, Value};
+use crate::lang::{Accept, AstNode, Context, Eval, EvalStop, Span, Value, Visitor, VisitorResult};
 
 #[derive(PartialEq, Clone)]
 pub struct Block {
@@ -36,6 +36,18 @@ impl Block {
             result = stmt.eval(ctxt)?;
         }
         Ok(result)
+    }
+}
+
+impl<T> Accept<T> for Block {
+    fn accept(&self, visitor: &mut impl Visitor<T>) -> VisitorResult<T> {
+        for stmt in &self.stmts {
+            match visitor.visit_node(stmt) {
+                v @ VisitorResult::Stop(_) => return v,
+                VisitorResult::Continue => {}
+            }
+        }
+        VisitorResult::Continue
     }
 }
 

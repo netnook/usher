@@ -64,7 +64,7 @@ fn test_dict_spans() {
     do_test_parser_exact(
         Parser::expression,
         r#" dict(a:1,b : 22 ) "#,
-        dict(vec![
+        dict_builder(vec![
             kv(id("a").spanned(6, 1), i(1).spanned(8, 1)),
             kv(id("b").spanned(10, 1), i(22).spanned(14, 2)),
         ])
@@ -135,13 +135,28 @@ fn test_stmt_spanneds() {
     );
     do_test_parser_exact(
         Parser::stmt,
+        r#" abc.def?[ghi]? "#,
+        chain_catch(
+            index_of(
+                prop_of(id("abc").spanned(1, 3), id("def").spanned(5, 3))
+                    .with_throw_on_missing_prop(true)
+                    .spanned(4, 5),
+                id("ghi").spanned(10, 3),
+            )
+            .with_throw_on_missing_prop(true)
+            .spanned(9, 6),
+        ),
+        -1,
+    );
+    do_test_parser_exact(
+        Parser::stmt,
         r#" aaa(123).bbb(456) "#,
         _call!(
             _call!(id("aaa").spanned(1, 3), arg(i(123).spanned(5, 3)),).spanned(4, 5),
             method(id("bbb").spanned(10, 3)),
             arg(i(456).spanned(14, 3)),
         )
-        .spanned(9, 4)
+        .spanned(9, 9)
         .into(),
         -1,
     );

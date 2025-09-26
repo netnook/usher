@@ -1,14 +1,15 @@
-use std::rc::Rc;
-
 use crate::lang::{
-    AstNode, Context, Eval, EvalStop, Identifier, InternalProgramError, Setter, Span, Value,
+    Accept, AstNode, Context, Eval, EvalStop, Identifier, InternalProgramError, Setter, Span,
+    Value, Visitor, VisitorResult,
     value::{ListCell, ValueType},
 };
+use std::rc::Rc;
 
 #[derive(PartialEq, Clone)]
 pub struct PropertyOf {
     pub(crate) of: Box<AstNode>,
     pub(crate) property: Identifier,
+    pub(crate) throw_on_missing_prop: bool,
     pub(crate) span: Span,
 }
 
@@ -19,14 +20,30 @@ impl core::fmt::Debug for PropertyOf {
             let mut w = f.debug_struct("PropertyOf");
             w.field("of", &self.of);
             w.field("property", &self.property);
+            if self.throw_on_missing_prop {
+                w.field("throw_on_missing_prop", &self.throw_on_missing_prop);
+            }
             w.finish()
         } else {
             f.debug_struct("PropertyOf")
                 .field("of", &self.of)
                 .field("property", &self.property)
+                .field("throw_on_missing_prop", &self.throw_on_missing_prop)
                 .field("span", &self.span)
                 .finish()
         }
+    }
+}
+
+impl<T> Accept<T> for PropertyOf {
+    fn accept(&self, visitor: &mut impl Visitor<T>) -> VisitorResult<T> {
+        if let v @ VisitorResult::Stop(_) = visitor.visit_node(&self.of) {
+            return v;
+        }
+        if let v @ VisitorResult::Stop(_) = visitor.visit_identifier(&self.property) {
+            return v;
+        }
+        VisitorResult::Continue
     }
 }
 
@@ -35,12 +52,37 @@ impl Eval for PropertyOf {
         let of = self.of.eval(ctxt)?;
 
         let result = match of {
-            Value::Dict(of) => of.borrow().get(&self.property.name).unwrap_or(Value::Nil),
+            Value::Dict(of) => {
+                let v = of.borrow().get(&self.property.name);
+                let Some(v) = v else {
+                    if self.throw_on_missing_prop {
+                        return Err(EvalStop::Throw);
+                    } else {
+                        return Err(InternalProgramError::NoSuchProperty {
+                            prop: self.property.clone(),
+                            from: Value::Dict(of),
+                            span: self.span,
+                        }
+                        .into_stop());
+                    }
+                };
+                v
+            }
             Value::KeyValue(of) => match self.property.name.as_ref() {
                 "key" => Value::Str(Rc::new(of.key.clone())),
                 "value" => of.value.clone(),
-                other => {
-                    todo!("error for {other:?}")
+                _ => {
+                    if self.throw_on_missing_prop {
+                        // FIXME: do we really want to allow ? operator on a key/value object?
+                        return Err(EvalStop::Throw);
+                    } else {
+                        return Err(InternalProgramError::NoSuchProperty {
+                            prop: self.property.clone(),
+                            from: Value::KeyValue(of),
+                            span: self.span,
+                        }
+                        .into_stop());
+                    }
                 }
             },
             _ => {
@@ -81,6 +123,7 @@ impl Setter for PropertyOf {
 pub struct IndexOf {
     pub(crate) of: Box<AstNode>,
     pub(crate) index: Box<AstNode>,
+    pub(crate) throw_on_missing_prop: bool,
     pub(crate) span: Span,
 }
 
@@ -91,11 +134,15 @@ impl core::fmt::Debug for IndexOf {
             let mut w = f.debug_struct("IndexOf");
             w.field("of", &self.of);
             w.field("index", &self.index);
+            if self.throw_on_missing_prop {
+                w.field("throw_on_missing_prop", &self.throw_on_missing_prop);
+            }
             w.finish()
         } else {
             f.debug_struct("IndexOf")
                 .field("of", &self.of)
                 .field("index", &self.index)
+                .field("throw_on_missing_prop", &self.throw_on_missing_prop)
                 .field("span", &self.span)
                 .finish()
         }
@@ -145,12 +192,16 @@ impl Eval for IndexOf {
         // FIXME: combine index validation for eval and set ?
         let index = {
             if index.is_negative() || index as usize >= of.len() {
-                return InternalProgramError::IndexOutOfRange {
-                    index,
-                    len: of.len(),
-                    span: self.index.span(),
+                if self.throw_on_missing_prop {
+                    return Err(EvalStop::Throw);
+                } else {
+                    return InternalProgramError::IndexOutOfRange {
+                        index,
+                        len: of.len(),
+                        span: self.index.span(),
+                    }
+                    .into();
                 }
-                .into();
             }
             index as usize
         };
@@ -158,6 +209,18 @@ impl Eval for IndexOf {
         let result = of.get(index).expect("index in range");
 
         Ok(result)
+    }
+}
+
+impl<T> Accept<T> for IndexOf {
+    fn accept(&self, visitor: &mut impl Visitor<T>) -> VisitorResult<T> {
+        if let v @ VisitorResult::Stop(_) = visitor.visit_node(&self.of) {
+            return v;
+        }
+        if let v @ VisitorResult::Stop(_) = visitor.visit_node(&self.index) {
+            return v;
+        }
+        VisitorResult::Continue
     }
 }
 
@@ -191,7 +254,7 @@ impl Setter for IndexOf {
 #[cfg(test)]
 mod tests {
     use crate::lang::{
-        AstNode, Context, EvalStop, InternalProgramError, Value,
+        AstNode, Context, EvalStop, InternalProgramError, Span,
         value::{Dict, List},
     };
 
@@ -214,7 +277,15 @@ mod tests {
 
         assert_eq!(prop_a.eval(&mut ctxt).unwrap(), 1.to_value());
         assert_eq!(prop_b.eval(&mut ctxt).unwrap(), "bbb".to_value());
-        assert_eq!(prop_c.eval(&mut ctxt).unwrap(), Value::Nil);
+        assert_eq!(
+            prop_c.eval(&mut ctxt).unwrap_err(),
+            InternalProgramError::NoSuchProperty {
+                prop: id("c"),
+                from: dict!("a" => 1, "b" => "bbb"),
+                span: Span::new(999, 9999)
+            }
+            .into_stop()
+        );
     }
     #[test]
     fn test_index_of_eval() {

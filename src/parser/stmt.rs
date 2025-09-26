@@ -2,7 +2,6 @@ use super::{ParseResult, Parser, SyntaxError};
 use crate::lang::{Assignment, AstNode, Block, Break, Continue, End, Span};
 
 pub(crate) const MISSING_BLOCK_END: &str = "Missing closing brace to end block.";
-pub(crate) const EXPECTED_NEW_LINE_AFTER_STMT: &str = "Expected new line after statement.";
 pub(crate) const EXPECTED_STATEMENT: &str = "Expected statement.";
 pub(crate) const EXPECTED_EXPRESSION_ON_RHS: &str = "Expected expression on RHS of assignment.";
 pub(crate) const INVALID_LHS_OF_ASSIGNMENT: &str = "Invalid LHS of assignment.";
@@ -76,7 +75,10 @@ impl<'a> Parser<'a> {
             if first {
                 first = false;
             } else if !details.newline {
-                return Err(SyntaxError::new(self.pos, EXPECTED_NEW_LINE_AFTER_STMT));
+                return Err(SyntaxError::new(
+                    self.pos,
+                    super::program::EXPECTED_NEW_LINE_AFTER_STMT,
+                ));
             }
 
             let Some(stmt) = self.stmt()? else {
@@ -139,7 +141,7 @@ impl<'a> Parser<'a> {
 #[cfg(test)]
 pub(super) mod tests {
     use super::*;
-    use crate::parser::tests::*;
+    use crate::parser::{program::EXPECTED_NEW_LINE_AFTER_STMT, tests::*};
 
     #[track_caller]
     fn do_test_block_ok(input: &'static str, expected: Block, expected_end: isize) {

@@ -1,0 +1,15 @@
+var a = dict(
+  b: dict(
+    c: "foo"
+  )
+);
+
+var a = a.x
+----------------
+ParseError {
+    line_no: 4,
+    char_no: 1,
+    line: ");",
+    msg: "Unexpected character. Expected new line after statement.",
+}
+

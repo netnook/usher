@@ -1,7 +1,10 @@
 use std::rc::Rc;
 
 use super::{Context, Value};
-use crate::lang::{AstNode, Block, Eval, EvalStop, Identifier, InternalProgramError, KeyValue};
+use crate::lang::{
+    Accept, AstNode, Block, Eval, EvalStop, Identifier, InternalProgramError, KeyValue, Visitor,
+    VisitorResult,
+};
 
 #[derive(PartialEq, Clone)]
 pub struct For {
@@ -85,6 +88,30 @@ impl Eval for For {
     }
 }
 
+impl<T> Accept<T> for For {
+    fn accept(&self, visitor: &mut impl Visitor<T>) -> VisitorResult<T> {
+        match visitor.visit_node(&self.iterable) {
+            v @ VisitorResult::Stop(_) => return v,
+            VisitorResult::Continue => {}
+        }
+        match visitor.visit_identifier(&self.loop_item) {
+            v @ VisitorResult::Stop(_) => return v,
+            VisitorResult::Continue => {}
+        }
+        if let Some(loop_info) = &self.loop_info {
+            match visitor.visit_identifier(loop_info) {
+                v @ VisitorResult::Stop(_) => return v,
+                VisitorResult::Continue => {}
+            }
+        }
+        match visitor.visit_block(&self.block) {
+            v @ VisitorResult::Stop(_) => return v,
+            VisitorResult::Continue => {}
+        }
+        VisitorResult::Continue
+    }
+}
+
 #[derive(PartialEq, Debug, Clone)]
 pub struct Break {}
 
@@ -100,6 +127,12 @@ impl Eval for Break {
     }
 }
 
+impl<T> Accept<T> for Break {
+    fn accept(&self, _: &mut impl Visitor<T>) -> VisitorResult<T> {
+        VisitorResult::Continue
+    }
+}
+
 #[derive(PartialEq, Debug, Clone)]
 pub struct Continue {}
 
@@ -112,6 +145,12 @@ impl Continue {
 impl Eval for Continue {
     fn eval(&self, _: &mut Context) -> Result<Value, EvalStop> {
         Err(EvalStop::Continue)
+    }
+}
+
+impl<T> Accept<T> for Continue {
+    fn accept(&self, _: &mut impl Visitor<T>) -> VisitorResult<T> {
+        VisitorResult::Continue
     }
 }
 

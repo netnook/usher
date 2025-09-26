@@ -1,4 +1,7 @@
-use crate::lang::{AstNode, Context, Eval, EvalStop, Identifier, InternalProgramError, Value};
+use crate::lang::{
+    Accept, AstNode, Context, Eval, EvalStop, Identifier, InternalProgramError, Value, Visitor,
+    VisitorResult,
+};
 
 #[derive(PartialEq, Clone)]
 pub struct Declaration {
@@ -31,6 +34,20 @@ impl Eval for Declaration {
     }
 }
 
+impl<T> Accept<T> for Declaration {
+    fn accept(&self, visitor: &mut impl Visitor<T>) -> VisitorResult<T> {
+        match visitor.visit_identifier(&self.ident) {
+            v @ VisitorResult::Stop(_) => return v,
+            VisitorResult::Continue => {}
+        }
+        match visitor.visit_node(&self.value) {
+            v @ VisitorResult::Stop(_) => return v,
+            VisitorResult::Continue => {}
+        }
+        VisitorResult::Continue
+    }
+}
+
 #[derive(PartialEq, Debug, Clone)]
 pub struct Assignment {
     pub(crate) lhs: Box<AstNode>,
@@ -50,6 +67,20 @@ impl Eval for Assignment {
         assignable.set(ctxt, rhs)?;
 
         Ok(Value::Nil)
+    }
+}
+
+impl<T> Accept<T> for Assignment {
+    fn accept(&self, visitor: &mut impl Visitor<T>) -> VisitorResult<T> {
+        match visitor.visit_node(&self.lhs) {
+            v @ VisitorResult::Stop(_) => return v,
+            VisitorResult::Continue => {}
+        }
+        match visitor.visit_node(&self.rhs) {
+            v @ VisitorResult::Stop(_) => return v,
+            VisitorResult::Continue => {}
+        }
+        VisitorResult::Continue
     }
 }
 

@@ -1,4 +1,4 @@
-use crate::lang::{EvalStop, Span, value::ValueType};
+use crate::lang::{EvalStop, Identifier, Span, Value, value::ValueType};
 use thiserror::Error;
 
 #[derive(PartialEq, Debug)]
@@ -58,6 +58,12 @@ pub enum InternalProgramError {
     CannotLoopOnValue { got: ValueType, span: Span },
     #[error("This not available in current scope.")]
     ThisNotAvailable,
+    #[error("No such property ....")]
+    NoSuchProperty {
+        prop: Identifier,
+        from: Value,
+        span: Span,
+    },
 }
 
 macro_rules! bad_type_error_op {
@@ -130,6 +136,11 @@ impl InternalProgramError {
             InternalProgramError::CannotConvertToString { typ: _, span } => span,
             InternalProgramError::CannotLoopOnValue { got: _, span } => span,
             InternalProgramError::ThisNotAvailable => todo!(),
+            InternalProgramError::NoSuchProperty {
+                prop: _,
+                from: _,
+                span,
+            } => span,
         }
     }
 

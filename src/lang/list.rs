@@ -1,4 +1,6 @@
-use crate::lang::{AstNode, Context, Eval, EvalStop, Span, Value, value::List};
+use crate::lang::{
+    Accept, AstNode, Context, Eval, EvalStop, Span, Value, Visitor, VisitorResult, value::List,
+};
 
 #[derive(PartialEq, Clone)]
 pub struct ListBuilder {
@@ -38,6 +40,18 @@ impl Eval for ListBuilder {
         }
 
         Ok(list.into())
+    }
+}
+
+impl<T> Accept<T> for ListBuilder {
+    fn accept(&self, visitor: &mut impl Visitor<T>) -> VisitorResult<T> {
+        for e in &self.entries {
+            match visitor.visit_node(e) {
+                v @ VisitorResult::Stop(_) => return v,
+                VisitorResult::Continue => {}
+            }
+        }
+        VisitorResult::Continue
     }
 }
 

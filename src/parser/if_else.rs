@@ -79,7 +79,7 @@ mod tests {
     use super::*;
     use crate::lang::IfElse;
     use crate::parser::comment::EXPECTED_WS_OR_COMMENT;
-    use crate::parser::stmt::EXPECTED_NEW_LINE_AFTER_STMT;
+    use crate::parser::program::EXPECTED_NEW_LINE_AFTER_STMT;
     use crate::parser::tests::*;
 
     #[track_caller]

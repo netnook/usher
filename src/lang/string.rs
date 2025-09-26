@@ -1,4 +1,4 @@
-use crate::lang::{AstNode, Context, Eval, EvalStop, Value};
+use crate::lang::{Accept, AstNode, Context, Eval, EvalStop, Value, Visitor, VisitorResult};
 use std::rc::Rc;
 
 #[derive(PartialEq, Clone)]
@@ -34,6 +34,18 @@ impl Eval for InterpolatedStr {
             }
             Ok(Value::Str(Rc::new(res)))
         }
+    }
+}
+
+impl<T> Accept<T> for InterpolatedStr {
+    fn accept(&self, visitor: &mut impl Visitor<T>) -> VisitorResult<T> {
+        for p in &self.parts {
+            match visitor.visit_node(p) {
+                v @ VisitorResult::Stop(_) => return v,
+                VisitorResult::Continue => {}
+            }
+        }
+        VisitorResult::Continue
     }
 }
 

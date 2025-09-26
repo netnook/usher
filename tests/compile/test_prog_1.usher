@@ -110,13 +110,14 @@ Program { [
     },
     Assignment {
         lhs: Ident("str"),
-        rhs: PropertyOf {
-            of: ChainCatch { PropertyOf {
+        rhs: ChainCatch { PropertyOf {
+            of: PropertyOf {
                 of: This,
                 property: Ident("b"),
-            } },
+                throw_on_missing_prop: true,
+            },
             property: Ident("c"),
-        },
+        } },
     },
     End,
 ] }

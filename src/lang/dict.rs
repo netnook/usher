@@ -1,4 +1,7 @@
-use crate::lang::{Context, Eval, EvalStop, KeyValueBuilder, Span, Value, value::Dict};
+use crate::lang::{
+    Accept, Context, Eval, EvalStop, KeyValueBuilder, Span, Value, Visitor, VisitorResult,
+    value::Dict,
+};
 
 #[derive(PartialEq, Clone)]
 pub struct DictBuilder {
@@ -39,6 +42,18 @@ impl Eval for DictBuilder {
     }
 }
 
+impl<T> Accept<T> for DictBuilder {
+    fn accept(&self, visitor: &mut impl Visitor<T>) -> VisitorResult<T> {
+        for e in &self.entries {
+            match visitor.visit_key_value(e) {
+                v @ VisitorResult::Stop(_) => return v,
+                VisitorResult::Continue => {}
+            }
+        }
+        VisitorResult::Continue
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::lang::{Context, Eval, value::Dict};
@@ -46,7 +61,7 @@ mod tests {
     #[test]
     fn test_dict_builder_eval() {
         use crate::parser::tests::*;
-        let d = dict(vec![kv(id("a"), i(1)), kv(id("b"), add(i(1), i(3)))]);
+        let d = dict_builder(vec![kv(id("a"), i(1)), kv(id("b"), add(i(1), i(3)))]);
         let actual = d.eval(&mut Context::new()).expect("a value");
         let mut expected = Dict::new();
         expected.set("a".to_string(), 1.to_value());

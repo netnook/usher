@@ -8,7 +8,7 @@ use std::{
     rc::Rc,
 };
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Debug, Clone, Eq)]
 pub enum ValueType {
     Function,
     String,

@@ -156,12 +156,13 @@ trait Eval {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop>;
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum EvalStop {
     Error(InternalProgramError),
     Return(Value),
     Break,
     Continue,
+    Throw,
 }
 
 impl From<InternalProgramError> for EvalStop {
@@ -204,9 +205,7 @@ impl AstNode {
             AstNode::Continue(v) => v.eval(ctxt),
             AstNode::End(v) => v.eval(ctxt),
             AstNode::KeyValue(v) => v.eval(ctxt),
-            // FIXME: finish eval
-            // AstNode::ChainCatch(chain_catch) => todo!(),
-            n => todo!("eval not implemented for {n:?}"),
+            AstNode::ChainCatch(v) => v.eval(ctxt),
         }
     }
 
@@ -243,6 +242,140 @@ impl AstNode {
             // AstNode::KeyValue(key_value) => todo!(),
             n => todo!("span() not implemented for {n:?}"),
         }
+    }
+}
+
+pub(crate) enum VisitorResult<T> {
+    Stop(T),
+    Continue,
+}
+
+pub(crate) trait Accept<T> {
+    fn accept(&self, visitor: &mut impl Visitor<T>) -> VisitorResult<T>;
+}
+
+#[allow(unused_variables)]
+pub(crate) trait Visitor<T>: Sized {
+    fn go(&mut self, n: &AstNode) -> Option<T> {
+        match self.visit_node(n) {
+            VisitorResult::Stop(v) => Some(v),
+            VisitorResult::Continue => None,
+        }
+    }
+
+    fn visit_node(&mut self, n: &AstNode) -> VisitorResult<T> {
+        match n {
+            AstNode::This(v) => self.visit_this(v),
+            AstNode::Identifier(v) => self.visit_identifier(v),
+            AstNode::Literal(v) => self.visit_literal(v),
+            AstNode::InterpolatedStr(v) => self.visit_interpolated_str(v),
+            AstNode::ListBuilder(v) => self.visit_list_builder(v),
+            AstNode::DictBuilder(v) => self.visit_dict_builder(v),
+            AstNode::PropertyOf(v) => self.visit_property_of(v),
+            AstNode::IndexOf(v) => self.visit_index_of(v),
+            AstNode::UnaryOp(v) => self.visit_unary_op(v),
+            AstNode::BinaryOp(v) => self.visit_binary_op(v),
+            AstNode::ChainCatch(v) => self.visit_chain_catch(v),
+            AstNode::Block(v) => self.visit_block(v),
+            AstNode::IfElse(v) => self.visit_if_else(v),
+            AstNode::For(v) => self.visit_for(v),
+            AstNode::Declaration(v) => self.visit_declaration(v),
+            AstNode::FunctionDef(v) => self.visit_function_def(v),
+            AstNode::FunctionCall(v) => self.visit_function_call(v),
+            AstNode::ReturnStmt(v) => self.visit_return_stmt(v),
+            AstNode::Assignment(v) => self.visit_assignment(v),
+            AstNode::KeyValue(v) => self.visit_key_value(v),
+            AstNode::Break(v) => self.visit_break(v),
+            AstNode::Continue(v) => self.visit_continue(v),
+            AstNode::End(v) => self.visit_end(v),
+        }
+    }
+
+    fn visit_this(&mut self, v: &This) -> VisitorResult<T> {
+        v.accept(self)
+    }
+    fn visit_identifier(&mut self, v: &Identifier) -> VisitorResult<T> {
+        v.accept(self)
+    }
+    fn visit_literal(&mut self, v: &Literal) -> VisitorResult<T> {
+        v.accept(self)
+    }
+    fn visit_interpolated_str(&mut self, v: &InterpolatedStr) -> VisitorResult<T> {
+        v.accept(self)
+    }
+    fn visit_list_builder(&mut self, v: &ListBuilder) -> VisitorResult<T> {
+        v.accept(self)
+    }
+    fn visit_dict_builder(&mut self, v: &DictBuilder) -> VisitorResult<T> {
+        v.accept(self)
+    }
+
+    fn visit_property_of(&mut self, v: &PropertyOf) -> VisitorResult<T> {
+        v.accept(self)
+    }
+
+    fn visit_index_of(&mut self, v: &IndexOf) -> VisitorResult<T> {
+        v.accept(self)
+    }
+
+    fn visit_unary_op(&mut self, v: &UnaryOp) -> VisitorResult<T> {
+        v.accept(self)
+    }
+
+    fn visit_binary_op(&mut self, v: &BinaryOp) -> VisitorResult<T> {
+        v.accept(self)
+    }
+
+    fn visit_chain_catch(&mut self, v: &ChainCatch) -> VisitorResult<T> {
+        v.accept(self)
+    }
+
+    fn visit_block(&mut self, v: &Block) -> VisitorResult<T> {
+        v.accept(self)
+    }
+
+    fn visit_if_else(&mut self, v: &IfElse) -> VisitorResult<T> {
+        v.accept(self)
+    }
+
+    fn visit_for(&mut self, v: &For) -> VisitorResult<T> {
+        v.accept(self)
+    }
+
+    fn visit_declaration(&mut self, v: &Declaration) -> VisitorResult<T> {
+        v.accept(self)
+    }
+
+    fn visit_function_def(&mut self, v: &Rc<FunctionDef>) -> VisitorResult<T> {
+        v.accept(self)
+    }
+
+    fn visit_function_call(&mut self, v: &FunctionCall) -> VisitorResult<T> {
+        v.accept(self)
+    }
+
+    fn visit_return_stmt(&mut self, v: &ReturnStmt) -> VisitorResult<T> {
+        v.accept(self)
+    }
+
+    fn visit_assignment(&mut self, v: &Assignment) -> VisitorResult<T> {
+        v.accept(self)
+    }
+
+    fn visit_key_value(&mut self, v: &KeyValueBuilder) -> VisitorResult<T> {
+        v.accept(self)
+    }
+
+    fn visit_break(&mut self, v: &Break) -> VisitorResult<T> {
+        v.accept(self)
+    }
+
+    fn visit_continue(&mut self, v: &Continue) -> VisitorResult<T> {
+        v.accept(self)
+    }
+
+    fn visit_end(&mut self, v: &End) -> VisitorResult<T> {
+        v.accept(self)
     }
 }
 
@@ -381,10 +514,18 @@ impl Span {
     }
     pub(crate) fn merge(mut a: Self, b: Self) -> Self {
         let start = a.start.min(b.start);
-        let end = a.end().min(b.end());
+        let end = a.end().max(b.end());
         a.start = start;
         a.len = end - start;
         a
+    }
+
+    pub(crate) fn extended(mut self, pos: usize) -> Self {
+        let start = self.start.min(pos);
+        let end = self.end().max(pos);
+        self.start = start;
+        self.len = end - start;
+        self
     }
 }
 
@@ -420,8 +561,15 @@ impl Eval for Literal {
     }
 }
 
+impl<T> Accept<T> for Literal {
+    fn accept(&self, _: &mut impl Visitor<T>) -> VisitorResult<T> {
+        VisitorResult::Continue
+    }
+}
+
 #[derive(PartialEq, Eq, Clone)]
 pub struct Identifier {
+    // FIXME: Rc<String>
     pub(crate) name: String,
     pub(crate) span: Span,
 }
@@ -456,6 +604,12 @@ impl Eval for Identifier {
     }
 }
 
+impl<T> Accept<T> for Identifier {
+    fn accept(&self, _: &mut impl Visitor<T>) -> VisitorResult<T> {
+        VisitorResult::Continue
+    }
+}
+
 impl Setter for Identifier {
     fn set(&self, ctxt: &mut Context, value: Value) -> Result<(), EvalStop> {
         ctxt.set(self, value);
@@ -481,6 +635,12 @@ impl Eval for This {
     }
 }
 
+impl<T> Accept<T> for This {
+    fn accept(&self, _: &mut impl Visitor<T>) -> VisitorResult<T> {
+        VisitorResult::Continue
+    }
+}
+
 #[derive(PartialEq, Clone)]
 pub struct ChainCatch {
     pub(crate) inner: Box<AstNode>,
@@ -498,6 +658,27 @@ impl core::fmt::Debug for ChainCatch {
                 .field("inner", &self.inner)
                 .finish()
         }
+    }
+}
+
+impl Eval for ChainCatch {
+    fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
+        // FIXME: the chain catch ? should be replaced during assemble stage with a catch thing !!!
+        match self.inner.eval(ctxt) {
+            Err(EvalStop::Throw) => Ok(Value::Nil),
+            other => other,
+            // ok @ Ok(_) => ok,
+            // e @ Err(_) => e,
+        }
+    }
+}
+
+impl<T> Accept<T> for ChainCatch {
+    fn accept(&self, visitor: &mut impl Visitor<T>) -> VisitorResult<T> {
+        if let v @ VisitorResult::Stop(_) = visitor.visit_node(&self.inner) {
+            return v;
+        }
+        VisitorResult::Continue
     }
 }
 
@@ -667,10 +848,38 @@ impl Eval for FunctionCall {
             Err(EvalStop::Return(value)) => Ok(value),
             Err(EvalStop::Break) => todo!(),
             Err(EvalStop::Continue) => todo!(),
+            Err(EvalStop::Throw) => todo!(),
         }
     }
 }
 
+impl<T> Accept<T> for FunctionCall {
+    fn accept(&self, visitor: &mut impl Visitor<T>) -> VisitorResult<T> {
+        match visitor.visit_node(&self.on) {
+            v @ VisitorResult::Stop(_) => return v,
+            VisitorResult::Continue => {}
+        }
+        if let Some(method) = &self.method {
+            match visitor.visit_identifier(method) {
+                v @ VisitorResult::Stop(_) => return v,
+                VisitorResult::Continue => {}
+            }
+        }
+        for arg in &self.args {
+            if let Some(name) = &arg.name {
+                match visitor.visit_identifier(name) {
+                    v @ VisitorResult::Stop(_) => return v,
+                    VisitorResult::Continue => {}
+                }
+            }
+            match visitor.visit_node(&arg.value) {
+                v @ VisitorResult::Stop(_) => return v,
+                VisitorResult::Continue => {}
+            }
+        }
+        VisitorResult::Continue
+    }
+}
 #[derive(PartialEq, Clone)]
 pub struct Arg {
     pub(crate) name: Option<Identifier>,
@@ -741,6 +950,18 @@ impl Eval for ReturnStmt {
     }
 }
 
+impl<T> Accept<T> for ReturnStmt {
+    fn accept(&self, visitor: &mut impl Visitor<T>) -> VisitorResult<T> {
+        if let Some(value) = &self.value {
+            match visitor.visit_node(value) {
+                v @ VisitorResult::Stop(_) => return v,
+                VisitorResult::Continue => {}
+            }
+        }
+        VisitorResult::Continue
+    }
+}
+
 #[derive(PartialEq, Debug, Clone)]
 pub struct KeyValueBuilder {
     pub(crate) key: Identifier,
@@ -756,6 +977,18 @@ impl Eval for KeyValueBuilder {
     }
 }
 
+impl<T> Accept<T> for KeyValueBuilder {
+    fn accept(&self, visitor: &mut impl Visitor<T>) -> VisitorResult<T> {
+        if let v @ VisitorResult::Stop(_) = visitor.visit_identifier(&self.key) {
+            return v;
+        }
+        if let v @ VisitorResult::Stop(_) = visitor.visit_node(&self.value) {
+            return v;
+        }
+        VisitorResult::Continue
+    }
+}
+
 #[derive(PartialEq, Debug, Clone)]
 pub struct End {}
 
@@ -768,6 +1001,12 @@ impl End {
 impl Eval for End {
     fn eval(&self, _: &mut Context) -> Result<Value, EvalStop> {
         Ok(Value::End)
+    }
+}
+
+impl<T> Accept<T> for End {
+    fn accept(&self, _: &mut impl Visitor<T>) -> VisitorResult<T> {
+        VisitorResult::Continue
     }
 }
 

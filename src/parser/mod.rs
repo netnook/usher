@@ -144,6 +144,18 @@ pub mod tests {
     pub fn nil() -> Literal {
         Literal::new(Value::Nil, Span::new(999, 9999))
     }
+    macro_rules! dict{
+        ($($key:expr => $value:expr),*) => {{
+            use crate::lang::Dict;
+            let mut d = Dict::new();
+            $(
+                d.set($key.to_string(), $value.to_value());
+            )*
+            d.to_value()
+        }};
+    }
+    pub(crate) use dict;
+
     pub(crate) fn this() -> AstNode {
         AstNode::This(This::new())
     }
@@ -157,7 +169,7 @@ pub mod tests {
             value: value.into().into(),
         }
     }
-    pub(crate) fn dict(entries: Vec<KeyValueBuilder>) -> DictBuilder {
+    pub(crate) fn dict_builder(entries: Vec<KeyValueBuilder>) -> DictBuilder {
         DictBuilder {
             entries,
             span: Span::new(999, 9999),
@@ -180,15 +192,33 @@ pub mod tests {
             of: of.into().into(),
             property: prop.into(),
             span: Span::new(999, 9999),
+            throw_on_missing_prop: false,
         }
     }
+
+    impl PropertyOf {
+        pub(crate) fn with_throw_on_missing_prop(mut self, v: bool) -> PropertyOf {
+            self.throw_on_missing_prop = v;
+            self
+        }
+    }
+
     pub(crate) fn index_of(of: impl Into<AstNode>, index: impl Into<AstNode>) -> IndexOf {
         IndexOf {
             of: of.into().into(),
             index: index.into().into(),
+            throw_on_missing_prop: false,
             span: Span::new(999, 9999),
         }
     }
+
+    impl IndexOf {
+        pub(crate) fn with_throw_on_missing_prop(mut self, v: bool) -> IndexOf {
+            self.throw_on_missing_prop = v;
+            self
+        }
+    }
+
     pub(crate) fn chain_catch(from: impl Into<AstNode>) -> AstNode {
         AstNode::ChainCatch(ChainCatch {
             inner: from.into().into(),

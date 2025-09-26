@@ -100,7 +100,7 @@ mod tests {
 
     #[test]
     fn test_dict_ok() {
-        let expect = dict(vec![
+        let expect = dict_builder(vec![
             kv(id("a"), i(1)),
             kv(id("b"), nil()),
             kv(id("c"), b(true)),
@@ -116,18 +116,18 @@ mod tests {
             expect.clone(),
             -1,
         );
-        do_test_expr_ok(r#" dict() "#, dict(Vec::new()), -1);
-        do_test_expr_ok(r#" dict(   ) "#, dict(Vec::new()), -1);
+        do_test_expr_ok(r#" dict() "#, dict_builder(Vec::new()), -1);
+        do_test_expr_ok(r#" dict(   ) "#, dict_builder(Vec::new()), -1);
 
         do_test_expr_ok(
             r#" dict( a: dict( aa:1, ab:2, ac: dict()), b:3) "#,
-            dict(vec![
+            dict_builder(vec![
                 kv(
                     id("a"),
-                    dict(vec![
+                    dict_builder(vec![
                         kv(id("aa"), i(1)),
                         kv(id("ab"), i(2)),
-                        kv(id("ac"), dict(Vec::new())),
+                        kv(id("ac"), dict_builder(Vec::new())),
                     ]),
                 ),
                 kv(id("b"), i(3)),

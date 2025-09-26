@@ -7,41 +7,54 @@ datatest_stable::harness! {
 }
 
 fn compile_script(_path: &Path, src: String) -> datatest_stable::Result<()> {
-    let (input, expected) = src
-        .split_once("---")
-        .expect("src expected to have parts separated by ---");
+    for part in src.split("*****\n") {
+        let src = part.trim_end_matches('*').trim();
 
-    let prog = usher::parse(input).expect("script to parse ok");
+        let (input, expected) = src
+            .split_once("---\n")
+            .expect("src expected to have parts separated by ---");
 
-    let actual = format!("{prog:-#?}");
-    // let actual = format!("{prog:#?}");
+        let input = input.trim_end_matches('-');
 
-    assert_eq!(
-        actual.trim(),
-        expected.trim(),
-        "output did not match expectation"
-    );
+        let actual = match usher::parse(input) {
+            Ok(prog) => format!("{prog:-#?}"),
+            Err(err) => format!("{err:#?}"),
+        };
+
+        assert_eq!(
+            actual.trim(),
+            expected.trim(),
+            "output did not match expectation for >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> '{}'",
+            src.lines().next().unwrap()
+        );
+    }
 
     Ok(())
 }
 
 fn run_script(_path: &Path, src: String) -> datatest_stable::Result<()> {
-    let (input, expected) = src
-        .split_once("---")
-        .expect("src expected to have parts separated by ---");
+    for part in src.split("*****\n") {
+        let src = part.trim_end_matches('*').trim();
 
-    let prog = usher::parse(input).expect("script to parse ok");
+        let (input, expected) = src
+            .split_once("---\n")
+            .expect("src expected to have parts separated by ---");
 
-    let actual = match prog.run() {
-        Ok(ok) => format!("{ok:#?}"),
-        Err(err) => format!("{err:#?}"),
-    };
+        let input = input.trim_end_matches('-');
 
-    assert_eq!(
-        actual.trim(),
-        expected.trim(),
-        "output did not match expectation"
-    );
+        let prog = usher::parse(input).expect("script to parse ok");
 
+        let actual = match prog.run() {
+            Ok(ok) => format!("{ok:#?}"),
+            Err(err) => format!("{err:#?}"),
+        };
+
+        assert_eq!(
+            actual.trim(),
+            expected.trim(),
+            "output did not match expectation for >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> '{}'",
+            src.lines().next().unwrap()
+        );
+    }
     Ok(())
 }
