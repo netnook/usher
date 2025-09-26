@@ -329,6 +329,12 @@ impl<'a> Parser<'a> {
                     Span::new(start, 3),
                 ))));
             }
+            Some("end") => {
+                return Ok(Some(AstNode::Literal(Literal::new(
+                    Value::End,
+                    Span::new(start, 3),
+                ))));
+            }
             Some("dict") => return Ok(Some(AstNode::DictBuilder(self.dict(start)?))),
             Some("true") => {
                 return Ok(Some(AstNode::Literal(Literal::new(

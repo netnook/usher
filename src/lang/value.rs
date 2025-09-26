@@ -20,6 +20,8 @@ pub enum ValueType {
     List,
     Dict,
     Nil,
+    // FIXME: special ??? think of a better name
+    Special,
 }
 
 impl Display for ValueType {
@@ -40,6 +42,7 @@ impl ValueType {
             ValueType::List => "list",
             ValueType::Dict => "dict",
             ValueType::Nil => "nil",
+            ValueType::Special => "special",
         }
     }
 }
@@ -54,6 +57,63 @@ pub enum Value {
     List(ListCell),
     Dict(DictCell),
     Nil,
+    End,
+}
+
+// FIXME: debug vs display vs .as_string -> merge into 1 if possible
+impl core::fmt::Debug for Value {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Value::Func(_) => todo!(),
+            Value::Str(v) => {
+                f.write_char('"')?;
+                f.write_str(v)?;
+                f.write_char('"')?;
+            }
+            Value::Integer(v) => write!(f, "{v}")?,
+            Value::Float(v) => write!(f, "{v}")?,
+            Value::Bool(v) => write!(f, "{v}")?,
+            Value::List(v) => {
+                f.write_char('[')?;
+                let mut first = true;
+                for v in &v.borrow().content {
+                    match first {
+                        true => first = false,
+                        false => f.write_char(',')?,
+                    }
+                    v.fmt(f)?;
+                }
+                f.write_char(']')?;
+            }
+            Value::Dict(v) => {
+                f.write_str("dict(")?;
+
+                // make the output sortable for testing
+                let v = v.borrow();
+                let mut keys: Vec<&String> = v.content.keys().collect();
+                keys.sort();
+
+                let mut first = true;
+                for k in keys {
+                    match first {
+                        true => first = false,
+                        false => f.write_char(',')?,
+                    }
+                    f.write_str(k)?;
+                    f.write_char(':')?;
+                    match v.get(k) {
+                        Some(v) => v.fmt(f)?,
+                        None => f.write_str("?none?")?,
+                    }
+                }
+
+                f.write_char(')')?;
+            }
+            Value::Nil => f.write_str("nil")?,
+            Value::End => f.write_str("end")?,
+        }
+        Ok(())
+    }
 }
 
 impl Value {
@@ -82,6 +142,7 @@ impl Value {
                 Cow::Owned(result)
             }
             Value::Nil => Cow::Borrowed("nil"),
+            Value::End => Cow::Borrowed("end"),
         })
     }
 
@@ -141,6 +202,7 @@ impl Value {
                 into.push(')');
             }
             Value::Nil => into.push_str("nil"),
+            Value::End => into.push_str("end"),
         }
         Ok(())
     }
@@ -155,46 +217,8 @@ impl Value {
             Value::List(_) => ValueType::List,
             Value::Dict(_) => ValueType::Dict,
             Value::Nil => ValueType::Nil,
+            Value::End => ValueType::Special,
         }
-    }
-}
-
-impl core::fmt::Debug for Value {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Value::Func(_) => todo!(),
-            Value::Str(v) => {
-                f.write_char('"')?;
-                f.write_str(v)?;
-                f.write_char('"')?;
-            }
-            Value::Integer(v) => write!(f, "{v}")?,
-            Value::Float(v) => write!(f, "{v}")?,
-            Value::Bool(v) => write!(f, "{v}")?,
-            Value::List(v) => {
-                f.write_char('[')?;
-                let v = v.borrow();
-                let mut it = v.content.iter().peekable();
-                while let Some(e) = it.next() {
-                    e.fmt(f)?;
-                    if it.peek().is_some() {
-                        f.write_char(',')?;
-                    }
-                }
-                f.write_char(']')?;
-            }
-            Value::Dict(v) => {
-                f.write_str("dict(")?;
-                for (k, v) in &v.borrow().content {
-                    f.write_str(k)?;
-                    f.write_char(':')?;
-                    v.fmt(f)?;
-                }
-                f.write_char(')')?;
-            }
-            Value::Nil => f.write_str("nil")?,
-        }
-        Ok(())
     }
 }
 
@@ -375,6 +399,9 @@ mod tests {
 
         // nil
         do_test_as_string(Value::Nil, "nil");
+
+        // end
+        do_test_as_string(Value::End, "end");
 
         assert!(
             Value::Func(Func::BuiltInFunc(BuiltInFunc::Print))

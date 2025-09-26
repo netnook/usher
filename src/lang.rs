@@ -180,7 +180,6 @@ pub enum EvalStop {
     Return(Value),
     Break,
     Continue,
-    End,
 }
 
 impl From<InternalProgramError> for EvalStop {
@@ -217,14 +216,14 @@ impl AstNode {
             AstNode::Assignment(v) => v.eval(ctxt),
             AstNode::IfElseStmt(v) => v.eval(ctxt),
             AstNode::ForStmt(v) => v.eval(ctxt),
+            AstNode::ReturnStmt(v) => v.eval(ctxt),
             AstNode::Break => Break::eval(ctxt),
             AstNode::Continue => Continue::eval(ctxt),
-            AstNode::ReturnStmt(v) => v.eval(ctxt),
+            AstNode::End => End::eval(ctxt),
             // FIXME: finish eval
             // AstNode::This => todo!(),
             // AstNode::ChainCatch(chain_catch) => todo!(),
             // AstNode::KeyValue(key_value) => todo!(),
-            // AstNode::End => todo!(),
             n => todo!("eval not implemented for {n:?}"),
         }
     }
@@ -653,7 +652,6 @@ impl Eval for FunctionCall {
             Err(EvalStop::Return(value)) => Ok(value),
             Err(EvalStop::Break) => todo!(),
             Err(EvalStop::Continue) => todo!(),
-            Err(EvalStop::End) => todo!(),
         }
     }
 }
@@ -732,6 +730,15 @@ impl Eval for ReturnStmt {
 pub struct KeyValue {
     pub(crate) key: Identifier,
     pub(crate) value: Box<AstNode>,
+}
+
+#[derive(PartialEq, Debug)]
+pub struct End {}
+
+impl End {
+    pub(crate) fn eval(_: &mut Context) -> Result<Value, EvalStop> {
+        Ok(Value::End)
+    }
 }
 
 #[cfg(test)]
