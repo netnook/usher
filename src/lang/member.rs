@@ -1,7 +1,7 @@
 use super::errors::PropertyList;
 use crate::lang::{
     Accept, AstNode, Context, Eval, EvalStop, Identifier, InternalProgramError, Setter, Span,
-    Value, Visitor, VisitorResult,
+    Value, Visitor, VisitorResult, accept_default,
     value::{ListCell, ValueType},
 };
 use std::rc::Rc;
@@ -36,17 +36,7 @@ impl core::fmt::Debug for PropertyOf {
     }
 }
 
-impl<T> Accept<T> for PropertyOf {
-    fn accept(&self, visitor: &mut impl Visitor<T>) -> VisitorResult<T> {
-        if let v @ VisitorResult::Stop(_) = visitor.visit_node(&self.of) {
-            return v;
-        }
-        if let v @ VisitorResult::Stop(_) = visitor.visit_identifier(&self.property) {
-            return v;
-        }
-        VisitorResult::Continue
-    }
-}
+accept_default!(PropertyOf, of:node, property:identifier,);
 
 impl Eval for PropertyOf {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
@@ -213,17 +203,7 @@ impl Eval for IndexOf {
     }
 }
 
-impl<T> Accept<T> for IndexOf {
-    fn accept(&self, visitor: &mut impl Visitor<T>) -> VisitorResult<T> {
-        if let v @ VisitorResult::Stop(_) = visitor.visit_node(&self.of) {
-            return v;
-        }
-        if let v @ VisitorResult::Stop(_) = visitor.visit_node(&self.index) {
-            return v;
-        }
-        VisitorResult::Continue
-    }
-}
+accept_default!(IndexOf, of:node, index:node,);
 
 impl Setter for IndexOf {
     fn set(&self, ctxt: &mut Context, value: Value) -> Result<(), EvalStop> {

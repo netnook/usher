@@ -1,5 +1,6 @@
 use crate::lang::{
-    Accept, AstNode, Context, Eval, EvalStop, Span, Value, Visitor, VisitorResult, value::List,
+    Accept, AstNode, Context, Eval, EvalStop, Span, Value, Visitor, VisitorResult, accept_default,
+    value::List,
 };
 
 #[derive(PartialEq, Clone)]
@@ -43,17 +44,7 @@ impl Eval for ListBuilder {
     }
 }
 
-impl<T> Accept<T> for ListBuilder {
-    fn accept(&self, visitor: &mut impl Visitor<T>) -> VisitorResult<T> {
-        for e in &self.entries {
-            match visitor.visit_node(e) {
-                v @ VisitorResult::Stop(_) => return v,
-                VisitorResult::Continue => {}
-            }
-        }
-        VisitorResult::Continue
-    }
-}
+accept_default!(ListBuilder, entries:vec:node,);
 
 #[cfg(test)]
 mod tests {

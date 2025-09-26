@@ -1,6 +1,6 @@
 use crate::lang::{
     Accept, AstNode, Context, Eval, EvalStop, InternalProgramError, Span, Value, Visitor,
-    VisitorResult, bad_type_error_op, value::ValueType,
+    VisitorResult, accept_default, bad_type_error_op, value::ValueType,
 };
 use std::fmt::Display;
 
@@ -75,14 +75,7 @@ impl Eval for UnaryOp {
     }
 }
 
-impl<T> Accept<T> for UnaryOp {
-    fn accept(&self, visitor: &mut impl Visitor<T>) -> VisitorResult<T> {
-        if let v @ VisitorResult::Stop(_) = visitor.visit_node(&self.on) {
-            return v;
-        }
-        VisitorResult::Continue
-    }
-}
+accept_default!(UnaryOp, on:node,);
 
 #[cfg(test)]
 mod tests {

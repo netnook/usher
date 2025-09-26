@@ -1,6 +1,6 @@
 use crate::lang::{
     Accept, AstNode, Context, Eval, EvalStop, Identifier, InternalProgramError, Value, Visitor,
-    VisitorResult,
+    VisitorResult, accept_default,
 };
 
 #[derive(PartialEq, Clone)]
@@ -34,19 +34,7 @@ impl Eval for Declaration {
     }
 }
 
-impl<T> Accept<T> for Declaration {
-    fn accept(&self, visitor: &mut impl Visitor<T>) -> VisitorResult<T> {
-        match visitor.visit_identifier(&self.ident) {
-            v @ VisitorResult::Stop(_) => return v,
-            VisitorResult::Continue => {}
-        }
-        match visitor.visit_node(&self.value) {
-            v @ VisitorResult::Stop(_) => return v,
-            VisitorResult::Continue => {}
-        }
-        VisitorResult::Continue
-    }
-}
+accept_default!(Declaration, ident:identifier, value:node,);
 
 #[derive(PartialEq, Debug, Clone)]
 pub struct Assignment {
@@ -70,19 +58,7 @@ impl Eval for Assignment {
     }
 }
 
-impl<T> Accept<T> for Assignment {
-    fn accept(&self, visitor: &mut impl Visitor<T>) -> VisitorResult<T> {
-        match visitor.visit_node(&self.lhs) {
-            v @ VisitorResult::Stop(_) => return v,
-            VisitorResult::Continue => {}
-        }
-        match visitor.visit_node(&self.rhs) {
-            v @ VisitorResult::Stop(_) => return v,
-            VisitorResult::Continue => {}
-        }
-        VisitorResult::Continue
-    }
-}
+accept_default!(Assignment, lhs:node, rhs:node,);
 
 #[cfg(test)]
 mod tests {}

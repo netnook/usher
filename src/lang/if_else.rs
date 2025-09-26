@@ -1,6 +1,7 @@
 use crate::lang::{
-    Accept, AstNode, Block, Context, Eval, EvalStop, InternalProgramError, Value, Visitor,
-    VisitorResult, value::ValueType,
+    AstNode, Block, Context, Eval, EvalStop, InternalProgramError, Value, accept_default,
+    value::ValueType,
+    visitor::{Accept, Visitor, VisitorResult},
 };
 
 #[derive(PartialEq, Clone)]
@@ -29,6 +30,8 @@ impl core::fmt::Debug for IfElse {
         }
     }
 }
+
+accept_default!(IfElse, conditional_blocks:vec:conditional_block, else_block:opt:block,);
 
 impl Eval for IfElse {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
@@ -59,32 +62,13 @@ impl Eval for IfElse {
     }
 }
 
-impl<T> Accept<T> for IfElse {
-    fn accept(&self, visitor: &mut impl Visitor<T>) -> VisitorResult<T> {
-        for cb in &self.conditional_blocks {
-            match visitor.visit_node(&cb.condition) {
-                v @ VisitorResult::Stop(_) => return v,
-                VisitorResult::Continue => {}
-            }
-            match visitor.visit_block(&cb.block) {
-                v @ VisitorResult::Stop(_) => return v,
-                VisitorResult::Continue => {}
-            }
-        }
-        if let Some(else_block) = &self.else_block
-            && let v @ VisitorResult::Stop(_) = visitor.visit_block(else_block)
-        {
-            return v;
-        }
-        VisitorResult::Continue
-    }
-}
-
 #[derive(PartialEq, Debug, Clone)]
 pub struct ConditionalBlock {
     pub(crate) condition: AstNode,
     pub(crate) block: Block,
 }
+
+accept_default!(ConditionalBlock, condition:node, block:block,);
 
 #[cfg(test)]
 mod tests {

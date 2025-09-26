@@ -1,4 +1,6 @@
-use crate::lang::{Accept, AstNode, Context, Eval, EvalStop, Span, Value, Visitor, VisitorResult};
+use crate::lang::{
+    Accept, AstNode, Context, Eval, EvalStop, Span, Value, Visitor, VisitorResult, accept_default,
+};
 
 #[derive(PartialEq, Clone)]
 pub struct Block {
@@ -39,17 +41,7 @@ impl Block {
     }
 }
 
-impl<T> Accept<T> for Block {
-    fn accept(&self, visitor: &mut impl Visitor<T>) -> VisitorResult<T> {
-        for stmt in &self.stmts {
-            match visitor.visit_node(stmt) {
-                v @ VisitorResult::Stop(_) => return v,
-                VisitorResult::Continue => {}
-            }
-        }
-        VisitorResult::Continue
-    }
-}
+accept_default!(Block, stmts:vec:node,);
 
 #[cfg(test)]
 mod tests {

@@ -1,10 +1,9 @@
-use std::rc::Rc;
-
 use super::{Context, Value};
 use crate::lang::{
     Accept, AstNode, Block, Eval, EvalStop, Identifier, InternalProgramError, KeyValue, Visitor,
-    VisitorResult,
+    VisitorResult, accept_default,
 };
+use std::rc::Rc;
 
 #[derive(PartialEq, Clone)]
 pub struct For {
@@ -88,29 +87,7 @@ impl Eval for For {
     }
 }
 
-impl<T> Accept<T> for For {
-    fn accept(&self, visitor: &mut impl Visitor<T>) -> VisitorResult<T> {
-        match visitor.visit_node(&self.iterable) {
-            v @ VisitorResult::Stop(_) => return v,
-            VisitorResult::Continue => {}
-        }
-        match visitor.visit_identifier(&self.loop_item) {
-            v @ VisitorResult::Stop(_) => return v,
-            VisitorResult::Continue => {}
-        }
-        if let Some(loop_info) = &self.loop_info {
-            match visitor.visit_identifier(loop_info) {
-                v @ VisitorResult::Stop(_) => return v,
-                VisitorResult::Continue => {}
-            }
-        }
-        match visitor.visit_block(&self.block) {
-            v @ VisitorResult::Stop(_) => return v,
-            VisitorResult::Continue => {}
-        }
-        VisitorResult::Continue
-    }
-}
+accept_default!(For, iterable:node, loop_item:identifier, loop_info:opt:identifier, block:block,);
 
 #[derive(PartialEq, Debug, Clone)]
 pub struct Break {}
@@ -127,11 +104,7 @@ impl Eval for Break {
     }
 }
 
-impl<T> Accept<T> for Break {
-    fn accept(&self, _: &mut impl Visitor<T>) -> VisitorResult<T> {
-        VisitorResult::Continue
-    }
-}
+accept_default!(Break);
 
 #[derive(PartialEq, Debug, Clone)]
 pub struct Continue {}
@@ -148,11 +121,7 @@ impl Eval for Continue {
     }
 }
 
-impl<T> Accept<T> for Continue {
-    fn accept(&self, _: &mut impl Visitor<T>) -> VisitorResult<T> {
-        VisitorResult::Continue
-    }
-}
+accept_default!(Continue);
 
 #[cfg(test)]
 mod tests {

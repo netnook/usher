@@ -391,7 +391,7 @@ impl Dict {
         self.content.iter()
     }
 
-    pub fn keys(&self) -> Keys<String, Value> {
+    pub fn keys(&'_ self) -> Keys<'_, String, Value> {
         self.content.keys()
     }
 }

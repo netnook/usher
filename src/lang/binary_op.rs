@@ -1,6 +1,7 @@
 use super::{AstNode, Context, InternalProgramError, Span, Value};
 use crate::lang::{
-    Accept, Eval, EvalStop, Visitor, VisitorResult, bad_type_error_op, value::ValueType,
+    Accept, Eval, EvalStop, Visitor, VisitorResult, accept_default, bad_type_error_op,
+    value::ValueType,
 };
 use std::fmt::Display;
 
@@ -193,17 +194,7 @@ impl Eval for BinaryOp {
     }
 }
 
-impl<T> Accept<T> for BinaryOp {
-    fn accept(&self, visitor: &mut impl Visitor<T>) -> VisitorResult<T> {
-        if let v @ VisitorResult::Stop(_) = visitor.visit_node(&self.lhs) {
-            return v;
-        }
-        if let v @ VisitorResult::Stop(_) = visitor.visit_node(&self.rhs) {
-            return v;
-        }
-        VisitorResult::Continue
-    }
-}
+accept_default!(BinaryOp, lhs:node, rhs:node,);
 
 #[cfg(test)]
 mod tests {

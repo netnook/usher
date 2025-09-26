@@ -1,6 +1,6 @@
 use crate::lang::{
     Accept, Context, Eval, EvalStop, KeyValueBuilder, Span, Value, Visitor, VisitorResult,
-    value::Dict,
+    accept_default, value::Dict,
 };
 
 #[derive(PartialEq, Clone)]
@@ -42,17 +42,7 @@ impl Eval for DictBuilder {
     }
 }
 
-impl<T> Accept<T> for DictBuilder {
-    fn accept(&self, visitor: &mut impl Visitor<T>) -> VisitorResult<T> {
-        for e in &self.entries {
-            match visitor.visit_key_value(e) {
-                v @ VisitorResult::Stop(_) => return v,
-                VisitorResult::Continue => {}
-            }
-        }
-        VisitorResult::Continue
-    }
-}
+accept_default!(DictBuilder, entries:vec:kv,);
 
 #[cfg(test)]
 mod tests {

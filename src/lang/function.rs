@@ -1,6 +1,7 @@
 use crate::lang::{
-    Accept, AstNode, Block, Context, Eval, EvalStop, Identifier, Span, Value, Visitor,
-    VisitorResult, value::Func,
+    AstNode, Block, Context, Eval, EvalStop, Identifier, Span, Value, accept_default,
+    value::Func,
+    visitor::{Accept, Visitor, VisitorResult},
 };
 use std::rc::Rc;
 
@@ -34,6 +35,8 @@ impl core::fmt::Debug for FunctionDef {
     }
 }
 
+accept_default!(FunctionDef, name:opt:identifier, params:vec:param, body:block,);
+
 #[derive(PartialEq, Clone)]
 pub struct Param {
     pub(crate) name: Identifier,
@@ -60,6 +63,8 @@ impl core::fmt::Debug for Param {
     }
 }
 
+accept_default!(Param, name:identifier, default_value:opt:node,);
+
 impl Eval for Rc<FunctionDef> {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
         let f = Value::Func(Func::Func(Rc::clone(self)));
@@ -67,34 +72,6 @@ impl Eval for Rc<FunctionDef> {
             ctxt.set(name, f.clone());
         };
         Ok(f)
-    }
-}
-
-impl<T> Accept<T> for FunctionDef {
-    fn accept(&self, visitor: &mut impl Visitor<T>) -> VisitorResult<T> {
-        if let Some(name) = &self.name {
-            match visitor.visit_identifier(name) {
-                v @ VisitorResult::Stop(_) => return v,
-                VisitorResult::Continue => {}
-            }
-        }
-        for param in &self.params {
-            match visitor.visit_identifier(&param.name) {
-                v @ VisitorResult::Stop(_) => return v,
-                VisitorResult::Continue => {}
-            }
-            if let Some(default_value) = &param.default_value {
-                match visitor.visit_node(default_value) {
-                    v @ VisitorResult::Stop(_) => return v,
-                    VisitorResult::Continue => {}
-                }
-            }
-        }
-        match visitor.visit_block(&self.body) {
-            v @ VisitorResult::Stop(_) => return v,
-            VisitorResult::Continue => {}
-        }
-        VisitorResult::Continue
     }
 }
 
