@@ -1,8 +1,8 @@
 use crate::lang::{
     Arg, Assignment, AstNode, BinaryOp, Block, Break, ChainCatch, ConditionalBlock, Continue,
-    Declaration, DictBuilder, End, For, FunctionCall, FunctionDef, Identifier, IfElse, IndexOf,
+    Declaration, DictBuilder, End, For, FunctionCall, FunctionDef, IfElse, IndexOf,
     InterpolatedStr, KeyValueBuilder, ListBuilder, Literal, Param, PropertyOf, ReturnStmt, This,
-    UnaryOp,
+    UnaryOp, Var,
 };
 use std::rc::Rc;
 
@@ -27,7 +27,6 @@ pub(crate) trait Visitor<T>: Sized {
     fn visit_node(&mut self, n: &AstNode) -> VisitorResult<T> {
         match n {
             AstNode::This(v) => self.visit_this(v),
-            AstNode::Identifier(v) => self.visit_identifier(v),
             AstNode::Literal(v) => self.visit_literal(v),
             AstNode::InterpolatedStr(v) => self.visit_interpolated_str(v),
             AstNode::ListBuilder(v) => self.visit_list_builder(v),
@@ -40,6 +39,7 @@ pub(crate) trait Visitor<T>: Sized {
             AstNode::Block(v) => self.visit_block(v),
             AstNode::IfElse(v) => self.visit_if_else(v),
             AstNode::For(v) => self.visit_for(v),
+            AstNode::Var(v) => self.visit_var(v),
             AstNode::Declaration(v) => self.visit_declaration(v),
             AstNode::FunctionDef(v) => self.visit_function_def(v),
             AstNode::FunctionCall(v) => self.visit_function_call(v),
@@ -53,9 +53,6 @@ pub(crate) trait Visitor<T>: Sized {
     }
 
     fn visit_this(&mut self, v: &This) -> VisitorResult<T> {
-        v.accept(self)
-    }
-    fn visit_identifier(&mut self, v: &Identifier) -> VisitorResult<T> {
         v.accept(self)
     }
     fn visit_literal(&mut self, v: &Literal) -> VisitorResult<T> {
@@ -95,6 +92,9 @@ pub(crate) trait Visitor<T>: Sized {
         v.accept(self)
     }
     fn visit_for(&mut self, v: &For) -> VisitorResult<T> {
+        v.accept(self)
+    }
+    fn visit_var(&mut self, v: &Var) -> VisitorResult<T> {
         v.accept(self)
     }
     fn visit_declaration(&mut self, v: &Declaration) -> VisitorResult<T> {
@@ -170,8 +170,8 @@ macro_rules! accept_default {
             VisitorResult::Continue => {}
         }
     };
-    (@handler identifier, $self:expr, $visitor:expr,  $val:expr) => {
-        match $visitor.visit_identifier($val) {
+    (@handler var, $self:expr, $visitor:expr,  $val:expr) => {
+        match $visitor.visit_var($val) {
             v @ VisitorResult::Stop(_) => return v,
             VisitorResult::Continue => {}
         }
@@ -233,8 +233,8 @@ mod tests {
                 self.push("This");
                 v.accept(self)
             }
-            fn visit_identifier(&mut self, v: &Identifier) -> VisitorResult<()> {
-                self.push(format!("Identifier {}", v.name));
+            fn visit_var(&mut self, v: &Var) -> VisitorResult<()> {
+                self.push(format!("Var {}", v.name.name));
                 v.accept(self)
             }
             fn visit_literal(&mut self, v: &Literal) -> VisitorResult<()> {
@@ -388,29 +388,26 @@ mod tests {
                 "Literal 42",
                 "InterpolatedStr",
                 "Literal \"start\"",
-                "Identifier x",
+                "Var x",
                 "Literal \"end\"",
                 "ListBuilder",
                 "Literal 1",
                 "Literal 2",
                 "DictBuilder",
                 "KeyValueBuilder",
-                "Identifier a",
                 "Literal 1",
                 "KeyValueBuilder",
-                "Identifier b",
                 "Literal 2",
                 "ChainCatch",
                 "IndexOf",
                 "PropertyOf",
-                "Identifier a",
-                "Identifier b",
+                "Var a",
                 "Literal 2",
                 "UnaryOp",
-                "Identifier x",
+                "Var x",
                 "BinaryOp",
-                "Identifier y",
-                "Identifier z",
+                "Var y",
+                "Var z",
                 "Block",
                 "This",
                 "This",
@@ -426,39 +423,37 @@ mod tests {
                 "Block",
                 "Literal \"c\"",
                 "For",
-                "Identifier c",
-                "Identifier a",
-                "Identifier b",
+                "Var c",
+                "Var a",
+                "Var b",
                 "Block",
                 "Continue",
                 "Break",
                 "Declaration",
-                "Identifier a",
+                "Var a",
                 "Literal 11",
                 "Assignment",
-                "Identifier b",
+                "Var b",
                 "Literal 22",
                 "FunctionDef",
-                "Identifier f",
+                "Var f",
                 "Param",
-                "Identifier a",
+                "Var a",
                 "Param",
-                "Identifier b",
+                "Var b",
                 "Param",
-                "Identifier c",
+                "Var c",
                 "Literal 1",
                 "Block",
                 "ReturnStmt",
                 "Literal 22",
                 "FunctionCall",
-                "Identifier foo",
-                "Identifier bar",
+                "Var foo",
                 "Arg",
                 "Literal 1",
                 "Arg",
                 "Literal 2",
                 "Arg",
-                "Identifier c",
                 "Literal 3",
             ]
         );

@@ -36,7 +36,7 @@ impl core::fmt::Debug for PropertyOf {
     }
 }
 
-accept_default!(PropertyOf, of:node, property:identifier,);
+accept_default!(PropertyOf, of:node,);
 
 impl Eval for PropertyOf {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
@@ -253,9 +253,9 @@ mod tests {
             ctxt
         };
 
-        let prop_a: AstNode = prop_of(id("dict"), "a").into();
-        let prop_b: AstNode = prop_of(id("dict"), "b").into();
-        let prop_c: AstNode = prop_of(id("dict"), "c").into();
+        let prop_a: AstNode = prop_of(var("dict"), "a").into();
+        let prop_b: AstNode = prop_of(var("dict"), "b").into();
+        let prop_c: AstNode = prop_of(var("dict"), "c").into();
 
         assert_eq!(prop_a.eval(&mut ctxt).unwrap(), 1.to_value());
         assert_eq!(prop_b.eval(&mut ctxt).unwrap(), "bbb".to_value());
@@ -283,9 +283,9 @@ mod tests {
             ctxt
         };
 
-        let i0: AstNode = index_of(id("list"), i(0)).into();
-        let i1: AstNode = index_of(id("list"), sub(i(4), i(3))).into();
-        let i9: AstNode = index_of(id("list"), i(9)).into();
+        let i0: AstNode = index_of(var("list"), i(0)).into();
+        let i1: AstNode = index_of(var("list"), sub(i(4), i(3))).into();
+        let i9: AstNode = index_of(var("list"), i(9)).into();
 
         assert_eq!(i0.eval(&mut ctxt).unwrap(), 7.to_value());
         assert_eq!(i1.eval(&mut ctxt).unwrap(), "aaa".to_value());

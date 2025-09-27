@@ -1,11 +1,56 @@
 use crate::lang::{
-    Accept, AstNode, Context, Eval, EvalStop, Identifier, InternalProgramError, Value, Visitor,
-    VisitorResult, accept_default,
+    Accept, AstNode, BuiltInFunc, Context, Eval, EvalStop, Identifier, InternalProgramError,
+    Setter, Span, Value, Visitor, VisitorResult, accept_default,
 };
 
 #[derive(PartialEq, Clone)]
+pub struct Var {
+    pub(crate) name: Identifier,
+    pub(crate) span: Span,
+}
+
+impl core::fmt::Debug for Var {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let minimal = f.sign_minus();
+        if minimal {
+            write!(f, r#"Var("{}")"#, self.name.name)
+        } else {
+            f.debug_struct("Var")
+                .field("name", &self.name)
+                .field("span", &self.span)
+                .finish()
+        }
+    }
+}
+
+impl Var {
+    pub(crate) const fn new(name: Identifier, span: Span) -> Self {
+        Self { name, span }
+    }
+}
+
+impl Eval for Var {
+    fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
+        let value = ctxt
+            .get(&self.name)
+            .or_else(|| BuiltInFunc::by_name(&self.name.name).map(|f| f.into()))
+            .unwrap_or(Value::Nil);
+        Ok(value)
+    }
+}
+
+accept_default!(Var);
+
+impl Setter for Var {
+    fn set(&self, ctxt: &mut Context, value: Value) -> Result<(), EvalStop> {
+        ctxt.set(&self.name, value);
+        Ok(())
+    }
+}
+
+#[derive(PartialEq, Clone)]
 pub struct Declaration {
-    pub(crate) ident: Identifier,
+    pub(crate) var: Var,
     pub(crate) value: Box<AstNode>,
 }
 
@@ -14,12 +59,12 @@ impl core::fmt::Debug for Declaration {
         let minimal = f.sign_minus();
         if minimal {
             f.debug_struct("Declaration")
-                .field("ident", &self.ident.name)
+                .field("var", &self.var.name.name)
                 .field("value", &self.value)
                 .finish()
         } else {
             f.debug_struct("Declaration")
-                .field("ident", &self.ident)
+                .field("var", &self.var)
                 .field("value", &self.value)
                 .finish()
         }
@@ -29,12 +74,13 @@ impl core::fmt::Debug for Declaration {
 impl Eval for Declaration {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
         let value = self.value.eval(ctxt)?;
-        ctxt.declare(&self.ident, value);
+        // FIXME: move declare method to Var
+        ctxt.declare(&self.var.name, value);
         Ok(Value::Nil)
     }
 }
 
-accept_default!(Declaration, ident:identifier, value:node,);
+accept_default!(Declaration, var:var, value:node,);
 
 #[derive(PartialEq, Debug, Clone)]
 pub struct Assignment {

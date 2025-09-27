@@ -100,22 +100,22 @@ mod tests {
     fn test_for() {
         do_test_for_ok(
             " for a in x { 1 } ",
-            _for(id("a"), None, id("x"), _block![i(1)]),
+            _for(var("a"), None, var("x"), _block![i(1)]),
             -1,
         );
         do_test_for_ok(
             " for a, b in x { 1 } ",
-            _for(id("a"), Some(id("b")), id("x"), _block![i(1)]),
+            _for(var("a"), Some(var("b")), var("x"), _block![i(1)]),
             -1,
         );
         do_test_for_ok(
             " for a,b in x{1} ",
-            _for(id("a"), Some(id("b")), id("x"), _block![i(1)]),
+            _for(var("a"), Some(var("b")), var("x"), _block![i(1)]),
             -1,
         );
         do_test_for_ok(
             " for #comment\n a #comment\n , #comment\n b #comment\n in #comment\n x #comment\n {1} ",
-            _for(id("a"), Some(id("b")), id("x"), _block![i(1)]),
+            _for(var("a"), Some(var("b")), var("x"), _block![i(1)]),
             -1,
         );
 

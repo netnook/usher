@@ -39,7 +39,7 @@ fn test_string_spans() {
         r#"_"ab{ foo -45 }cde{ 35 }"_"#,
         _interp![
             s("ab").spanned(2, 2),
-            sub(id("foo").spanned(6, 3), i(45).spanned(11, 2)).spanned(10, 1),
+            sub(var("foo").spanned(6, 3), i(45).spanned(11, 2)).spanned(10, 1),
             s("cde").spanned(15, 3),
             i(35).spanned(20, 2)
         ],
@@ -65,8 +65,8 @@ fn test_dict_spans() {
         Parser::expression,
         r#" dict(a:1,b : 22 ) "#,
         dict_builder(vec![
-            kv(id("a").spanned(6, 1), i(1).spanned(8, 1)),
-            kv(id("b").spanned(10, 1), i(22).spanned(14, 2)),
+            kv(id("a"), i(1).spanned(8, 1)),
+            kv(id("b"), i(22).spanned(14, 2)),
         ])
         .spanned(1, 17)
         .into(),
@@ -79,9 +79,9 @@ fn test_stmt_spanneds() {
     do_test_parser_exact(
         Parser::stmt,
         " var a=xx>=2 ",
-        var(
-            id("a").spanned(5, 1),
-            greater_equal(id("xx").spanned(7, 2), i(2).spanned(11, 1)).spanned(9, 2),
+        decl(
+            var("a").spanned(5, 1),
+            greater_equal(var("xx").spanned(7, 2), i(2).spanned(11, 1)).spanned(9, 2),
         )
         .into(),
         -1,
@@ -89,9 +89,9 @@ fn test_stmt_spanneds() {
     do_test_parser_exact(
         Parser::stmt,
         " var # comment \n a = # comment \n xyz + 23 ",
-        var(
-            id("a").spanned(17, 1),
-            add(id("xyz").spanned(33, 3), i(23).spanned(39, 2)).spanned(37, 1),
+        decl(
+            var("a").spanned(17, 1),
+            add(var("xyz").spanned(33, 3), i(23).spanned(39, 2)).spanned(37, 1),
         )
         .into(),
         -1,
@@ -99,11 +99,11 @@ fn test_stmt_spanneds() {
     do_test_parser_exact(
         Parser::stmt,
         " var a = !(-b==c) ",
-        var(
-            id("a").spanned(5, 1),
+        decl(
+            var("a").spanned(5, 1),
             not(equal(
-                neg(id("b").spanned(12, 1)).spanned(11, 1),
-                id("c").spanned(15, 1),
+                neg(var("b").spanned(12, 1)).spanned(11, 1),
+                var("c").spanned(15, 1),
             )
             .spanned(13, 2))
             .spanned(9, 1),
@@ -115,8 +115,8 @@ fn test_stmt_spanneds() {
         Parser::stmt,
         " abc.def.ghi ",
         prop_of(
-            prop_of(id("abc").spanned(1, 3), id("def").spanned(5, 3)).spanned(4, 4),
-            id("ghi").spanned(9, 3),
+            prop_of(var("abc").spanned(1, 3), id("def")).spanned(4, 4),
+            id("ghi"),
         )
         .spanned(8, 4)
         .into(),
@@ -126,7 +126,7 @@ fn test_stmt_spanneds() {
         Parser::stmt,
         r#" abc[a][123] "#,
         index_of(
-            index_of(id("abc").spanned(1, 3), id("a").spanned(5, 1)).spanned(4, 3),
+            index_of(var("abc").spanned(1, 3), var("a").spanned(5, 1)).spanned(4, 3),
             i(123).spanned(8, 3),
         )
         .spanned(7, 5)
@@ -138,10 +138,10 @@ fn test_stmt_spanneds() {
         r#" abc.def?[ghi]? "#,
         chain_catch(
             index_of(
-                prop_of(id("abc").spanned(1, 3), id("def").spanned(5, 3))
+                prop_of(var("abc").spanned(1, 3), id("def"))
                     .with_throw_on_missing_prop(true)
                     .spanned(4, 5),
-                id("ghi").spanned(10, 3),
+                var("ghi").spanned(10, 3),
             )
             .with_throw_on_missing_prop(true)
             .spanned(9, 6),
@@ -152,8 +152,8 @@ fn test_stmt_spanneds() {
         Parser::stmt,
         r#" aaa(123).bbb(456) "#,
         _call!(
-            _call!(id("aaa").spanned(1, 3), arg(i(123).spanned(5, 3)),).spanned(4, 5),
-            method(id("bbb").spanned(10, 3)),
+            _call!(var("aaa").spanned(1, 3), arg(i(123).spanned(5, 3)),).spanned(4, 5),
+            method(id("bbb")),
             arg(i(456).spanned(14, 3)),
         )
         .spanned(9, 9)
@@ -164,7 +164,7 @@ fn test_stmt_spanneds() {
         Parser::stmt,
         " { \n abc = 2 \n 42 \n } ",
         _block!(
-            assign(id("abc").spanned(5, 3), i(2).spanned(11, 1)),
+            assign(var("abc").spanned(5, 3), i(2).spanned(11, 1)),
             i(42).spanned(15, 2)
         )
         .spanned(1, 20)
@@ -234,7 +234,7 @@ fn test_literal_spanneds() {
     do_test_parser_exact(
         Parser::expression,
         " nil2 ",
-        id("nil2").spanned(1, 4).into(),
+        var("nil2").spanned(1, 4).into(),
         -1,
     );
 }
@@ -245,7 +245,7 @@ fn test_nil_spans() {
     do_test_parser_exact(
         Parser::expression,
         " nil2 ",
-        id("nil2").spanned(1, 4).into(),
+        var("nil2").spanned(1, 4).into(),
         -1,
     );
 }

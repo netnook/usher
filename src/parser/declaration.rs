@@ -12,7 +12,7 @@ impl<'a> Parser<'a> {
 
         self.req_whitespace_comments()?;
 
-        let Some(ident) = self.declaration_identifier()? else {
+        let Some(var) = self.declaration_identifier()? else {
             return Err(SyntaxError {
                 pos: self.pos,
                 msg: EXPECTED_IDENTIFIER,
@@ -38,7 +38,7 @@ impl<'a> Parser<'a> {
         };
 
         Ok(AstNode::Declaration(Declaration {
-            ident,
+            var,
             value: value.into(),
         }))
     }
@@ -67,12 +67,12 @@ mod tests {
 
     #[test]
     fn test_var() {
-        do_test_var_ok(" var a=x+2 ", var(id("a"), add(id("x"), i(2))), -1);
-        do_test_var_ok(" var a = x + 2 ", var(id("a"), add(id("x"), i(2))), -1);
-        do_test_var_ok(" var a = x + 2 ", var(id("a"), add(id("x"), i(2))), -1);
+        do_test_var_ok(" var a=x+2 ", decl(var("a"), add(var("x"), i(2))), -1);
+        do_test_var_ok(" var a = x + 2 ", decl(var("a"), add(var("x"), i(2))), -1);
+        do_test_var_ok(" var a = x + 2 ", decl(var("a"), add(var("x"), i(2))), -1);
         do_test_var_ok(
             " var # comment \n a = # comment \n x + 2 ",
-            var(id("a"), add(id("x"), i(2))),
+            decl(var("a"), add(var("x"), i(2))),
             -1,
         );
 

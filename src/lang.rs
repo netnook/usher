@@ -32,7 +32,7 @@ pub use string::InterpolatedStr;
 pub use unary_op::{UnaryOp, UnaryOpCode};
 use value::ValueType;
 pub use value::{KeyValue, Value};
-pub use var::{Assignment, Declaration};
+pub use var::{Assignment, Declaration, Var};
 pub(crate) use visitor::{Accept, Visitor, VisitorResult, accept_default};
 
 #[allow(unused_imports)]
@@ -43,7 +43,6 @@ const THIS: &str = "this";
 #[derive(PartialEq, Clone)]
 pub enum AstNode {
     This(This),
-    Identifier(Identifier),
     Literal(Literal),
     InterpolatedStr(InterpolatedStr),
     ListBuilder(ListBuilder),
@@ -56,6 +55,7 @@ pub enum AstNode {
     Block(Block),
     IfElse(IfElse),
     For(For),
+    Var(Var),
     Declaration(Declaration),
     FunctionDef(Rc<FunctionDef>),
     FunctionCall(FunctionCall),
@@ -99,7 +99,6 @@ impl core::fmt::Debug for AstNode {
                 self,
                 f,
                 Literal,
-                Identifier,
                 InterpolatedStr,
                 ListBuilder,
                 DictBuilder,
@@ -111,6 +110,7 @@ impl core::fmt::Debug for AstNode {
                 Block,
                 IfElse,
                 For,
+                Var,
                 Declaration,
                 FunctionDef,
                 FunctionCall,
@@ -127,7 +127,6 @@ impl core::fmt::Debug for AstNode {
                 self,
                 f,
                 Literal,
-                Identifier,
                 InterpolatedStr,
                 ListBuilder,
                 DictBuilder,
@@ -139,6 +138,7 @@ impl core::fmt::Debug for AstNode {
                 Block,
                 IfElse,
                 For,
+                Var,
                 Declaration,
                 FunctionDef,
                 FunctionCall,
@@ -188,7 +188,6 @@ impl AstNode {
             AstNode::Declaration(v) => v.eval(ctxt),
             AstNode::Literal(v) => v.eval(ctxt),
             AstNode::FunctionCall(v) => v.eval(ctxt),
-            AstNode::Identifier(v) => v.eval(ctxt),
             AstNode::InterpolatedStr(v) => v.eval(ctxt),
             AstNode::BinaryOp(v) => v.eval(ctxt),
             AstNode::UnaryOp(v) => v.eval(ctxt),
@@ -198,6 +197,7 @@ impl AstNode {
             AstNode::IndexOf(v) => v.eval(ctxt),
             AstNode::Block(v) => v.eval(ctxt),
             AstNode::FunctionDef(v) => v.eval(ctxt),
+            AstNode::Var(v) => v.eval(ctxt),
             AstNode::Assignment(v) => v.eval(ctxt),
             AstNode::IfElse(v) => v.eval(ctxt),
             AstNode::For(v) => v.eval(ctxt),
@@ -213,7 +213,7 @@ impl AstNode {
 
     pub fn as_assignable(&'_ self) -> Option<Assignable<'_>> {
         match self {
-            AstNode::Identifier(v) => Some(Assignable::Identifier(v)),
+            AstNode::Var(v) => Some(Assignable::Var(v)),
             AstNode::PropertyOf(v) => Some(Assignable::PropertyOf(v)),
             AstNode::IndexOf(v) => Some(Assignable::IndexOf(v)),
             _ => None,
@@ -222,7 +222,7 @@ impl AstNode {
 
     pub fn span(&self) -> Span {
         match self {
-            AstNode::Identifier(v) => v.span,
+            AstNode::Var(v) => v.span,
             AstNode::Literal(v) => v.span,
             AstNode::BinaryOp(v) => v.span(),
             AstNode::UnaryOp(v) => v.span(),
@@ -247,9 +247,9 @@ impl AstNode {
     }
 }
 
-impl From<Identifier> for AstNode {
-    fn from(value: Identifier) -> Self {
-        Self::Identifier(value)
+impl From<Var> for AstNode {
+    fn from(value: Var) -> Self {
+        Self::Var(value)
     }
 }
 
@@ -350,7 +350,7 @@ impl From<End> for AstNode {
 
 #[derive(PartialEq, Debug, Clone)]
 pub enum Assignable<'a> {
-    Identifier(&'a Identifier),
+    Var(&'a Var),
     PropertyOf(&'a PropertyOf),
     IndexOf(&'a IndexOf),
 }
@@ -358,7 +358,7 @@ pub enum Assignable<'a> {
 impl<'a> Assignable<'a> {
     pub fn set(&self, ctxt: &mut Context, value: Value) -> Result<(), EvalStop> {
         match self {
-            Assignable::Identifier(v) => v.set(ctxt, value),
+            Assignable::Var(v) => v.set(ctxt, value),
             Assignable::PropertyOf(v) => v.set(ctxt, value),
             Assignable::IndexOf(v) => v.set(ctxt, value),
         }
@@ -435,7 +435,6 @@ accept_default!(Literal);
 pub struct Identifier {
     // FIXME: Rc<String>
     pub(crate) name: String,
-    pub(crate) span: Span,
 }
 
 impl core::fmt::Debug for Identifier {
@@ -446,15 +445,14 @@ impl core::fmt::Debug for Identifier {
         } else {
             f.debug_struct("Identifier")
                 .field("name", &self.name)
-                .field("span", &self.span)
                 .finish()
         }
     }
 }
 
 impl Identifier {
-    pub(crate) const fn new(name: String, span: Span) -> Self {
-        Self { name, span }
+    pub(crate) const fn new(name: String) -> Self {
+        Self { name }
     }
 }
 
@@ -702,7 +700,7 @@ impl Eval for FunctionCall {
     }
 }
 
-accept_default!(FunctionCall, on:node, method:opt:identifier, args:vec:arg,);
+accept_default!(FunctionCall, on:node, args:vec:arg,);
 
 #[derive(PartialEq, Clone)]
 pub struct Arg {
@@ -710,7 +708,7 @@ pub struct Arg {
     pub(crate) value: AstNode,
 }
 
-accept_default!(Arg, name:opt:identifier, value:node,);
+accept_default!(Arg, value:node,);
 
 impl core::fmt::Debug for Arg {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -793,7 +791,7 @@ impl Eval for KeyValueBuilder {
     }
 }
 
-accept_default!(KeyValueBuilder, key:identifier, value:node,);
+accept_default!(KeyValueBuilder, value:node,);
 
 #[derive(PartialEq, Debug, Clone)]
 pub struct End {}

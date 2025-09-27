@@ -1,6 +1,6 @@
 use super::{Context, Value};
 use crate::lang::{
-    Accept, AstNode, Block, Eval, EvalStop, Identifier, InternalProgramError, KeyValue, Visitor,
+    Accept, AstNode, Block, Eval, EvalStop, InternalProgramError, KeyValue, Var, Visitor,
     VisitorResult, accept_default,
 };
 use std::rc::Rc;
@@ -8,8 +8,8 @@ use std::rc::Rc;
 #[derive(PartialEq, Clone)]
 pub struct For {
     pub(crate) iterable: Box<AstNode>,
-    pub(crate) loop_item: Identifier,
-    pub(crate) loop_info: Option<Identifier>,
+    pub(crate) loop_item: Var,
+    pub(crate) loop_info: Option<Var>,
     pub(crate) block: Block,
 }
 
@@ -19,9 +19,9 @@ impl core::fmt::Debug for For {
         if minimal {
             let mut w = f.debug_struct("For");
             w.field("iterable", &self.iterable);
-            w.field("loop_item", &self.loop_item.name);
+            w.field("loop_item", &self.loop_item.name.name);
             if let Some(loop_info) = &self.loop_info {
-                w.field("loop_info", &loop_info.name);
+                w.field("loop_info", &loop_info.name.name);
             }
             w.field("block", &self.block);
             w.finish()
@@ -49,7 +49,8 @@ impl Eval for For {
                 let list = list.borrow();
                 for val in list.iter() {
                     child_ctxt.reset();
-                    child_ctxt.declare(&self.loop_item, val);
+                    // FIXME: push declaration into Var
+                    child_ctxt.declare(&self.loop_item.name, val);
                     result = match self.block.eval_with_context(&mut child_ctxt) {
                         Ok(v) => v,
                         Err(EvalStop::Break) => todo!(),
@@ -64,7 +65,8 @@ impl Eval for For {
                 for (k, val) in dict.iter() {
                     let loop_val = Value::KeyValue(Rc::new(KeyValue::new(k.clone(), val.clone())));
                     child_ctxt.reset();
-                    child_ctxt.declare(&self.loop_item, loop_val);
+                    // FIXME: push declaration into Var
+                    child_ctxt.declare(&self.loop_item.name, loop_val);
                     result = match self.block.eval_with_context(&mut child_ctxt) {
                         Ok(v) => v,
                         Err(EvalStop::Break) => todo!(),
@@ -87,7 +89,7 @@ impl Eval for For {
     }
 }
 
-accept_default!(For, iterable:node, loop_item:identifier, loop_info:opt:identifier, block:block,);
+accept_default!(For, iterable:node, loop_item:var, loop_info:opt:var, block:block,);
 
 #[derive(PartialEq, Debug, Clone)]
 pub struct Break {}
@@ -141,20 +143,20 @@ mod tests {
         // ctxt.set(&id("f"), Value::Bool(false));
 
         let stmt = _for(
-            id("i"),
+            var("i"),
             None,
-            id("l"),
-            _block![assign(id("r"), add(id("r"), id("i")))],
+            var("l"),
+            _block![assign(var("r"), add(var("r"), var("i")))],
         );
         let actual = stmt.eval(&mut ctxt).expect("a value");
         assert_eq!(ctxt.get(&id("r")), Some(Value::Integer(7)));
         assert_eq!(actual, Value::Nil); // assignment (last stmt in loop) returns Nil
 
         let stmt = _for(
-            id("i"),
+            var("i"),
             None,
-            id("l"),
-            _block![assign(id("r"), add(id("r"), id("i"))), id("r")],
+            var("l"),
+            _block![assign(var("r"), add(var("r"), var("i"))), var("r")],
         );
         let actual = stmt.eval(&mut ctxt).expect("a value");
         assert_eq!(ctxt.get(&id("r")), Some(Value::Integer(14)));

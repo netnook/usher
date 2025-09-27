@@ -1,7 +1,7 @@
 use super::{ParseResult, Parser, SyntaxError, chars::is_digit};
 use crate::lang::{
     Accept, Arg, AstNode, BinaryOp, BinaryOpCode, ChainCatch, End, FunctionCall, Identifier,
-    IndexOf, KeyValueBuilder, Literal, PropertyOf, Span, This, UnaryOp, UnaryOpCode, Value,
+    IndexOf, KeyValueBuilder, Literal, PropertyOf, Span, This, UnaryOp, UnaryOpCode, Value, Var,
     Visitor, VisitorResult,
 };
 use std::rc::Rc;
@@ -45,7 +45,7 @@ impl<'a> Parser<'a> {
             return Ok(Some(lhs));
         }
 
-        let AstNode::Identifier(id) = lhs else {
+        let AstNode::Var(id) = lhs else {
             return Err(SyntaxError {
                 pos: start,
                 msg: EXPECTED_IDENT_ON_KV_LHS,
@@ -62,7 +62,7 @@ impl<'a> Parser<'a> {
         };
 
         Ok(Some(AstNode::KeyValue(KeyValueBuilder {
-            key: id,
+            key: id.name,
             value: rhs.into(),
         })))
     }
@@ -373,8 +373,8 @@ impl<'a> Parser<'a> {
                 return Ok(Some(AstNode::FunctionDef(Rc::new(self.function_def()?))));
             }
             Some(id) => {
-                return Ok(Some(AstNode::Identifier(Identifier::new(
-                    id.to_string(),
+                return Ok(Some(AstNode::Var(Var::new(
+                    Identifier::new(id.to_string()),
                     Span::new(start, id.len()),
                 ))));
             }
@@ -437,13 +437,13 @@ impl<'a> Parser<'a> {
 
         self.whitespace_comments();
 
-        let marker = self.pos;
+        // let marker = self.pos;
         let Some(ident) = self.unchecked_identifier() else {
             return Err(SyntaxError::new(self.pos, EXPECTED_IDENTIFIER));
         };
 
         Ok(Some((
-            Identifier::new(ident.to_string(), Span::new(marker, ident.len())),
+            Identifier::new(ident.to_string()),
             Span::start_end(start, self.pos),
         )))
     }
@@ -575,45 +575,45 @@ pub mod tests {
 
     #[test]
     fn test_expr_ok() {
-        do_test_expr_ok(" foo ", id("foo"), -1);
-        do_test_expr_ok(" foo.bar ", prop_of(id("foo"), "bar"), -1);
-        do_test_expr_ok(" foo[\"bar\"] ", index_of(id("foo"), s("bar")), -1);
-        do_test_expr_ok(" foo[bar] ", index_of(id("foo"), id("bar")), -1);
-        do_test_expr_ok(" foo() ", _call!(id("foo"),), -1);
+        do_test_expr_ok(" foo ", var("foo"), -1);
+        do_test_expr_ok(" foo.bar ", prop_of(var("foo"), "bar"), -1);
+        do_test_expr_ok(" foo[\"bar\"] ", index_of(var("foo"), s("bar")), -1);
+        do_test_expr_ok(" foo[bar] ", index_of(var("foo"), var("bar")), -1);
+        do_test_expr_ok(" foo() ", _call!(var("foo"),), -1);
         do_test_expr_ok(
             r#" foo.bar(a,"33",c:7*2) "#,
             _call!(
-                id("foo"),
+                var("foo"),
                 method("bar"),
-                arg(id("a")),
+                arg(var("a")),
                 arg(s("33")),
                 arg(id("c"), mul(i(7), i(2)).into()),
             ),
             -1,
         );
-        do_test_expr_ok(" foo.map ", prop_of(id("foo"), "map"), -1);
+        do_test_expr_ok(" foo.map ", prop_of(var("foo"), "map"), -1);
         do_test_expr_ok(
             " foo.bar? ",
-            chain_catch(prop_of(id("foo"), "bar").with_throw_on_missing_prop(true)),
+            chain_catch(prop_of(var("foo"), "bar").with_throw_on_missing_prop(true)),
             -1,
         );
         do_test_expr_ok(
             " foo.bar?.baz ",
             chain_catch(prop_of(
-                prop_of(id("foo"), "bar").with_throw_on_missing_prop(true),
+                prop_of(var("foo"), "bar").with_throw_on_missing_prop(true),
                 "baz",
             )),
             -1,
         );
         do_test_expr_ok(
             " foo[0]? ",
-            chain_catch(index_of(id("foo"), i(0)).with_throw_on_missing_prop(true)),
+            chain_catch(index_of(var("foo"), i(0)).with_throw_on_missing_prop(true)),
             -1,
         );
         do_test_expr_ok(
             " foo[0]?[1] ",
             chain_catch(index_of(
-                index_of(id("foo"), i(0)).with_throw_on_missing_prop(true),
+                index_of(var("foo"), i(0)).with_throw_on_missing_prop(true),
                 i(1),
             )),
             -1,
@@ -622,7 +622,7 @@ pub mod tests {
             " aa.bb[cc].dd[\"ee\"]?[66] ",
             chain_catch(index_of(
                 index_of(
-                    prop_of(index_of(prop_of(id("aa"), "bb"), id("cc")), "dd"),
+                    prop_of(index_of(prop_of(var("aa"), "bb"), var("cc")), "dd"),
                     s("ee"),
                 )
                 .with_throw_on_missing_prop(true),
@@ -634,7 +634,7 @@ pub mod tests {
             " aa . bb [ cc ] . dd [ \"ee\" ]? [ 66 ]  ",
             chain_catch(index_of(
                 index_of(
-                    prop_of(index_of(prop_of(id("aa"), "bb"), id("cc")), "dd"),
+                    prop_of(index_of(prop_of(var("aa"), "bb"), var("cc")), "dd"),
                     s("ee"),
                 )
                 .with_throw_on_missing_prop(true),
@@ -646,7 +646,7 @@ pub mod tests {
             " aa . #comment\n bb [ #comment\n cc #comment\n ] . #comment\n dd [ \"ee\" ]? [ 66 ]  ",
             chain_catch(index_of(
                 index_of(
-                    prop_of(index_of(prop_of(id("aa"), "bb"), id("cc")), "dd"),
+                    prop_of(index_of(prop_of(var("aa"), "bb"), var("cc")), "dd"),
                     s("ee"),
                 )
                 .with_throw_on_missing_prop(true),
@@ -654,14 +654,14 @@ pub mod tests {
             )),
             -2,
         );
-        do_test_expr_ok(" aa #comment\n . foo  ", prop_of(id("aa"), "foo"), -2);
-        do_test_expr_ok(" aa #comment\n [1]  ", id("aa"), 3);
-        do_test_expr_ok(" aa #comment\n ?  ", id("aa"), 3);
+        do_test_expr_ok(" aa #comment\n . foo  ", prop_of(var("aa"), "foo"), -2);
+        do_test_expr_ok(" aa #comment\n [1]  ", var("aa"), 3);
+        do_test_expr_ok(" aa #comment\n ?  ", var("aa"), 3);
         do_test_expr_ok(
             " foo(#comment\n a#comment\n ,#comment\n 7#comment\n ,#comment\n c :#comment\n 7*2) ",
             _call!(
-                id("foo"),
-                arg(id("a")),
+                var("foo"),
+                arg(var("a")),
                 arg(i(7)),
                 arg(id("c"), mul(i(7), i(2)).into()),
             ),
@@ -670,94 +670,97 @@ pub mod tests {
         do_test_expr_ok(
             " foo.bar().baz(#comment\n a#comment\n ,#comment\n 7#comment\n ,#comment\n c :#comment\n 7*2) ",
             _call!(
-                _call!(id("foo"), method("bar"),),
+                _call!(var("foo"), method("bar"),),
                 method("baz"),
-                arg(id("a")),
+                arg(var("a")),
                 arg(i(7)),
                 arg(id("c"), mul(i(7), i(2)).into()),
             ),
             -1,
         );
         // unary prefix expressions
-        do_test_expr_ok(" -foo ", neg(id("foo")), -1);
-        do_test_expr_ok(" !foo ", not(id("foo")), -1);
+        do_test_expr_ok(" -foo ", neg(var("foo")), -1);
+        do_test_expr_ok(" !foo ", not(var("foo")), -1);
         do_test_expr_ok(
             " -!-!!--foo.bar ",
-            neg(not(neg(not(not(neg(neg(prop_of(id("foo"), "bar")))))))),
+            neg(not(neg(not(not(neg(neg(prop_of(var("foo"), "bar")))))))),
             -1,
         );
 
         // math infix expressions
-        do_test_expr_ok(" a + b ", add(id("a"), id("b")), -1);
-        do_test_expr_ok(" a - b ", sub(id("a"), id("b")), -1);
-        do_test_expr_ok(" a * b ", mul(id("a"), id("b")), -1);
-        do_test_expr_ok(" a / b ", div(id("a"), id("b")), -1);
-        do_test_expr_ok(" a % b ", modulo(id("a"), id("b")), -1);
+        do_test_expr_ok(" a + b ", add(var("a"), var("b")), -1);
+        do_test_expr_ok(" a - b ", sub(var("a"), var("b")), -1);
+        do_test_expr_ok(" a * b ", mul(var("a"), var("b")), -1);
+        do_test_expr_ok(" a / b ", div(var("a"), var("b")), -1);
+        do_test_expr_ok(" a % b ", modulo(var("a"), var("b")), -1);
 
-        do_test_expr_ok(" a+b ", add(id("a"), id("b")), -1);
+        do_test_expr_ok(" a+b ", add(var("a"), var("b")), -1);
         do_test_expr_ok(
             " a + #comment\n \n b - #comment\n \n c ",
-            sub(add(id("a"), id("b")), id("c")),
+            sub(add(var("a"), var("b")), var("c")),
             -1,
         );
         do_test_expr_ok(
             " a * #comment\n \n b / #comment\n \n c ",
-            div(mul(id("a"), id("b")), id("c")),
+            div(mul(var("a"), var("b")), var("c")),
             -1,
         );
         do_test_expr_ok(
             " a + b * c - d / e ",
-            sub(add(id("a"), mul(id("b"), id("c"))), div(id("d"), id("e"))),
+            sub(
+                add(var("a"), mul(var("b"), var("c"))),
+                div(var("d"), var("e")),
+            ),
             -1,
         );
 
         // comparison expressions
-        do_test_expr_ok(" a == b ", equal(id("a"), id("b")), -1);
-        do_test_expr_ok(" a != b ", not_equal(id("a"), id("b")), -1);
-        do_test_expr_ok(" a < b ", less(id("a"), id("b")), -1);
-        do_test_expr_ok(" a > b ", greater(id("a"), id("b")), -1);
-        do_test_expr_ok(" a >= b ", greater_equal(id("a"), id("b")), -1);
-        do_test_expr_ok(" a <= b ", less_equal(id("a"), id("b")), -1);
-        do_test_expr_ok(" a<=b ", less_equal(id("a"), id("b")), -1);
+        do_test_expr_ok(" a == b ", equal(var("a"), var("b")), -1);
+        do_test_expr_ok(" a != b ", not_equal(var("a"), var("b")), -1);
+        do_test_expr_ok(" a < b ", less(var("a"), var("b")), -1);
+        do_test_expr_ok(" a > b ", greater(var("a"), var("b")), -1);
+        do_test_expr_ok(" a >= b ", greater_equal(var("a"), var("b")), -1);
+        do_test_expr_ok(" a <= b ", less_equal(var("a"), var("b")), -1);
+        do_test_expr_ok(" a<=b ", less_equal(var("a"), var("b")), -1);
         do_test_expr_ok(
             " a * b == c+d ",
-            equal(mul(id("a"), id("b")), add(id("c"), id("d"))),
+            equal(mul(var("a"), var("b")), add(var("c"), var("d"))),
             -1,
         );
 
-        do_test_expr_ok(" a == b ", equal(id("a"), id("b")), -1);
-        do_test_expr_ok(" a != b ", not_equal(id("a"), id("b")), -1);
-        do_test_expr_ok(" a < b ", less(id("a"), id("b")), -1);
-        do_test_expr_ok(" a > b ", greater(id("a"), id("b")), -1);
-        do_test_expr_ok(" a >= b ", greater_equal(id("a"), id("b")), -1);
-        do_test_expr_ok(" a <= b ", less_equal(id("a"), id("b")), -1);
-        do_test_expr_ok(" a == #comment\n \n b ", equal(id("a"), id("b")), -1);
+        do_test_expr_ok(" a == b ", equal(var("a"), var("b")), -1);
+        do_test_expr_ok(" a != b ", not_equal(var("a"), var("b")), -1);
+        do_test_expr_ok(" a < b ", less(var("a"), var("b")), -1);
+        do_test_expr_ok(" a > b ", greater(var("a"), var("b")), -1);
+        do_test_expr_ok(" a >= b ", greater_equal(var("a"), var("b")), -1);
+        do_test_expr_ok(" a <= b ", less_equal(var("a"), var("b")), -1);
+        do_test_expr_ok(" a == #comment\n \n b ", equal(var("a"), var("b")), -1);
         do_test_expr_ok(
             " a * b == c + d ",
-            equal(mul(id("a"), id("b")), add(id("c"), id("d"))),
+            equal(mul(var("a"), var("b")), add(var("c"), var("d"))),
             -1,
         );
 
         // logical ops
-        do_test_expr_ok(" a && b ", and(id("a"), id("b")), -1);
-        do_test_expr_ok(" a || b ", or(id("a"), id("b")), -1);
-        do_test_expr_ok(" a||b ", or(id("a"), id("b")), -1);
-        do_test_expr_ok(" a || #comment \n b ", or(id("a"), id("b")), -1);
-        do_test_expr_ok(" a && b || c ", or(and(id("a"), id("b")), id("c")), -1);
+        do_test_expr_ok(" a && b ", and(var("a"), var("b")), -1);
+        do_test_expr_ok(" a || b ", or(var("a"), var("b")), -1);
+        do_test_expr_ok(" a||b ", or(var("a"), var("b")), -1);
+        do_test_expr_ok(" a || #comment \n b ", or(var("a"), var("b")), -1);
+        do_test_expr_ok(" a && b || c ", or(and(var("a"), var("b")), var("c")), -1);
         do_test_expr_ok(
             " a < b || c+d ",
-            or(less(id("a"), id("b")), add(id("c"), id("d"))),
+            or(less(var("a"), var("b")), add(var("c"), var("d"))),
             -1,
         );
 
         // early ending (bad expressions)
-        do_test_expr_ok(" a=!b ", id("a"), 2);
-        do_test_expr_ok(" a=>b ", id("a"), 2);
-        do_test_expr_ok(" a + b #comment\n \n - c ", add(id("a"), id("b")), 6);
-        do_test_expr_ok(" a * b #comment\n \n / c ", mul(id("a"), id("b")), 6);
-        do_test_expr_ok(" a # comment \n == b ", id("a"), 2);
-        do_test_expr_ok(" a # comment \n && b ", id("a"), 2);
-        do_test_expr_ok(" a <= b == c ", less_equal(id("a"), id("b")), 7);
+        do_test_expr_ok(" a=!b ", var("a"), 2);
+        do_test_expr_ok(" a=>b ", var("a"), 2);
+        do_test_expr_ok(" a + b #comment\n \n - c ", add(var("a"), var("b")), 6);
+        do_test_expr_ok(" a * b #comment\n \n / c ", mul(var("a"), var("b")), 6);
+        do_test_expr_ok(" a # comment \n == b ", var("a"), 2);
+        do_test_expr_ok(" a # comment \n && b ", var("a"), 2);
+        do_test_expr_ok(" a <= b == c ", less_equal(var("a"), var("b")), 7);
 
         do_test_expr_ok(" (1>2)+3 ", add(greater(i(1), i(2)), i(3)), -1);
         do_test_expr_ok(" 1>2+3 ", greater(i(1), add(i(2), i(3))), -1);
@@ -768,14 +771,14 @@ pub mod tests {
                 greater_equal(
                     add(
                         chain_catch(index_of(
-                            prop_of(id("foo"), "bar").with_throw_on_missing_prop(true),
+                            prop_of(var("foo"), "bar").with_throw_on_missing_prop(true),
                             add(s("baz"), i(7)),
                         )),
                         mul(i(32), i(7)),
                     ),
                     mul(
-                        prop_of(id("b"), "c"),
-                        add(id("x"), modulo(id("y"), id("z"))),
+                        prop_of(var("b"), "c"),
+                        add(var("x"), modulo(var("y"), var("z"))),
                     ),
                 ),
                 add(greater(i(3), i(4)), i(7)),
@@ -816,7 +819,7 @@ pub mod tests {
         do_test_expr_ok(" this ", this(), -1);
         do_test_expr_ok(" this", this(), 0);
 
-        do_test_expr_ok(" thiss ", id("thiss"), -1);
+        do_test_expr_ok(" thiss ", var("thiss"), -1);
     }
 
     #[test]
@@ -835,8 +838,8 @@ pub mod tests {
 
     #[test]
     fn test_boolean() {
-        do_test_expr_ok(" tru ", id("tru"), -1);
-        do_test_expr_ok(" falsey", id("falsey"), 0);
+        do_test_expr_ok(" tru ", var("tru"), -1);
+        do_test_expr_ok(" falsey", var("falsey"), 0);
         do_test_parser_none(Parser::expression, " ");
     }
 }

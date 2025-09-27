@@ -48,7 +48,7 @@ mod tests {
 
     use crate::{
         lang::{Block, Context, Eval, Value},
-        parser::tests::{_block, ToValue, add, assign, i, id, var},
+        parser::tests::{_block, ToValue, add, assign, decl, i, id, var},
     };
 
     #[track_caller]
@@ -78,9 +78,9 @@ mod tests {
         ctxt.set(&id("b"), "b-initial".to_value());
 
         let mut block = _block!();
-        block.stmts.push(var(id("a"), i(1)).into());
-        block.stmts.push(assign(id("a"), i(42)).into());
-        block.stmts.push(assign(id("b"), i(42)).into());
+        block.stmts.push(decl(var("a"), i(1)).into());
+        block.stmts.push(assign(var("a"), i(42)).into());
+        block.stmts.push(assign(var("b"), i(42)).into());
 
         block.eval(&mut ctxt).expect("return ok");
         assert_eq!(ctxt.get(&id("a")), Some("a-initial".to_value()));

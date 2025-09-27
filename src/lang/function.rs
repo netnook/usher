@@ -1,5 +1,5 @@
 use crate::lang::{
-    AstNode, Block, Context, Eval, EvalStop, Identifier, Span, Value, accept_default,
+    AstNode, Block, Context, Eval, EvalStop, Span, Value, Var, accept_default,
     value::Func,
     visitor::{Accept, Visitor, VisitorResult},
 };
@@ -7,7 +7,7 @@ use std::rc::Rc;
 
 #[derive(PartialEq)]
 pub struct FunctionDef {
-    pub(crate) name: Option<Identifier>,
+    pub(crate) name: Option<Var>,
     pub(crate) params: Vec<Param>,
     pub(crate) body: Block,
 }
@@ -18,7 +18,7 @@ impl core::fmt::Debug for FunctionDef {
         if minimal {
             let mut w = f.debug_struct("FunctionDef");
             if let Some(name) = &self.name {
-                w.field("name", &name.name);
+                w.field("name", &name.name.name);
             }
             if !self.params.is_empty() {
                 w.field("params", &self.params);
@@ -35,11 +35,11 @@ impl core::fmt::Debug for FunctionDef {
     }
 }
 
-accept_default!(FunctionDef, name:opt:identifier, params:vec:param, body:block,);
+accept_default!(FunctionDef, name:opt:var, params:vec:param, body:block,);
 
 #[derive(PartialEq, Clone)]
 pub struct Param {
-    pub(crate) name: Identifier,
+    pub(crate) name: Var,
     pub(crate) default_value: Option<AstNode>,
 }
 
@@ -48,11 +48,11 @@ impl core::fmt::Debug for Param {
         let minimal = f.sign_minus();
         if minimal {
             if let Some(default_value) = &self.default_value {
-                self.name.name.fmt(f)?;
+                self.name.name.name.fmt(f)?;
                 f.write_str(": ")?;
                 default_value.fmt(f)
             } else {
-                self.name.name.fmt(f)
+                self.name.name.name.fmt(f)
             }
         } else {
             f.debug_struct("Param")
@@ -63,13 +63,13 @@ impl core::fmt::Debug for Param {
     }
 }
 
-accept_default!(Param, name:identifier, default_value:opt:node,);
+accept_default!(Param, name:var, default_value:opt:node,);
 
 impl Eval for Rc<FunctionDef> {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
         let f = Value::Func(Func::Func(Rc::clone(self)));
         if let Some(name) = &self.name {
-            ctxt.set(name, f.clone());
+            ctxt.set(&name.name, f.clone());
         };
         Ok(f)
     }

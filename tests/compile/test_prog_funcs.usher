@@ -15,7 +15,7 @@ function foo(a:1*2, b: dict( c: 44, d:45)) {
 ---
 Program { [
     Declaration {
-        ident: "foo",
+        var: "foo",
         value: FunctionDef {
             body: Block {[
                 Return { Literal(42) },
@@ -23,7 +23,7 @@ Program { [
         },
     },
     Declaration {
-        ident: "foo",
+        var: "foo",
         value: FunctionDef {
             params: [
                 "a",
@@ -37,7 +37,7 @@ Program { [
     },
     FunctionCall {
         on: FunctionCall {
-            on: Ident("a"),
+            on: Var("a"),
             method: "b",
         },
         method: "foo",

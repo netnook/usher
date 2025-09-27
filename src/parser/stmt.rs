@@ -111,7 +111,7 @@ impl<'a> Parser<'a> {
             let lhs = expr;
             let pass = matches!(
                 lhs,
-                AstNode::Identifier(_) | AstNode::PropertyOf(_) | AstNode::IndexOf(_)
+                AstNode::Var(_) | AstNode::PropertyOf(_) | AstNode::IndexOf(_)
             );
             if !pass {
                 return Err(SyntaxError {
@@ -186,12 +186,12 @@ pub(super) mod tests {
 
     #[test]
     fn test_assignment_or_expr() {
-        do_test_assign_or_expr_ok(" a ", id("a"), -1);
-        do_test_assign_or_expr_ok(" a = 1 + 2 ", assign(id("a"), add(i(1), i(2))), -1);
+        do_test_assign_or_expr_ok(" a ", var("a"), -1);
+        do_test_assign_or_expr_ok(" a = 1 + 2 ", assign(var("a"), add(i(1), i(2))), -1);
         do_test_assign_or_expr_ok(
             " a[3].b.c = 1 + 2 ",
             assign(
-                prop_of(prop_of(index_of(id("a"), i(3)), "b"), "c"),
+                prop_of(prop_of(index_of(var("a"), i(3)), "b"), "c"),
                 add(i(1), i(2)),
             ),
             -1,
@@ -232,17 +232,17 @@ pub(super) mod tests {
         do_test_stmt_ok(" if true { 2 } ", _if!(cond(b(true) => _block![i(2)])), -1);
         do_test_stmt_ok(
             " for a in b { 2 } ",
-            _for(id("a"), None, id("b"), _block![i(2)]),
+            _for(var("a"), None, var("b"), _block![i(2)]),
             -1,
         );
-        do_test_stmt_ok(" var a = 1 ", var(id("a"), i(1)), -1);
-        do_test_stmt_ok(" a = 1 ", assign(id("a"), i(1)), -1);
-        do_test_stmt_ok(" a + 2 ", add(id("a"), i(2)), -1);
+        do_test_stmt_ok(" var a = 1 ", decl(var("a"), i(1)), -1);
+        do_test_stmt_ok(" a = 1 ", assign(var("a"), i(1)), -1);
+        do_test_stmt_ok(" a + 2 ", add(var("a"), i(2)), -1);
 
         // check that vars starting with keywords are not mistaken for those keywords
-        do_test_stmt_ok(" iffy + 2 ", add(id("iffy"), i(2)), -1);
-        do_test_stmt_ok(" for_me + 2 ", add(id("for_me"), i(2)), -1);
-        do_test_stmt_ok(" vario + 2 ", add(id("vario"), i(2)), -1);
+        do_test_stmt_ok(" iffy + 2 ", add(var("iffy"), i(2)), -1);
+        do_test_stmt_ok(" for_me + 2 ", add(var("for_me"), i(2)), -1);
+        do_test_stmt_ok(" vario + 2 ", add(var("vario"), i(2)), -1);
         do_test_stmt_ok(" break ", Break::new(), -1);
         do_test_stmt_ok(" continue ", Continue::new(), -1);
         do_test_stmt_ok(" end ", End::new(), -1);

@@ -83,7 +83,7 @@ pub mod tests {
         lang::{
             Assignment, AstNode, BinaryOp, BinaryOpCode, Block, ChainCatch, Declaration, Dict,
             DictBuilder, For, FunctionCall, Identifier, IndexOf, KeyValue, KeyValueBuilder, List,
-            ListBuilder, Literal, PropertyOf, Span, This, UnaryOp, UnaryOpCode, Value,
+            ListBuilder, Literal, PropertyOf, Span, This, UnaryOp, UnaryOpCode, Value, Var,
         },
         parser::Parser,
     };
@@ -160,7 +160,10 @@ pub mod tests {
         AstNode::This(This::new())
     }
     pub fn id(val: &str) -> Identifier {
-        Identifier::new(val.to_string(), Span::new(999, 9999))
+        Identifier::new(val.to_string())
+    }
+    pub fn var(val: &str) -> Var {
+        Var::new(Identifier::new(val.to_string()), Span::new(999, 9999))
     }
 
     pub(crate) fn kv(key: impl Into<Identifier>, value: impl Into<AstNode>) -> KeyValueBuilder {
@@ -290,9 +293,9 @@ pub mod tests {
         }
     }
 
-    pub(crate) fn var(ident: Identifier, value: impl Into<AstNode>) -> Declaration {
+    pub(crate) fn decl(var: Var, value: impl Into<AstNode>) -> Declaration {
         Declaration {
-            ident,
+            var,
             value: value.into().into(),
         }
     }
@@ -303,15 +306,15 @@ pub mod tests {
         }
     }
     pub(crate) fn _for(
-        ident1: Identifier,
-        ident2: Option<Identifier>,
-        expr: impl Into<AstNode>,
+        loop_item: Var,
+        loop_info: Option<Var>,
+        iterable: impl Into<AstNode>,
         block: Block,
     ) -> For {
         For {
-            loop_item: ident1,
-            loop_info: ident2,
-            iterable: expr.into().into(),
+            loop_item,
+            loop_info,
+            iterable: iterable.into().into(),
             block,
         }
     }
@@ -358,7 +361,7 @@ pub mod tests {
             use crate::lang::Block;
             use crate::lang::Span;
             Block{
-                stmts:vec![$($stmt.into()),*],
+                stmts: vec![$($stmt.into()),*],
                 span: Span::new(999, 9999),
             }
         }};
@@ -389,33 +392,28 @@ pub mod tests {
 
     macro_rules! _func {
         (name($name:expr), $($rest:tt)*) => {{
-            use crate::lang::Span;
-            use crate::lang::Identifier;
             let f = _func!($($rest)*);
             FunctionDef {
-                name: Some(Identifier::new($name.to_string(), Span::new(0,0))),
+                name: Some(var($name)),
                 ..f
             }
         }};
         (param($($pp:tt)*), $($rest:tt)*) => {{
-            use crate::lang::Identifier;
             let mut f = _func!($($rest)*);
             f.params.insert(0, _func!(@param $($pp)*));
             f
         }};
         (@param $name:expr, $val:expr) => {{
             use crate::lang::Param;
-            use crate::lang::Span;
             Param {
-                name: Identifier::new($name.to_string(), Span::new(0,0)),
+                name: var($name),
                 default_value: Some($val.into()),
             }
         }};
         (@param $name:expr) => {{
             use crate::lang::Param;
-            use crate::lang::Span;
             Param {
-                name: Identifier::new($name.to_string(),Span::new(0,0)),
+                name: var($name),
                 default_value: None,
             }
         }};
@@ -664,7 +662,7 @@ pub mod tests {
 
     impl From<&str> for Identifier {
         fn from(value: &str) -> Self {
-            Identifier::new(value.to_string(), Span::new(999, 9999))
+            Identifier::new(value.to_string())
         }
     }
 
@@ -682,7 +680,7 @@ pub mod tests {
     with_span!(BinaryOp);
     with_span!(UnaryOp);
     with_span!(Literal);
-    with_span!(Identifier);
+    with_span!(Var);
     with_span!(DictBuilder);
     with_span!(PropertyOf);
     with_span!(ListBuilder);

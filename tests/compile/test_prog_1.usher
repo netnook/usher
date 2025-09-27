@@ -21,7 +21,7 @@ end
 ---
 Program { [
     Declaration {
-        ident: "a",
+        var: "a",
         value: Literal(1),
     },
     IfElse {
@@ -29,7 +29,7 @@ Program { [
             condition: equal-to {
                 lhs: IndexOf {
                     of: PropertyOf {
-                        of: Ident("a"),
+                        of: Var("a"),
                         property: Ident("c"),
                     },
                     index: Literal(3),
@@ -38,37 +38,37 @@ Program { [
             },
             block: Block {[
                 Assignment {
-                    lhs: Ident("foo"),
+                    lhs: Var("foo"),
                     rhs: Literal(2),
                 },
             ]},
         },
         conditional: ConditionalBlock {
             condition: less-or-equal-to {
-                lhs: Ident("b"),
+                lhs: Var("b"),
                 rhs: Literal(7),
             },
             block: Block {[
                 Assignment {
-                    lhs: Ident("foo"),
+                    lhs: Var("foo"),
                     rhs: Literal(3),
                 },
             ]},
         },
         else: Block {[
             Assignment {
-                lhs: Ident("foo"),
+                lhs: Var("foo"),
                 rhs: Literal(4),
             },
         ]},
     },
     For {
-        iterable: Ident("b"),
+        iterable: Var("b"),
         loop_item: "a",
         block: Block {[
             IfElse {
                 conditional: ConditionalBlock {
-                    condition: Ident("a"),
+                    condition: Var("a"),
                     block: Block {[
                         Continue,
                     ]},
@@ -76,23 +76,23 @@ Program { [
             },
             Block {[
                 Assignment {
-                    lhs: Ident("form"),
+                    lhs: Var("form"),
                     rhs: subtraction {
                         lhs: multiplication {
                             lhs: addition {
-                                lhs: Ident("a"),
-                                rhs: Ident("b"),
+                                lhs: Var("a"),
+                                rhs: Var("b"),
                             },
                             rhs: PropertyOf {
-                                of: Ident("c"),
+                                of: Var("c"),
                                 property: Ident("d"),
                             },
                         },
                         rhs: division {
                             lhs: negative {
-                                on: Ident("e"),
+                                on: Var("e"),
                             },
-                            rhs: Ident("f"),
+                            rhs: Var("f"),
                         },
                     },
                 },
@@ -101,15 +101,15 @@ Program { [
         ]},
     },
     Assignment {
-        lhs: Ident("str"),
+        lhs: Var("str"),
         rhs: InterpolatedStr {[
             Literal("hello "),
-            Ident("name"),
+            Var("name"),
             Literal("!"),
         ]},
     },
     Assignment {
-        lhs: Ident("str"),
+        lhs: Var("str"),
         rhs: ChainCatch { PropertyOf {
             of: PropertyOf {
                 of: This,

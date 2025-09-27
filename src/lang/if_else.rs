@@ -83,24 +83,24 @@ mod tests {
         ctxt.set(&id("f"), Value::Bool(false));
 
         let stmt = _if!(
-            cond(id("t") => _block![i(1)]),
-            cond(id("t") => _block![i(2)]),
+            cond(var("t") => _block![i(1)]),
+            cond(var("t") => _block![i(2)]),
             else(_block![i(3)])
         );
         let actual = stmt.eval(&mut ctxt).expect("a value");
         assert_eq!(actual, Value::Integer(1));
 
         let stmt = _if!(
-            cond(id("f") => _block![i(1)]),
-            cond(id("t") => _block![i(2)]),
+            cond(var("f") => _block![i(1)]),
+            cond(var("t") => _block![i(2)]),
             else(_block![i(3)])
         );
         let actual = stmt.eval(&mut ctxt).expect("a value");
         assert_eq!(actual, Value::Integer(2));
 
         let stmt = _if!(
-            cond(id("f") => _block![i(1)]),
-            cond(id("f") => _block![i(2)]),
+            cond(var("f") => _block![i(1)]),
+            cond(var("f") => _block![i(2)]),
             else(_block![i(3)])
         );
         let actual = stmt.eval(&mut ctxt).expect("a value");
