@@ -1,0 +1,6 @@
+var a! = 1
+---
+Syntax error in tests/compile-error-detailed/aaa.usher at line 1, char 6:
+  |
+1 | var a! = 1
+  |      ^ Unexpected character '!'. Expected '=' to follow varable name in declaration.

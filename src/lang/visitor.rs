@@ -338,6 +338,7 @@ mod tests {
         let mut test_visitor = TestVisitor::default();
 
         let p = parse(
+            "dummy",
             r#"
                 this
                 end

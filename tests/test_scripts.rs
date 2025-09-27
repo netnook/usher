@@ -2,11 +2,12 @@ use pretty_assertions::assert_eq;
 use std::path::Path;
 
 datatest_stable::harness! {
+    { test = compile_error_detailed, root = "tests/compile-error-detailed", pattern = ".usher" },
     { test = compile_script, root = "tests/compile", pattern = ".usher" },
     { test = run_script, root = "tests/run", pattern = ".usher" },
 }
 
-fn compile_script(_path: &Path, src: String) -> datatest_stable::Result<()> {
+fn compile_script(path: &Path, src: String) -> datatest_stable::Result<()> {
     for part in src.split("*****\n") {
         let src = part.trim_end_matches('*').trim();
 
@@ -16,7 +17,7 @@ fn compile_script(_path: &Path, src: String) -> datatest_stable::Result<()> {
 
         let input = input.trim_end_matches('-');
 
-        let actual = match usher::parse(input) {
+        let actual = match usher::parse(path.to_str().unwrap(), input) {
             Ok(prog) => format!("{prog:-#?}"),
             Err(err) => format!("{err:#?}"),
         };
@@ -32,7 +33,7 @@ fn compile_script(_path: &Path, src: String) -> datatest_stable::Result<()> {
     Ok(())
 }
 
-fn run_script(_path: &Path, src: String) -> datatest_stable::Result<()> {
+fn compile_error_detailed(path: &Path, src: String) -> datatest_stable::Result<()> {
     for part in src.split("*****\n") {
         let src = part.trim_end_matches('*').trim();
 
@@ -42,7 +43,33 @@ fn run_script(_path: &Path, src: String) -> datatest_stable::Result<()> {
 
         let input = input.trim_end_matches('-');
 
-        let prog = usher::parse(input).expect("script to parse ok");
+        let actual = match usher::parse(path.to_str().unwrap(), input) {
+            Ok(prog) => format!("{prog:-#?}"),
+            Err(err) => err.to_display(),
+        };
+
+        assert_eq!(
+            actual.trim(),
+            expected.trim(),
+            "output did not match expectation for >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> '{}'",
+            src.lines().next().unwrap()
+        );
+    }
+
+    Ok(())
+}
+
+fn run_script(path: &Path, src: String) -> datatest_stable::Result<()> {
+    for part in src.split("*****\n") {
+        let src = part.trim_end_matches('*').trim();
+
+        let (input, expected) = src
+            .split_once("---\n")
+            .expect("src expected to have parts separated by ---");
+
+        let input = input.trim_end_matches('-');
+
+        let prog = usher::parse(path.to_str().unwrap(), input).expect("script to parse ok");
 
         let actual = match prog.run() {
             Ok(ok) => format!("{ok:#?}"),

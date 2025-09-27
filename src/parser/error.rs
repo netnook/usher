@@ -2,10 +2,46 @@ use super::SyntaxError;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct ParseError<'a> {
+    pub file: &'a str,
     pub line_no: usize,
     pub char_no: usize,
     pub line: &'a str,
     pub msg: &'static str,
+}
+
+impl<'a> ParseError<'a> {
+    pub fn to_display(&self) -> String {
+        let mut result = String::new();
+        result.push_str(&format!(
+            "Syntax error in {file} at line {line}, char {char}:\n",
+            file = self.file,
+            line = self.line_no + 1,
+            char = self.char_no + 1
+        ));
+
+        let line_num = format!("{}", self.line_no + 1);
+
+        result.push_str(&" ".repeat(line_num.len()));
+        result.push_str(" |\n");
+
+        result.push_str(&line_num);
+        result.push_str(" | ");
+        result.push_str(self.line);
+        result.push('\n');
+
+        result.push_str(&" ".repeat(line_num.len()));
+        result.push_str(" | ");
+
+        result.reserve(self.char_no);
+        for _ in 0..self.char_no {
+            result.push(' ');
+        }
+        result.push_str("^ ");
+        result.push_str(self.msg);
+        result.push('\n');
+
+        result
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -14,9 +50,14 @@ pub struct SourcePos {
     pub char: usize,
 }
 
-pub(super) fn build_parse_error(source: &'_ str, se: SyntaxError) -> ParseError<'_> {
+pub(super) fn build_parse_error<'a>(
+    file: &'a str,
+    source: &'a str,
+    se: SyntaxError,
+) -> ParseError<'a> {
     let info = find_source_position(source, se.pos);
     ParseError {
+        file,
         line_no: info.0.line,
         char_no: info.0.char,
         line: info.1,
@@ -78,6 +119,7 @@ mod tests {
     }
     fn pe<'a>(line_no: usize, char_no: usize, line: &'a str, msg: &'static str) -> ParseError<'a> {
         ParseError {
+            file: "the-file",
             line_no,
             char_no,
             line,
@@ -90,33 +132,33 @@ mod tests {
         const INPUT: &str =
             "line 0 \n line 1 \r\n line 2 \n\n\n line 5 \r\r\r line 8 \r\n\n\r\n line 11 ";
         assert_eq!(
-            build_parse_error(INPUT, se(INPUT.find("line 0").unwrap())),
+            build_parse_error("the-file", INPUT, se(INPUT.find("line 0").unwrap())),
             pe(0, 0, "line 0 ", "foo")
         );
 
         assert_eq!(
-            build_parse_error(INPUT, se(INPUT.find("line 1").unwrap())),
+            build_parse_error("the-file", INPUT, se(INPUT.find("line 1").unwrap())),
             pe(1, 1, " line 1 ", "foo")
         );
 
         assert_eq!(
-            build_parse_error(INPUT, se(INPUT.find("line 2").unwrap())),
+            build_parse_error("the-file", INPUT, se(INPUT.find("line 2").unwrap())),
             pe(2, 1, " line 2 ", "foo")
         );
         assert_eq!(
-            build_parse_error(INPUT, se(INPUT.find(" line 5").unwrap())),
+            build_parse_error("the-file", INPUT, se(INPUT.find(" line 5").unwrap())),
             pe(5, 0, " line 5 ", "foo")
         );
         assert_eq!(
-            build_parse_error(INPUT, se(INPUT.find(" line 5").unwrap() + 7)),
+            build_parse_error("the-file", INPUT, se(INPUT.find(" line 5").unwrap() + 7)),
             pe(5, 7, " line 5 ", "foo")
         );
         assert_eq!(
-            build_parse_error(INPUT, se(INPUT.find(" line 5").unwrap() + 8)),
+            build_parse_error("the-file", INPUT, se(INPUT.find(" line 5").unwrap() + 8)),
             pe(5, 8, " line 5 ", "foo")
         );
         assert_eq!(
-            build_parse_error(INPUT, se(INPUT.find(" line 11").unwrap())),
+            build_parse_error("the-file", INPUT, se(INPUT.find(" line 11").unwrap())),
             pe(11, 0, " line 11 ", "foo")
         );
     }

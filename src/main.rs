@@ -24,7 +24,7 @@ fn main() {
         std::process::exit(100)
     }
 
-    let script = match fs::read_to_string(file) {
+    let script = match fs::read_to_string(&file) {
         Ok(script) => script,
         Err(e) => {
             eprintln!("Error loading script: {e}");
@@ -32,17 +32,11 @@ fn main() {
         }
     };
 
-    let prog = match parser::parse(&script) {
+    let prog = match parser::parse(&file, &script) {
         Ok(prog) => prog,
         Err(e) => {
             eprintln!();
-            eprintln!(
-                "Error parsing script at line {}, char {}: {}",
-                e.line_no, e.char_no, e.msg
-            );
-            eprintln!();
-            eprintln!("> {}", e.line);
-            eprintln!("> {}^", " ".repeat(e.char_no));
+            eprintln!("{}", e.to_display());
 
             std::process::exit(102)
         }

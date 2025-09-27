@@ -29,12 +29,12 @@ pub(crate) const KEYWORDS: [&str; 17] = [
 // FIXME: add all necessary keywords
 pub(crate) const RESERVED_NAMES: [&str; 3] = ["print", "error", "std"];
 
-pub fn parse(input: &'_ str) -> Result<Program<'_>, ParseError<'_>> {
+pub fn parse<'a>(filename: &'a str, input: &'a str) -> Result<Program<'a>, ParseError<'a>> {
     let mut p = Parser::new(input);
 
     let program = match p.program() {
         Ok(p) => p,
-        Err(se) => return Err(build_parse_error(input, se)),
+        Err(se) => return Err(build_parse_error(filename, input, se)),
     };
 
     Ok(program)

@@ -2,7 +2,8 @@ use super::{ParseResult, Parser, SyntaxError};
 use crate::lang::{AstNode, Declaration};
 
 const EXPECTED_IDENTIFIER: &str = "Expected identifier after 'var'.";
-const EXPECTED_EQUAL: &str = "Expected equals sign after identifier.";
+const EXPECTED_EQUAL: &str =
+    "Unexpected character 'x'. Expected '=' to follow varable name in declaration.";
 const EXPECTED_EXPRESSION: &str = "Expected expression.";
 
 impl<'a> Parser<'a> {

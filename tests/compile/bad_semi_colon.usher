@@ -7,6 +7,7 @@ var a = dict(
 var a = a.x
 ----------------
 ParseError {
+    file: "tests/compile/bad_semi_colon.usher",
     line_no: 4,
     char_no: 1,
     line: ");",
