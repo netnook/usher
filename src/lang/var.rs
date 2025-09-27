@@ -3,6 +3,26 @@ use crate::lang::{
     Setter, Span, Value, Visitor, VisitorResult, accept_default,
 };
 
+#[derive(PartialEq, Debug, Clone)]
+pub struct This {}
+
+impl This {
+    pub(crate) fn new() -> Self {
+        Self {}
+    }
+}
+
+impl Eval for This {
+    fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
+        match ctxt.get_this() {
+            Some(this) => Ok(this),
+            None => Err(EvalStop::Error(InternalProgramError::ThisNotAvailable)),
+        }
+    }
+}
+
+accept_default!(This);
+
 #[derive(PartialEq, Clone)]
 pub struct Var {
     pub(crate) name: Identifier,
