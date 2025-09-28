@@ -21,9 +21,9 @@ pub use error::SyntaxError;
 use error::{ParseError, build_parse_error};
 
 // FIXME: add all necessary keywords
-pub(crate) const KEYWORDS: [&str; 17] = [
+pub(crate) const KEYWORDS: [&str; 18] = [
     "if", "else", "for", "in", "break", "continue", "return", "function", "var", "true", "false",
-    "nil", "end", "dict", "switch", "case", "defer",
+    "nil", "end", "dict", "switch", "case", "defer", "exit",
 ];
 
 // FIXME: add all necessary keywords
