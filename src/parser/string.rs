@@ -3,13 +3,6 @@ use std::rc::Rc;
 use super::{ParseResult, Parser, SyntaxError};
 use crate::lang::{AstNode, InterpolatedStr, Literal, Span, Value};
 
-pub(super) const MISSING_END_QUOTE: &str = "Missing closing double quote to end string.";
-pub(super) const CRLF_IN_STRING_NOT_ALLOWED: &str = "Invalid characters CR or LF in string.";
-pub(super) const INVALID_ESCAPE: &str = "Invalid escape sequence.";
-pub(super) const INVALID_EXPRESSION: &str = "Invalid expression.";
-pub(super) const MISSING_MATCHING_CLOSING_BRACE: &str =
-    "Expected closing brace '}' after interpolation expression.";
-
 impl<'a> Parser<'a> {
     /// Consume a string if next on input and return it.
     /// Otherwise consume nothing and return `None`
@@ -33,7 +26,7 @@ impl<'a> Parser<'a> {
             });
 
             if peek == b'\r' || peek == b'\n' {
-                return Err(SyntaxError::new(self.pos, CRLF_IN_STRING_NOT_ALLOWED));
+                return Err(SyntaxError::StringNotAllowdCRLF { pos: self.pos });
             }
 
             if peek == b'\\' {
@@ -49,7 +42,7 @@ impl<'a> Parser<'a> {
                     b'{' => literal.push('{'),
                     b'}' => literal.push('}'),
                     _ => {
-                        return Err(SyntaxError::new(self.pos - 1, INVALID_ESCAPE));
+                        return Err(SyntaxError::StringInvalidEscape { pos: self.pos - 1 });
                     }
                 }
 
@@ -96,15 +89,21 @@ impl<'a> Parser<'a> {
                 self.linespace();
                 let savepoint = self.pos;
                 let Some(expr) = self.expression()? else {
-                    return Err(SyntaxError::new(savepoint, INVALID_EXPRESSION));
+                    return Err(SyntaxError::ExpectsExpression { pos: savepoint });
                 };
 
                 interpolator_result.push(expr);
 
                 self.linespace();
 
+                if self.is_eoi() {
+                    return Err(SyntaxError::StringMissingCloseBrace { pos: part_start });
+                }
                 if !self.char(b'}') {
-                    return Err(SyntaxError::new(part_start, MISSING_MATCHING_CLOSING_BRACE));
+                    return Err(SyntaxError::StringExpectedCloseBrace {
+                        got: self.peek() as char,
+                        pos: self.pos,
+                    });
                 }
 
                 literal = String::new();
@@ -113,7 +112,7 @@ impl<'a> Parser<'a> {
                 continue;
             }
 
-            return Err(SyntaxError::new(start, MISSING_END_QUOTE));
+            return Err(SyntaxError::StringMissingCloseQuote { pos: start });
         }
     }
 }
@@ -128,12 +127,8 @@ mod tests {
         do_test_parser_some(Parser::string, input, expected.into(), expected_end);
     }
     #[track_caller]
-    fn do_test_strings_err(
-        input: &'static str,
-        expected_err_pos: usize,
-        expected_err_msg: &'static str,
-    ) {
-        do_test_parser_err(Parser::string, input, expected_err_pos, expected_err_msg);
+    fn do_test_strings_err(input: &'static str, expected_err: SyntaxError) {
+        do_test_parser_err(Parser::string, input, expected_err);
     }
 
     #[test]
@@ -156,10 +151,17 @@ mod tests {
 
         do_test_parser_none(Parser::string, r#"_one"_"#);
 
-        do_test_strings_err(r#"_"one"#, 1, MISSING_END_QUOTE);
-        do_test_strings_err("_\"on\re", 4, CRLF_IN_STRING_NOT_ALLOWED);
-        do_test_strings_err(r#"_"aa\xaa""#, 4, INVALID_ESCAPE);
-        do_test_strings_err(r#"_"aa{aa"_"#, 4, MISSING_MATCHING_CLOSING_BRACE);
-        do_test_strings_err(r#"_"aa{,}"_"#, 5, INVALID_EXPRESSION);
+        do_test_strings_err(r#"_"one"#, SyntaxError::StringMissingCloseQuote { pos: 1 });
+        do_test_strings_err("_\"on\re", SyntaxError::StringNotAllowdCRLF { pos: 4 });
+        do_test_strings_err(r#"_"aa\xaa""#, SyntaxError::StringInvalidEscape { pos: 4 });
+        do_test_strings_err(
+            r#"_"aa{aa"_"#,
+            SyntaxError::StringExpectedCloseBrace { got: '"', pos: 7 },
+        );
+        do_test_strings_err(
+            r#"_"aa{aa"#,
+            SyntaxError::StringMissingCloseBrace { pos: 4 },
+        );
+        do_test_strings_err(r#"_"aa{,}"_"#, SyntaxError::ExpectsExpression { pos: 5 });
     }
 }

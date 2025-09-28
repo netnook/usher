@@ -1,11 +1,6 @@
 use super::{ParseResult, Parser, SyntaxError};
 use crate::lang::{Assignment, AstNode, Block, Break, Continue, End, Span};
 
-pub(crate) const MISSING_BLOCK_END: &str = "Missing closing brace to end block.";
-pub(crate) const EXPECTED_STATEMENT: &str = "Expected statement.";
-pub(crate) const EXPECTED_EXPRESSION_ON_RHS: &str = "Expected expression on RHS of assignment.";
-pub(crate) const INVALID_LHS_OF_ASSIGNMENT: &str = "Invalid LHS of assignment.";
-
 impl<'a> Parser<'a> {
     pub(super) fn stmt(&mut self) -> ParseResult<Option<AstNode>> {
         let start = self.pos;
@@ -69,20 +64,17 @@ impl<'a> Parser<'a> {
             }
 
             if self.is_eoi() {
-                return Err(SyntaxError::new(start, MISSING_BLOCK_END));
+                return Err(SyntaxError::MissingClosingBrace { pos: start });
             }
 
             if first {
                 first = false;
             } else if !details.newline {
-                return Err(SyntaxError::new(
-                    self.pos,
-                    super::program::EXPECTED_NEW_LINE_AFTER_STMT,
-                ));
+                return Err(SyntaxError::ExpectedNewLineAfterStmt { pos: self.pos });
             }
 
             let Some(stmt) = self.stmt()? else {
-                return Err(SyntaxError::new(self.pos, EXPECTED_STATEMENT));
+                return Err(SyntaxError::ExpectedStmt { pos: self.pos });
             };
 
             stmts.push(stmt);
@@ -96,7 +88,6 @@ impl<'a> Parser<'a> {
 
     pub(super) fn assignment_or_expression(&mut self) -> ParseResult<Option<AstNode>> {
         // FIXME check assignment does not assign to resered name on LHS
-        let start = self.pos;
 
         let Some(expr) = self.expression()? else {
             return Ok(None);
@@ -114,17 +105,11 @@ impl<'a> Parser<'a> {
                 AstNode::Var(_) | AstNode::PropertyOf(_) | AstNode::IndexOf(_)
             );
             if !pass {
-                return Err(SyntaxError {
-                    pos: start,
-                    msg: INVALID_LHS_OF_ASSIGNMENT,
-                });
+                return Err(SyntaxError::AssignmentInvalidLHS { span: lhs.span() });
             }
 
             let Some(rhs) = self.expression()? else {
-                return Err(SyntaxError {
-                    pos: self.pos,
-                    msg: EXPECTED_EXPRESSION_ON_RHS,
-                });
+                return Err(SyntaxError::ExpectsExpression { pos: self.pos });
             };
 
             Ok(Some(AstNode::Assignment(Assignment {
@@ -141,7 +126,7 @@ impl<'a> Parser<'a> {
 #[cfg(test)]
 pub(super) mod tests {
     use super::*;
-    use crate::parser::{program::EXPECTED_NEW_LINE_AFTER_STMT, tests::*};
+    use crate::parser::tests::*;
 
     #[track_caller]
     fn do_test_block_ok(input: &'static str, expected: Block, expected_end: isize) {
@@ -149,12 +134,8 @@ pub(super) mod tests {
     }
 
     #[track_caller]
-    fn do_test_block_err(
-        input: &'static str,
-        expected_err_pos: usize,
-        expected_err_msg: &'static str,
-    ) {
-        do_test_parser_err(Parser::block, input, expected_err_pos, expected_err_msg);
+    fn do_test_block_err(input: &'static str, expected_err: SyntaxError) {
+        do_test_parser_err(Parser::block, input, expected_err);
     }
 
     #[test]
@@ -165,9 +146,12 @@ pub(super) mod tests {
         do_test_block_ok(" { \n 1 \n 2 \n 3 \n } ", _block![i(1), i(2), i(3)], -1);
         do_test_block_ok(" { #foo\n 1 #bar\n #baz \n 2 } ", _block![i(1), i(2)], -1);
 
-        do_test_block_err(" { 1 ", 1, MISSING_BLOCK_END);
-        do_test_block_err(" { 1 2 } ", 5, EXPECTED_NEW_LINE_AFTER_STMT);
-        do_test_block_err(" { 1 \n ; } ", 7, EXPECTED_STATEMENT);
+        do_test_block_err(" { 1 ", SyntaxError::MissingClosingBrace { pos: 1 });
+        do_test_block_err(
+            " { 1 2 } ",
+            SyntaxError::ExpectedNewLineAfterStmt { pos: 5 },
+        );
+        do_test_block_err(" { 1 \n ; } ", SyntaxError::ExpectedStmt { pos: 7 });
     }
 
     #[track_caller]
@@ -199,23 +183,19 @@ pub(super) mod tests {
     }
 
     #[track_caller]
-    fn do_test_assign_or_expr_err(
-        input: &'static str,
-        expected_err_pos: usize,
-        expected_err_msg: &'static str,
-    ) {
-        do_test_parser_err(
-            Parser::assignment_or_expression,
-            input,
-            expected_err_pos,
-            expected_err_msg,
-        );
+    fn do_test_assign_or_expr_err(input: &'static str, expected_err: SyntaxError) {
+        do_test_parser_err(Parser::assignment_or_expression, input, expected_err);
     }
 
     #[test]
     fn test_assign_or_expr_err() {
-        do_test_assign_or_expr_err(" a = ;", 5, EXPECTED_EXPRESSION_ON_RHS);
-        do_test_assign_or_expr_err(" a + b = 3", 1, INVALID_LHS_OF_ASSIGNMENT);
+        do_test_assign_or_expr_err(" a = ;", SyntaxError::ExpectsExpression { pos: 5 });
+        do_test_assign_or_expr_err(
+            " a + b = 3",
+            SyntaxError::AssignmentInvalidLHS {
+                span: Span::new(1, 5),
+            },
+        );
     }
 
     #[track_caller]

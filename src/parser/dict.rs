@@ -1,12 +1,6 @@
 use super::{ParseResult, Parser, SyntaxError};
 use crate::lang::{AstNode, DictBuilder, Span};
 
-pub(crate) const MISSING_CLOSE: &str = "Missing closing ')'.";
-pub(crate) const EXPECTED_OPEN: &str = "Expected opening '('.";
-pub(crate) const EXPECTED_KEY_EXPRESSION_OR_CLOSE: &str = "Expected expression or ')'.";
-pub(crate) const EXPECTED_COMMA_OR_CLOSE: &str = "Expected ',' or ')'.";
-pub(crate) const EXPECTED_KEY_VALUE_PAIR: &str = "Expected key value pair separated by ':'.";
-
 impl<'a> Parser<'a> {
     /// Consume an object if next on input and return it.
     /// Otherwise consume nothing and return `None`
@@ -16,10 +10,7 @@ impl<'a> Parser<'a> {
     pub(super) fn dict(&mut self, start: usize) -> ParseResult<DictBuilder> {
         self.linespace();
         if !self.char(b'(') {
-            return Err(SyntaxError {
-                pos: self.pos,
-                msg: EXPECTED_OPEN,
-            });
+            return Err(SyntaxError::DictExpectedOpenParens { pos: self.pos });
         };
 
         let open_pos = self.pos - 1;
@@ -31,26 +22,16 @@ impl<'a> Parser<'a> {
                 break;
             }
 
-            let kv_start = self.pos;
             let Some(n) = self.expression()? else {
                 if self.is_eoi() {
-                    return Err(SyntaxError {
-                        pos: open_pos,
-                        msg: MISSING_CLOSE,
-                    });
+                    return Err(SyntaxError::DictMissingCloseParens { pos: open_pos });
                 } else {
-                    return Err(SyntaxError {
-                        pos: self.pos,
-                        msg: EXPECTED_KEY_EXPRESSION_OR_CLOSE,
-                    });
+                    return Err(SyntaxError::DictExpectedKeyOrCloseParens { pos: self.pos });
                 }
             };
 
             let AstNode::KeyValue(kv) = n else {
-                return Err(SyntaxError {
-                    pos: kv_start,
-                    msg: EXPECTED_KEY_VALUE_PAIR,
-                });
+                return Err(SyntaxError::DictExpectedKeyValuePair { span: n.span() });
             };
 
             entries.push(kv);
@@ -67,16 +48,10 @@ impl<'a> Parser<'a> {
             }
 
             if self.is_eoi() {
-                return Err(SyntaxError {
-                    pos: open_pos,
-                    msg: MISSING_CLOSE,
-                });
+                return Err(SyntaxError::DictMissingCloseParens { pos: open_pos });
             }
 
-            return Err(SyntaxError {
-                pos: self.pos,
-                msg: EXPECTED_COMMA_OR_CLOSE,
-            });
+            return Err(SyntaxError::DictExpectedCommaOrCloseParens { pos: self.pos });
         }
 
         Ok(DictBuilder {
@@ -90,11 +65,7 @@ impl<'a> Parser<'a> {
 mod tests {
     use super::*;
     use crate::parser::{
-        expression::{
-            EXPECTED_EXPRESSION, EXPECTED_IDENT_ON_KV_LHS,
-            tests::{do_test_expr_err, do_test_expr_ok},
-        },
-        string::MISSING_END_QUOTE,
+        expression::tests::{do_test_expr_err, do_test_expr_ok},
         tests::*,
     };
 
@@ -138,29 +109,75 @@ mod tests {
 
     #[test]
     fn test_dict_err() {
-        do_test_expr_err(r#" dict("#, 5, MISSING_CLOSE);
-        do_test_expr_err(r#" dict(a:1, b:1"#, 5, MISSING_CLOSE);
-        do_test_expr_err(r#" dict(a:1, b:1, "#, 5, MISSING_CLOSE);
+        do_test_expr_err(r#" dict("#, SyntaxError::DictMissingCloseParens { pos: 5 });
+        do_test_expr_err(
+            r#" dict(a:1, b:1"#,
+            SyntaxError::DictMissingCloseParens { pos: 5 },
+        );
+        do_test_expr_err(
+            r#" dict(a:1, b:1, "#,
+            SyntaxError::DictMissingCloseParens { pos: 5 },
+        );
 
-        do_test_expr_err(r#" dict( ; ) "#, 7, EXPECTED_KEY_EXPRESSION_OR_CLOSE);
-        do_test_expr_err(r#" dict( , ) "#, 7, EXPECTED_KEY_EXPRESSION_OR_CLOSE);
-        do_test_expr_err(r#" dict( a:1 , , ) "#, 13, EXPECTED_KEY_EXPRESSION_OR_CLOSE);
-        do_test_expr_err(r#" dict( a:1 ; ) "#, 11, EXPECTED_COMMA_OR_CLOSE);
+        do_test_expr_err(
+            r#" dict( ; ) "#,
+            SyntaxError::DictExpectedKeyOrCloseParens { pos: 7 },
+        );
+        do_test_expr_err(
+            r#" dict( , ) "#,
+            SyntaxError::DictExpectedKeyOrCloseParens { pos: 7 },
+        );
+        do_test_expr_err(
+            r#" dict( a:1 , , ) "#,
+            SyntaxError::DictExpectedKeyOrCloseParens { pos: 13 },
+        );
+        do_test_expr_err(
+            r#" dict( a:1 ; ) "#,
+            SyntaxError::DictExpectedCommaOrCloseParens { pos: 11 },
+        );
         do_test_expr_err(
             r#" dict(a:1, b:1, - "#,
-            16,
-            EXPECTED_KEY_EXPRESSION_OR_CLOSE,
+            SyntaxError::DictExpectedKeyOrCloseParens { pos: 16 },
         );
-        do_test_expr_err(r#" dict( a:1 ; ) "#, 11, EXPECTED_COMMA_OR_CLOSE);
-        do_test_expr_err(r#" dict( 1;1  ) "#, 7, EXPECTED_KEY_VALUE_PAIR);
-        do_test_expr_err(r#" dict( nil:1 ; ) "#, 7, EXPECTED_IDENT_ON_KV_LHS);
-        do_test_expr_err(r#" dict( a:1, ] ) "#, 12, EXPECTED_KEY_EXPRESSION_OR_CLOSE);
+        do_test_expr_err(
+            r#" dict( a:1 ; ) "#,
+            SyntaxError::DictExpectedCommaOrCloseParens { pos: 11 },
+        );
+        do_test_expr_err(
+            r#" dict( 12;1  ) "#,
+            SyntaxError::DictExpectedKeyValuePair {
+                span: Span::new(7, 2),
+            },
+        );
+        do_test_expr_err(
+            r#" dict( a:1, ] ) "#,
+            SyntaxError::DictExpectedKeyOrCloseParens { pos: 12 },
+        );
+        do_test_expr_err(
+            r#" dict( a:1 , b 2, ) "#,
+            SyntaxError::DictExpectedKeyValuePair {
+                span: Span::new(13, 1),
+            },
+        );
+        do_test_expr_err(
+            " dict #comment \n (a:1) ",
+            SyntaxError::DictExpectedOpenParens { pos: 6 },
+        );
 
-        do_test_expr_err(r#" dict( a:1 , b 2, ) "#, 13, EXPECTED_KEY_VALUE_PAIR);
-
-        do_test_expr_err(r#" dict( a:1 , b: ;, ) "#, 16, EXPECTED_EXPRESSION);
-
-        do_test_expr_err(r#" dict(a:1, b:"aaa ) "#, 13, MISSING_END_QUOTE);
-        do_test_expr_err(" dict #comment \n (a:1) ", 6, EXPECTED_OPEN);
+        do_test_expr_err(
+            r#" dict( a:1 , b: ;, ) "#,
+            SyntaxError::ExpectsExpression { pos: 16 },
+        );
+        do_test_expr_err(
+            r#" dict( nil:1 ; ) "#,
+            SyntaxError::KeyValueExpectsIdentOnLHS {
+                span: Span::new(7, 3),
+                pos: 10,
+            },
+        );
+        do_test_expr_err(
+            r#" dict(a:1, b:"aaa ) "#,
+            SyntaxError::StringMissingCloseQuote { pos: 13 },
+        );
     }
 }

@@ -14,10 +14,10 @@ mod program;
 mod return_stmt;
 mod stmt;
 mod string;
-mod utils;
 mod validation;
 
 use crate::lang::Program;
+pub use error::SyntaxError;
 use error::{ParseError, build_parse_error};
 
 // FIXME: add all necessary keywords
@@ -38,18 +38,6 @@ pub fn parse<'a>(filename: &'a str, input: &'a str) -> Result<Program<'a>, Parse
     };
 
     Ok(program)
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub(crate) struct SyntaxError {
-    pos: usize,
-    msg: &'static str,
-}
-
-impl SyntaxError {
-    fn new(pos: usize, msg: &'static str) -> Self {
-        Self { pos, msg }
-    }
 }
 
 type ParseResult<T> = Result<T, SyntaxError>;
@@ -593,8 +581,7 @@ pub mod tests {
     pub(crate) fn do_test_parser_err<'a, F, T>(
         func: F,
         input: &'static str,
-        expected_err_pos: usize,
-        expected_err_msg: &'static str,
+        expected_err: SyntaxError,
     ) where
         F: FnOnce(&mut Parser<'a>) -> Result<Option<T>, SyntaxError>,
         T: PartialEq<T> + std::fmt::Debug,
@@ -605,11 +592,7 @@ pub mod tests {
         let actual = func(&mut parser).expect_err("parser should error");
 
         assert_eq!(
-            actual,
-            SyntaxError {
-                pos: expected_err_pos,
-                msg: expected_err_msg
-            },
+            actual, expected_err,
             "assert actual (left) == expected (right)"
         );
     }

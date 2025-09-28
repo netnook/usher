@@ -19,7 +19,7 @@ fn compile_script(path: &Path, src: String) -> datatest_stable::Result<()> {
 
         let actual = match usher::parse(path.to_str().unwrap(), input) {
             Ok(prog) => format!("{prog:-#?}"),
-            Err(err) => format!("{err:#?}"),
+            Err(err) => format!("{err:-#?}"),
         };
 
         assert_eq!(

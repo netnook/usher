@@ -6,18 +6,6 @@ use crate::lang::{
 };
 use std::rc::Rc;
 
-pub(crate) const EXPECTED_EXPRESSION: &str = "Expected expression.";
-pub(crate) const EXPECTED_COSING_PARENS: &str = "Expected closing parenthesis ')'";
-pub(crate) const EXPECTED_COSING_BRACKET: &str = "Expected closing bracket ']'";
-pub(crate) const EXPECTED_IDENTIFIER: &str = "Expected identifier.";
-pub(crate) const EXPECTED_IDENT_ON_KV_LHS: &str = "Expected identifier on LHS of key:value pair.";
-pub(crate) const MISSING_CALL_CLOSE: &str =
-    "Expected closing parenthesis ')' after function call arguments.";
-pub(crate) const EXPECTED_CALL_ARG_OR_CLOSE: &str =
-    "Expected function call argument or closing parenthesis ')'.";
-pub(crate) const EXPECTED_CALL_COMMA_OR_CLOSE: &str =
-    "Expected comma or closing parenthesis ')' for function call arguments.";
-
 impl<'a> Parser<'a> {
     /// Consume an expression or nothing.
     pub(super) fn expression(&mut self) -> ParseResult<Option<AstNode>> {
@@ -30,8 +18,6 @@ impl<'a> Parser<'a> {
 
     // Key value expression
     fn key_value_expression(&mut self) -> ParseResult<Option<AstNode>> {
-        let start = self.pos;
-
         let Some(lhs) = self.logical_expression()? else {
             return Ok(None);
         };
@@ -46,19 +32,16 @@ impl<'a> Parser<'a> {
         }
 
         let AstNode::Var(id) = lhs else {
-            return Err(SyntaxError {
-                pos: start,
-                msg: EXPECTED_IDENT_ON_KV_LHS,
+            return Err(SyntaxError::KeyValueExpectsIdentOnLHS {
+                span: lhs.span(),
+                pos: self.pos - 1,
             });
         };
 
         self.whitespace_comments();
 
         let Some(rhs) = self.logical_expression()? else {
-            return Err(SyntaxError {
-                pos: self.pos,
-                msg: EXPECTED_EXPRESSION,
-            });
+            return Err(SyntaxError::ExpectsExpression { pos: self.pos });
         };
 
         Ok(Some(AstNode::KeyValue(KeyValueBuilder {
@@ -114,10 +97,7 @@ impl<'a> Parser<'a> {
         self.whitespace_comments();
 
         let Some(rhs) = self.addsub_expression()? else {
-            return Err(SyntaxError {
-                pos: self.pos,
-                msg: EXPECTED_EXPRESSION,
-            });
+            return Err(SyntaxError::ExpectsExpression { pos: self.pos });
         };
 
         lhs = AstNode::BinaryOp(BinaryOp {
@@ -189,10 +169,7 @@ impl<'a> Parser<'a> {
             self.whitespace_comments();
 
             let Some(rhs) = next_fn(self)? else {
-                return Err(SyntaxError {
-                    pos: self.pos,
-                    msg: EXPECTED_EXPRESSION,
-                });
+                return Err(SyntaxError::ExpectsExpression { pos: self.pos });
             };
 
             lhs = AstNode::BinaryOp(BinaryOp {
@@ -405,24 +382,26 @@ impl<'a> Parser<'a> {
     // Parenthesised expression
     // "(" expr ")"
     fn parens_expression(&mut self) -> ParseResult<Option<AstNode>> {
+        let start = self.pos;
         if !self.char(b'(') {
             return Ok(None);
         };
         self.whitespace_comments();
 
         let Some(expr) = self.expression()? else {
-            return Err(super::SyntaxError {
-                pos: self.pos,
-                msg: EXPECTED_EXPRESSION,
-            });
+            return Err(SyntaxError::ExpectsExpression { pos: self.pos });
         };
 
         self.whitespace_comments();
 
+        if self.is_eoi() {
+            return Err(SyntaxError::MissingClosingParens { pos: start });
+        };
+
         if !self.char(b')') {
-            return Err(super::SyntaxError {
+            return Err(SyntaxError::ExpectedClosingParens {
+                got: self.peek() as char,
                 pos: self.pos,
-                msg: EXPECTED_COSING_PARENS,
             });
         };
 
@@ -437,9 +416,8 @@ impl<'a> Parser<'a> {
 
         self.whitespace_comments();
 
-        // let marker = self.pos;
         let Some(ident) = self.unchecked_identifier() else {
-            return Err(SyntaxError::new(self.pos, EXPECTED_IDENTIFIER));
+            return Err(SyntaxError::PropertyOfExpectedIdentifier { pos: self.pos });
         };
 
         Ok(Some((
@@ -457,13 +435,16 @@ impl<'a> Parser<'a> {
         self.whitespace_comments();
 
         let Some(index) = self.expression()? else {
-            return Err(SyntaxError::new(self.pos, EXPECTED_EXPRESSION));
+            return Err(SyntaxError::ExpectsExpression { pos: self.pos });
         };
 
         self.whitespace_comments();
 
         if !self.char(b']') {
-            return Err(SyntaxError::new(self.pos, EXPECTED_COSING_BRACKET));
+            return Err(SyntaxError::IndexOfExpectedClosingBracket {
+                got: self.peek() as char,
+                pos: self.pos,
+            });
         }
 
         Ok(Some((index, Span::start_end(start, self.pos))))
@@ -485,14 +466,10 @@ impl<'a> Parser<'a> {
 
             let Some(expr) = self.expression()? else {
                 if self.is_eoi() {
-                    return Err(SyntaxError {
-                        pos: start,
-                        msg: MISSING_CALL_CLOSE,
-                    });
+                    return Err(SyntaxError::MissingClosingParens { pos: start });
                 } else {
-                    return Err(SyntaxError {
+                    return Err(SyntaxError::FunctionCallExpectedArgOrClosingParens {
                         pos: self.pos,
-                        msg: EXPECTED_CALL_ARG_OR_CLOSE,
                     });
                 }
             };
@@ -520,16 +497,10 @@ impl<'a> Parser<'a> {
             }
 
             if self.is_eoi() {
-                return Err(SyntaxError {
-                    pos: start,
-                    msg: MISSING_CALL_CLOSE,
-                });
+                return Err(SyntaxError::MissingClosingParens { pos: start });
             }
 
-            return Err(SyntaxError {
-                pos: self.pos,
-                msg: EXPECTED_CALL_COMMA_OR_CLOSE,
-            });
+            return Err(SyntaxError::FunctionCallExpectedCommaOrCloseParens { pos: self.pos });
         }
 
         Ok(Some((args, Span::start_end(start, self.pos))))
@@ -543,7 +514,7 @@ impl<'a> Parser<'a> {
 #[cfg(test)]
 pub mod tests {
     use super::*;
-    use crate::parser::{dict::EXPECTED_OPEN, string::MISSING_END_QUOTE, tests::*};
+    use crate::parser::tests::*;
 
     #[track_caller]
     pub(crate) fn do_test_expr_ok(
@@ -560,17 +531,8 @@ pub mod tests {
     }
 
     #[track_caller]
-    pub(crate) fn do_test_expr_err(
-        input: &'static str,
-        expected_err_pos: usize,
-        expected_err_msg: &'static str,
-    ) {
-        do_test_parser_err(
-            Parser::expression,
-            input,
-            expected_err_pos,
-            expected_err_msg,
-        );
+    pub(crate) fn do_test_expr_err(input: &'static str, expected_err: SyntaxError) {
+        do_test_parser_err(Parser::expression, input, expected_err);
     }
 
     #[test]
@@ -786,12 +748,21 @@ pub mod tests {
             -1,
         );
 
-        do_test_expr_err(" dict.foo ", 5, EXPECTED_OPEN);
-        do_test_expr_err(" foo(]) ", 5, EXPECTED_CALL_ARG_OR_CLOSE);
-        do_test_expr_err(" foo(a,,) ", 7, EXPECTED_CALL_ARG_OR_CLOSE);
-        do_test_expr_err(" foo(a b) ", 7, EXPECTED_CALL_COMMA_OR_CLOSE);
-        do_test_expr_err(" foo(a", 4, MISSING_CALL_CLOSE);
-        do_test_expr_err(" foo( ", 4, MISSING_CALL_CLOSE);
+        do_test_expr_err(" dict.foo ", SyntaxError::DictExpectedOpenParens { pos: 5 });
+        do_test_expr_err(
+            " foo(]) ",
+            SyntaxError::FunctionCallExpectedArgOrClosingParens { pos: 5 },
+        );
+        do_test_expr_err(
+            " foo(a,,) ",
+            SyntaxError::FunctionCallExpectedArgOrClosingParens { pos: 7 },
+        );
+        do_test_expr_err(
+            " foo(a b) ",
+            SyntaxError::FunctionCallExpectedCommaOrCloseParens { pos: 7 },
+        );
+        do_test_expr_err(" foo(a", SyntaxError::MissingClosingParens { pos: 4 });
+        do_test_expr_err(" foo( ", SyntaxError::MissingClosingParens { pos: 4 });
     }
 
     #[test]
@@ -808,10 +779,13 @@ pub mod tests {
 
     #[test]
     fn test_parens_expr_err() {
-        do_test_expr_err(" (((1)] ", 6, EXPECTED_COSING_PARENS);
-        do_test_expr_err(" (((1", 5, EXPECTED_COSING_PARENS);
-        do_test_expr_err(" (;", 2, EXPECTED_EXPRESSION);
-        do_test_expr_err(" (((\"..", 4, MISSING_END_QUOTE);
+        do_test_expr_err(
+            " (((1)] ",
+            SyntaxError::ExpectedClosingParens { got: ']', pos: 6 },
+        );
+        do_test_expr_err(" (((1", SyntaxError::MissingClosingParens { pos: 3 });
+        do_test_expr_err(" (;", SyntaxError::ExpectsExpression { pos: 2 });
+        do_test_expr_err(" (((\"..", SyntaxError::StringMissingCloseQuote { pos: 4 });
     }
 
     #[test]

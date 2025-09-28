@@ -4,9 +4,6 @@ use super::{
 };
 use crate::lang::{Identifier, Span, Var};
 
-pub(super) const KEYWORD_RESERVED: &str = "Keywords may not be used as identifier.";
-pub(super) const NAME_RESERVED: &str = "Reserved name cannot be used for declarations.";
-
 impl<'a> Parser<'a> {
     /// Consume a identifier if next on input and return it.  Checks that identifier is
     /// not one of the reserved words.
@@ -22,10 +19,16 @@ impl<'a> Parser<'a> {
         // let ident = String::from_utf8_lossy(ident).to_string();
 
         if KEYWORDS.contains(&ident) {
-            return Err(SyntaxError::new(start, KEYWORD_RESERVED));
+            return Err(SyntaxError::ReservedKeyword {
+                got: ident.to_string(),
+                span: Span::new(start, ident.len()), // FIXME: should get span from ident
+            });
         }
         if RESERVED_NAMES.contains(&ident) {
-            return Err(SyntaxError::new(start, NAME_RESERVED));
+            return Err(SyntaxError::ReservedName {
+                got: ident.to_string(),
+                span: Span::new(start, ident.len()), // FIXME: should get span from ident
+            });
         }
 
         Ok(Some(Var::new(
@@ -73,7 +76,21 @@ mod tests {
         do_test_parser_none_t(f, "-1-");
         do_test_parser_none_t(f, "-_-");
 
-        do_test_parser_err(f, "-print-", 1, NAME_RESERVED);
-        do_test_parser_err(f, "-for-", 1, KEYWORD_RESERVED);
+        do_test_parser_err(
+            f,
+            "-print-",
+            SyntaxError::ReservedName {
+                got: "print".to_string(),
+                span: Span::new(1, 5),
+            },
+        );
+        do_test_parser_err(
+            f,
+            "-for-",
+            SyntaxError::ReservedKeyword {
+                got: "for".to_string(),
+                span: Span::new(1, 3),
+            },
+        );
     }
 }

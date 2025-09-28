@@ -17,7 +17,7 @@ impl core::fmt::Debug for ListBuilder {
             f.debug_list().entries(&self.entries).finish()?;
             f.write_str("}")
         } else {
-            f.debug_struct("ListBuilder ")
+            f.debug_struct("ListBuilder")
                 .field("entries", &self.entries)
                 .field("span", &self.span)
                 .finish()

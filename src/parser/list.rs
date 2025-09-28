@@ -1,10 +1,6 @@
 use super::{ParseResult, Parser, SyntaxError};
 use crate::lang::{ListBuilder, Span};
 
-const MISSING_CLOSE: &str = "Missing closing ']'.";
-const EXPECTED_EXPRESSION_OR_CLOSE: &str = "Expected expression or ']'.";
-const EXPECTED_COMMA_OR_CLOSE: &str = "Expected ',' or ']'.";
-
 impl<'a> Parser<'a> {
     /// Consume a list arguments if next on input and return it.
     /// "[" expr,* ,? "]"
@@ -24,14 +20,10 @@ impl<'a> Parser<'a> {
 
             let Some(expr) = self.expression()? else {
                 if self.is_eoi() {
-                    return Err(SyntaxError {
-                        pos: start,
-                        msg: MISSING_CLOSE,
-                    });
+                    return Err(SyntaxError::MissingClosingBracket { pos: start });
                 } else {
-                    return Err(SyntaxError {
+                    return Err(SyntaxError::ListExpectedExpressionOrCloseBracket {
                         pos: self.pos,
-                        msg: EXPECTED_EXPRESSION_OR_CLOSE,
                     });
                 }
             };
@@ -49,16 +41,10 @@ impl<'a> Parser<'a> {
             }
 
             if self.is_eoi() {
-                return Err(SyntaxError {
-                    pos: start,
-                    msg: MISSING_CLOSE,
-                });
+                return Err(SyntaxError::MissingClosingBracket { pos: start });
             }
 
-            return Err(SyntaxError {
-                pos: self.pos,
-                msg: EXPECTED_COMMA_OR_CLOSE,
-            });
+            return Err(SyntaxError::ListExpectedCommaOrCloseBracket { pos: self.pos });
         }
 
         Ok(Some(ListBuilder::new(
@@ -73,7 +59,6 @@ mod tests {
     use super::*;
     use crate::parser::{
         expression::tests::{do_test_expr_err, do_test_expr_ok},
-        string::MISSING_END_QUOTE,
         tests::*,
     };
 
@@ -110,12 +95,30 @@ mod tests {
 
     #[test]
     fn test_list_err() {
-        do_test_expr_err(r#" [1,2,3,4"#, 1, MISSING_CLOSE);
-        do_test_expr_err(r#" [1,2,3,"#, 1, MISSING_CLOSE);
-        do_test_expr_err(r#" [1 2]-"#, 4, EXPECTED_COMMA_OR_CLOSE);
-        do_test_expr_err(r#" [1, 2, 3, 4 } "#, 13, EXPECTED_COMMA_OR_CLOSE);
-        do_test_expr_err(r#" [1, 2, 3, 4, } "#, 14, EXPECTED_EXPRESSION_OR_CLOSE);
-        do_test_expr_err(r#" [ , ]-"#, 3, EXPECTED_EXPRESSION_OR_CLOSE);
-        do_test_expr_err(r#" [1, 2, 3, "bad-string"#, 11, MISSING_END_QUOTE);
+        do_test_expr_err(
+            r#" [1,2,3,4"#,
+            SyntaxError::MissingClosingBracket { pos: 1 },
+        );
+        do_test_expr_err(r#" [1,2,3,"#, SyntaxError::MissingClosingBracket { pos: 1 });
+        do_test_expr_err(
+            r#" [1 2]-"#,
+            SyntaxError::ListExpectedCommaOrCloseBracket { pos: 4 },
+        );
+        do_test_expr_err(
+            r#" [1, 2, 3, 4 } "#,
+            SyntaxError::ListExpectedCommaOrCloseBracket { pos: 13 },
+        );
+        do_test_expr_err(
+            r#" [1, 2, 3, 4, } "#,
+            SyntaxError::ListExpectedExpressionOrCloseBracket { pos: 14 },
+        );
+        do_test_expr_err(
+            r#" [ , ]-"#,
+            SyntaxError::ListExpectedExpressionOrCloseBracket { pos: 3 },
+        );
+        do_test_expr_err(
+            r#" [1, 2, 3, "bad-string"#,
+            SyntaxError::StringMissingCloseQuote { pos: 11 },
+        );
     }
 }

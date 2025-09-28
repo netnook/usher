@@ -20,7 +20,7 @@ impl core::fmt::Debug for DictBuilder {
             }
             m.finish()
         } else {
-            f.debug_struct("DictBuilder ")
+            f.debug_struct("DictBuilder")
                 .field("entries", &self.entries)
                 .field("span", &self.span)
                 .finish()

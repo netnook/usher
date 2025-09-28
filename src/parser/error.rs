@@ -1,46 +1,194 @@
-use super::SyntaxError;
+use crate::lang::Span;
+use thiserror::Error;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(PartialEq)]
 pub struct ParseError<'a> {
     pub file: &'a str,
-    pub line_no: usize,
-    pub char_no: usize,
-    pub line: &'a str,
-    pub msg: &'static str,
+    pub source: &'a str,
+    pub error: SyntaxError,
+}
+
+impl<'a> core::fmt::Debug for ParseError<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let minimal = f.sign_minus();
+        if minimal {
+            f.debug_struct("ParseError")
+                .field("file", &self.file)
+                .field("error", &self.error)
+                .finish_non_exhaustive()
+        } else {
+            f.debug_struct("ParseError")
+                .field("file", &self.file)
+                .field("source", &self.source)
+                .field("error", &self.error)
+                .finish()
+        }
+    }
 }
 
 impl<'a> ParseError<'a> {
     pub fn to_display(&self) -> String {
+        let (sp, line) = find_source_position(self.source, self.error.start());
+
         let mut result = String::new();
         result.push_str(&format!(
             "Syntax error in {file} at line {line}, char {char}:\n",
             file = self.file,
-            line = self.line_no + 1,
-            char = self.char_no + 1
+            line = sp.line + 1,
+            char = sp.char + 1
         ));
 
-        let line_num = format!("{}", self.line_no + 1);
+        let line_num = format!("{}", sp.line + 1);
 
         result.push_str(&" ".repeat(line_num.len()));
         result.push_str(" |\n");
 
         result.push_str(&line_num);
         result.push_str(" | ");
-        result.push_str(self.line);
+        result.push_str(line);
         result.push('\n');
 
         result.push_str(&" ".repeat(line_num.len()));
         result.push_str(" | ");
 
-        result.reserve(self.char_no);
-        for _ in 0..self.char_no {
+        result.reserve(sp.char);
+        for _ in 0..sp.char {
             result.push(' ');
         }
-        result.push_str("^ ");
-        result.push_str(self.msg);
+        // result.push_str("^ ");
+        result.push_str("└ ");
+        result.push_str(&format!("{}", self.error));
         result.push('\n');
 
         result
+    }
+}
+
+#[derive(Error, PartialEq, Debug)]
+pub enum SyntaxError {
+    #[error("Expected identifier after 'var'.")]
+    ExpectedVariableIdentifier { pos: usize },
+    #[error("Unexpected character '{got}'. Expected '=' to follow varable name in declaration.")]
+    DeclarationExpectedEquals { got: char, pos: usize },
+    #[error("Expected expression.")]
+    DeclarationExpectedExpression { pos: usize },
+    #[error("Keywords may not be used as identifier.")]
+    ReservedKeyword { got: String, span: Span },
+    #[error("Reserved name cannot be used for declarations.")]
+    ReservedName { got: String, span: Span },
+    #[error("Expected whitespace or comment.")]
+    ExpectedWhitespaceOrComment { pos: usize },
+    #[error("Expected opening '('.")]
+    DictExpectedOpenParens { pos: usize },
+    #[error("Missing closing ')'.")]
+    DictMissingCloseParens { pos: usize },
+    #[error("Expected expression or ')'.")]
+    DictExpectedKeyOrCloseParens { pos: usize },
+    #[error("Expected key value pair separated by ':'.")]
+    DictExpectedKeyValuePair { span: Span },
+    #[error("Expected ',' or ')'.")]
+    DictExpectedCommaOrCloseParens { pos: usize },
+    #[error("Expected identifier on LHS of key:value pair.")]
+    KeyValueExpectsIdentOnLHS { span: Span, pos: usize },
+    #[error("Expected expression.")]
+    ExpectsExpression { pos: usize },
+    #[error("Missing closing parens")]
+    MissingClosingParens { pos: usize },
+    #[error("Expected closing parenthesis ')'")]
+    ExpectedClosingParens { got: char, pos: usize },
+    #[error("Expected identifier.")]
+    PropertyOfExpectedIdentifier { pos: usize },
+    #[error("Expected closing bracket ']'")]
+    IndexOfExpectedClosingBracket { got: char, pos: usize },
+    #[error("Expected function call argument or closing parenthesis ')'.")]
+    FunctionCallExpectedArgOrClosingParens { pos: usize },
+    #[error("Expected comma or closing parenthesis ')' for function call arguments.")]
+    FunctionCallExpectedCommaOrCloseParens { pos: usize },
+    #[error("Invalid characters CR or LF in string.")]
+    StringNotAllowdCRLF { pos: usize },
+    #[error("Invalid escape sequence.")]
+    StringInvalidEscape { pos: usize },
+    #[error("Missing closing brace '}}'.")]
+    StringMissingCloseBrace { pos: usize },
+    #[error("Expected closing brace '}}' after interpolation expression but found {got}.")]
+    StringExpectedCloseBrace { got: char, pos: usize },
+    #[error("Missing closing double quote to end string.")]
+    StringMissingCloseQuote { pos: usize },
+    #[error("Expected block.")]
+    ExpectedBlock { pos: usize },
+    #[error("Unexpected character. Expected new line after statement.")]
+    ExpectedNewLineAfterStmt { pos: usize },
+    #[error("Expected statement.")]
+    ExpectedStmt { pos: usize },
+    #[error("Expected else block or 'if' keyword.")]
+    ExpectedBlockOrIf { pos: usize },
+    #[error("Expected condition expression following if/else.")]
+    ExpectedConditionExpression { pos: usize },
+    #[error("Missing closing brace to end block.")]
+    MissingClosingBrace { pos: usize },
+    #[error("Invalid LHS of assignment.")]
+    AssignmentInvalidLHS { span: Span },
+    #[error("Expected 'in' after variable(s).")]
+    LoopExpectedInKeyword { pos: usize },
+    #[error("Missing closing ']'.")]
+    MissingClosingBracket { pos: usize },
+    #[error("Expected expression or ']'.")]
+    ListExpectedExpressionOrCloseBracket { pos: usize },
+    #[error("Expected ',' or ']'.")]
+    ListExpectedCommaOrCloseBracket { pos: usize },
+    #[error("Expected function body.")]
+    FunctionExpectedBody { pos: usize },
+    #[error("Expected '('.")]
+    FunctionExpectedOpenParens { pos: usize },
+    #[error("Expected parameter name.")]
+    FunctionExpectedParamIdent { pos: usize },
+    #[error("Expected ',' or ')'.")]
+    FunctionExpectedCommaOrCloseParens { pos: usize },
+}
+
+impl SyntaxError {
+    fn start(&self) -> usize {
+        match self {
+            SyntaxError::ExpectedVariableIdentifier { pos } => *pos,
+            SyntaxError::DeclarationExpectedEquals { got: _, pos } => *pos,
+            SyntaxError::DeclarationExpectedExpression { pos } => *pos,
+            SyntaxError::ReservedKeyword { got: _, span } => span.start,
+            SyntaxError::ReservedName { got: _, span } => span.start,
+            SyntaxError::ExpectedWhitespaceOrComment { pos } => *pos,
+            SyntaxError::DictExpectedOpenParens { pos } => *pos,
+            SyntaxError::DictMissingCloseParens { pos } => *pos,
+            SyntaxError::DictExpectedKeyOrCloseParens { pos } => *pos,
+            SyntaxError::DictExpectedKeyValuePair { span } => span.start,
+            SyntaxError::DictExpectedCommaOrCloseParens { pos } => *pos,
+            SyntaxError::KeyValueExpectsIdentOnLHS { span, pos: _ } => span.start,
+            SyntaxError::ExpectsExpression { pos } => *pos,
+            SyntaxError::MissingClosingParens { pos } => *pos,
+            SyntaxError::ExpectedClosingParens { got: _, pos } => *pos,
+            SyntaxError::PropertyOfExpectedIdentifier { pos } => *pos,
+            SyntaxError::IndexOfExpectedClosingBracket { got: _, pos } => *pos,
+            SyntaxError::FunctionCallExpectedArgOrClosingParens { pos } => *pos,
+            SyntaxError::FunctionCallExpectedCommaOrCloseParens { pos } => *pos,
+            SyntaxError::StringNotAllowdCRLF { pos } => *pos,
+            SyntaxError::StringInvalidEscape { pos } => *pos,
+            SyntaxError::StringMissingCloseBrace { pos } => *pos,
+            SyntaxError::StringExpectedCloseBrace { got: _, pos } => *pos,
+            SyntaxError::StringMissingCloseQuote { pos } => *pos,
+            SyntaxError::ExpectedBlock { pos } => *pos,
+            SyntaxError::ExpectedNewLineAfterStmt { pos } => *pos,
+            SyntaxError::ExpectedStmt { pos } => *pos,
+            SyntaxError::ExpectedBlockOrIf { pos } => *pos,
+            SyntaxError::ExpectedConditionExpression { pos } => *pos,
+            SyntaxError::MissingClosingBrace { pos } => *pos,
+            SyntaxError::AssignmentInvalidLHS { span } => span.start,
+            SyntaxError::LoopExpectedInKeyword { pos } => *pos,
+            SyntaxError::MissingClosingBracket { pos } => *pos,
+            SyntaxError::ListExpectedExpressionOrCloseBracket { pos } => *pos,
+            SyntaxError::ListExpectedCommaOrCloseBracket { pos } => *pos,
+            SyntaxError::FunctionExpectedBody { pos } => *pos,
+            SyntaxError::FunctionExpectedOpenParens { pos } => *pos,
+            SyntaxError::FunctionExpectedParamIdent { pos } => *pos,
+            SyntaxError::FunctionExpectedCommaOrCloseParens { pos } => *pos,
+        }
     }
 }
 
@@ -50,18 +198,16 @@ pub struct SourcePos {
     pub char: usize,
 }
 
+// FIXME: inline this method.
 pub(super) fn build_parse_error<'a>(
     file: &'a str,
     source: &'a str,
     se: SyntaxError,
 ) -> ParseError<'a> {
-    let info = find_source_position(source, se.pos);
     ParseError {
         file,
-        line_no: info.0.line,
-        char_no: info.0.char,
-        line: info.1,
-        msg: se.msg,
+        source,
+        error: se,
     }
 }
 
@@ -114,52 +260,42 @@ mod tests {
     use super::*;
     use pretty_assertions::assert_eq;
 
-    fn se(pos: usize) -> SyntaxError {
-        SyntaxError { pos, msg: "foo" }
-    }
-    fn pe<'a>(line_no: usize, char_no: usize, line: &'a str, msg: &'static str) -> ParseError<'a> {
-        ParseError {
-            file: "the-file",
-            line_no,
-            char_no,
-            line,
-            msg,
-        }
+    fn sp(line: usize, char: usize) -> SourcePos {
+        SourcePos { line, char }
     }
 
     #[test]
     fn test_build_parse_error() {
         const INPUT: &str =
             "line 0 \n line 1 \r\n line 2 \n\n\n line 5 \r\r\r line 8 \r\n\n\r\n line 11 ";
-        assert_eq!(
-            build_parse_error("the-file", INPUT, se(INPUT.find("line 0").unwrap())),
-            pe(0, 0, "line 0 ", "foo")
-        );
 
         assert_eq!(
-            build_parse_error("the-file", INPUT, se(INPUT.find("line 1").unwrap())),
-            pe(1, 1, " line 1 ", "foo")
-        );
-
-        assert_eq!(
-            build_parse_error("the-file", INPUT, se(INPUT.find("line 2").unwrap())),
-            pe(2, 1, " line 2 ", "foo")
+            find_source_position(INPUT, INPUT.find("line 0").unwrap()),
+            (sp(0, 0), "line 0 ")
         );
         assert_eq!(
-            build_parse_error("the-file", INPUT, se(INPUT.find(" line 5").unwrap())),
-            pe(5, 0, " line 5 ", "foo")
+            find_source_position(INPUT, INPUT.find("line 1").unwrap()),
+            (sp(1, 1), " line 1 ")
         );
         assert_eq!(
-            build_parse_error("the-file", INPUT, se(INPUT.find(" line 5").unwrap() + 7)),
-            pe(5, 7, " line 5 ", "foo")
+            find_source_position(INPUT, INPUT.find("line 2").unwrap()),
+            (sp(2, 1), " line 2 ")
         );
         assert_eq!(
-            build_parse_error("the-file", INPUT, se(INPUT.find(" line 5").unwrap() + 8)),
-            pe(5, 8, " line 5 ", "foo")
+            find_source_position(INPUT, INPUT.find(" line 5").unwrap()),
+            (sp(5, 0), " line 5 ")
         );
         assert_eq!(
-            build_parse_error("the-file", INPUT, se(INPUT.find(" line 11").unwrap())),
-            pe(11, 0, " line 11 ", "foo")
+            find_source_position(INPUT, INPUT.find(" line 5").unwrap() + 7),
+            (sp(5, 7), " line 5 ")
+        );
+        assert_eq!(
+            find_source_position(INPUT, INPUT.find(" line 5").unwrap() + 8),
+            (sp(5, 8), " line 5 ")
+        );
+        assert_eq!(
+            find_source_position(INPUT, INPUT.find(" line 11").unwrap()),
+            (sp(11, 0), " line 11 ")
         );
     }
 }

@@ -1,8 +1,6 @@
 use super::{ParseResult, Parser, SyntaxError};
 use crate::lang::{AstNode, ReturnStmt};
 
-const UNEXPECTED_TOKEN: &str = "Unexpected token following return.";
-
 impl<'a> Parser<'a> {
     pub(super) fn return_stmt(&mut self) -> ParseResult<AstNode> {
         // already passed "return" when called
@@ -27,10 +25,7 @@ impl<'a> Parser<'a> {
         }
 
         let Some(expr) = self.expression()? else {
-            return Err(SyntaxError {
-                pos: self.pos,
-                msg: UNEXPECTED_TOKEN,
-            });
+            return Err(SyntaxError::ExpectsExpression { pos: self.pos });
         };
 
         Ok(AstNode::ReturnStmt(ReturnStmt {
@@ -50,12 +45,8 @@ mod tests {
     }
 
     #[track_caller]
-    fn do_test_return_err(
-        input: &'static str,
-        expected_err_pos: usize,
-        expected_err_msg: &'static str,
-    ) {
-        do_test_parser_err(Parser::stmt, input, expected_err_pos, expected_err_msg);
+    fn do_test_return_err(input: &'static str, expected_err: SyntaxError) {
+        do_test_parser_err(Parser::stmt, input, expected_err);
     }
 
     #[test]
@@ -64,6 +55,6 @@ mod tests {
         do_test_return_ok(" return 42 ", _ret!(i(42)), -1);
         do_test_return_ok(" return 42 + 3 ", _ret!(add(i(42), i(3))), -1);
         do_test_return_ok(" return 42 \n +3 ", _ret!(i(42)), 10);
-        do_test_return_err(" return { 42 } ", 8, UNEXPECTED_TOKEN);
+        do_test_return_err(" return { 42 } ", SyntaxError::ExpectsExpression { pos: 8 });
     }
 }

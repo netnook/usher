@@ -1,8 +1,5 @@
-use super::{ParseResult, Parser, SyntaxError, comment::EXPECTED_WS_OR_COMMENT};
+use super::{ParseResult, Parser, SyntaxError};
 use crate::lang::{AstNode, ConditionalBlock, IfElse};
-
-const EXPECTED_CONDITION_EXPRESSION: &str = "Expected condition expression following if/else.";
-const EXPECTED_BLOCK_OR_IF: &str = "Expected else block or 'if' keyword.";
 
 impl<'a> Parser<'a> {
     // if_expr = { "if" ~ expr ~ block ~ if_else_if* ~ if_else? }
@@ -32,10 +29,7 @@ impl<'a> Parser<'a> {
             let savepoint = self.pos;
             if self.unchecked_identifier() == Some("if") {
                 if !ws {
-                    return Err(SyntaxError {
-                        pos: savepoint,
-                        msg: EXPECTED_WS_OR_COMMENT,
-                    });
+                    return Err(SyntaxError::ExpectedWhitespaceOrComment { pos: savepoint });
                 }
                 self.req_whitespace_comments()?;
                 conditional_blocks.push(self.conditional_block()?);
@@ -43,10 +37,7 @@ impl<'a> Parser<'a> {
                 self.pos = savepoint;
                 else_block = self.block()?;
                 if else_block.is_none() {
-                    return Err(SyntaxError {
-                        pos: savepoint,
-                        msg: EXPECTED_BLOCK_OR_IF,
-                    });
+                    return Err(SyntaxError::ExpectedBlockOrIf { pos: savepoint });
                 }
                 break self.pos;
             };
@@ -61,14 +52,13 @@ impl<'a> Parser<'a> {
     // if_condition_block
     fn conditional_block(&mut self) -> ParseResult<ConditionalBlock> {
         let Some(condition) = self.expression()? else {
-            return Err(SyntaxError {
-                pos: self.pos,
-                msg: EXPECTED_CONDITION_EXPRESSION,
-            });
+            return Err(SyntaxError::ExpectedConditionExpression { pos: self.pos });
         };
         self.whitespace_comments();
 
-        let block = self.req(Self::block, "Expected block")?;
+        let Some(block) = self.block()? else {
+            return Err(SyntaxError::ExpectedBlock { pos: self.pos });
+        };
 
         Ok(ConditionalBlock { condition, block })
     }
@@ -78,8 +68,6 @@ impl<'a> Parser<'a> {
 mod tests {
     use super::*;
     use crate::lang::IfElse;
-    use crate::parser::comment::EXPECTED_WS_OR_COMMENT;
-    use crate::parser::program::EXPECTED_NEW_LINE_AFTER_STMT;
     use crate::parser::tests::*;
 
     #[track_caller]
@@ -88,12 +76,8 @@ mod tests {
     }
 
     #[track_caller]
-    fn do_test_if_err(
-        input: &'static str,
-        expected_err_pos: usize,
-        expected_err_msg: &'static str,
-    ) {
-        do_test_parser_err(Parser::stmt, input, expected_err_pos, expected_err_msg);
+    fn do_test_if_err(input: &'static str, expected_err: SyntaxError) {
+        do_test_parser_err(Parser::stmt, input, expected_err);
     }
 
     #[test]
@@ -145,23 +129,19 @@ mod tests {
         );
         do_test_if_err(
             " if, { 1 } else if y { 2 } else { 3 } ",
-            3,
-            EXPECTED_WS_OR_COMMENT,
+            SyntaxError::ExpectedWhitespaceOrComment { pos: 3 },
         );
         do_test_if_err(
             " if x { 1; } else if y { 2 } else { 3 } ",
-            9,
-            EXPECTED_NEW_LINE_AFTER_STMT,
+            SyntaxError::ExpectedNewLineAfterStmt { pos: 9 },
         );
         do_test_if_err(
             " if x { 1 } else ify { 2 } else { 3 } ",
-            17,
-            EXPECTED_BLOCK_OR_IF,
+            SyntaxError::ExpectedBlockOrIf { pos: 17 },
         );
         do_test_if_err(
             " if x { 1 } else if y { 2  else { 3 } ",
-            27,
-            EXPECTED_NEW_LINE_AFTER_STMT,
+            SyntaxError::ExpectedNewLineAfterStmt { pos: 27 },
         );
     }
 }

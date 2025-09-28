@@ -1,11 +1,6 @@
 use super::{ParseResult, Parser, SyntaxError};
 use crate::lang::{AstNode, FunctionDef, KeyValueBuilder, Param, Span, Var};
 
-const EXPECTED_OPEN_PARENS: &str = "Expected '('.";
-const EXPECTED_PARAM_IDENT: &str = "Expected parameter name.";
-const EXPECTED_COMMA_OR_CLOSE: &str = "Expected ',' or ')'.";
-const EXPECTED_BODY: &str = "Expected function body.";
-
 impl<'a> Parser<'a> {
     // "function" name? "(" param,* ")"
     /// Already passed "function" when called
@@ -22,10 +17,7 @@ impl<'a> Parser<'a> {
         self.whitespace_comments();
 
         let Some(body) = self.block()? else {
-            return Err(SyntaxError {
-                pos: self.pos,
-                msg: EXPECTED_BODY,
-            });
+            return Err(SyntaxError::FunctionExpectedBody { pos: self.pos });
         };
 
         Ok(FunctionDef { name, params, body })
@@ -33,10 +25,7 @@ impl<'a> Parser<'a> {
 
     fn function_params(&mut self) -> ParseResult<Vec<Param>> {
         if !self.char(b'(') {
-            return Err(SyntaxError {
-                pos: self.pos,
-                msg: EXPECTED_OPEN_PARENS,
-            });
+            return Err(SyntaxError::FunctionExpectedOpenParens { pos: self.pos });
         }
 
         let mut params = Vec::new();
@@ -50,10 +39,7 @@ impl<'a> Parser<'a> {
 
             let ref_pos = self.pos;
             let Some(expr) = self.expression()? else {
-                return Err(SyntaxError {
-                    pos: self.pos,
-                    msg: EXPECTED_PARAM_IDENT,
-                });
+                return Err(SyntaxError::FunctionExpectedParamIdent { pos: self.pos });
             };
 
             match expr {
@@ -70,10 +56,7 @@ impl<'a> Parser<'a> {
                     });
                 }
                 _ => {
-                    return Err(SyntaxError {
-                        pos: ref_pos,
-                        msg: EXPECTED_PARAM_IDENT,
-                    });
+                    return Err(SyntaxError::FunctionExpectedParamIdent { pos: ref_pos });
                 }
             }
 
@@ -88,10 +71,7 @@ impl<'a> Parser<'a> {
                 break;
             }
 
-            return Err(SyntaxError {
-                pos: self.pos,
-                msg: EXPECTED_COMMA_OR_CLOSE,
-            });
+            return Err(SyntaxError::FunctionExpectedCommaOrCloseParens { pos: self.pos });
         }
 
         Ok(params)
@@ -102,10 +82,7 @@ impl<'a> Parser<'a> {
 mod tests {
     use super::*;
     use crate::parser::{
-        expression::{
-            EXPECTED_IDENT_ON_KV_LHS,
-            tests::{do_test_expr_err, do_test_expr_ok},
-        },
+        expression::tests::{do_test_expr_err, do_test_expr_ok},
         tests::*,
     };
 
@@ -153,9 +130,21 @@ mod tests {
             -1,
         );
 
-        do_test_expr_err(" function #foo\n () { } ", 10, EXPECTED_OPEN_PARENS);
-        do_test_expr_err(r#" function("a") { } "#, 10, EXPECTED_PARAM_IDENT);
-        do_test_expr_err(r#" function("a":42) { } "#, 10, EXPECTED_IDENT_ON_KV_LHS);
+        do_test_expr_err(
+            " function #foo\n () { } ",
+            SyntaxError::FunctionExpectedOpenParens { pos: 10 },
+        );
+        do_test_expr_err(
+            r#" function("a") { } "#,
+            SyntaxError::FunctionExpectedParamIdent { pos: 10 },
+        );
+        do_test_expr_err(
+            r#" function("a":42) { } "#,
+            SyntaxError::KeyValueExpectsIdentOnLHS {
+                span: Span::new(10, 3),
+                pos: 13,
+            },
+        );
 
         // FIXME: validation - the following should not be allowed
         // do_test_expr_err(" 3 + function() { true }", 5, "foo");

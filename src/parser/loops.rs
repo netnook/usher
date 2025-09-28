@@ -1,12 +1,6 @@
 use super::{ParseResult, Parser, SyntaxError};
 use crate::lang::{AstNode, For};
 
-const EXPECTED_VARIABLE: &str = "Expected loop variable after 'for'.";
-const EXPECTED_2ND_VARIABLE: &str = "Expected second loop variable after comma.";
-const EXPECTED_IN: &str = "Expected 'in' after variable(s).";
-const EXPECTED_EXPRESSION: &str = "Expected expression after 'in'.";
-const EXPECTED_BLOCK: &str = "Expected loop block after expression.";
-
 impl<'a> Parser<'a> {
     // "for" ident "in" expr block
     // "for" ident, ident "in" expr block
@@ -16,10 +10,7 @@ impl<'a> Parser<'a> {
         self.req_whitespace_comments()?;
 
         let Some(loop_item) = self.declaration_identifier()? else {
-            return Err(SyntaxError {
-                pos: self.pos,
-                msg: EXPECTED_VARIABLE,
-            });
+            return Err(SyntaxError::ExpectedVariableIdentifier { pos: self.pos });
         };
 
         let mut loop_info = None;
@@ -31,38 +22,26 @@ impl<'a> Parser<'a> {
             loop_info = self.declaration_identifier()?;
 
             if loop_info.is_none() {
-                return Err(SyntaxError {
-                    pos: self.pos,
-                    msg: EXPECTED_2ND_VARIABLE,
-                });
+                return Err(SyntaxError::ExpectedVariableIdentifier { pos: self.pos });
             };
 
             self.whitespace_comments();
         }
 
         if self.unchecked_identifier() != Some("in") {
-            return Err(SyntaxError {
-                pos: self.pos,
-                msg: EXPECTED_IN,
-            });
+            return Err(SyntaxError::LoopExpectedInKeyword { pos: self.pos });
         };
 
         self.whitespace_comments();
 
         let Some(iterable) = self.expression()? else {
-            return Err(SyntaxError {
-                pos: self.pos,
-                msg: EXPECTED_EXPRESSION,
-            });
+            return Err(SyntaxError::ExpectsExpression { pos: self.pos });
         };
 
         self.whitespace_comments();
 
         let Some(block) = self.block()? else {
-            return Err(SyntaxError {
-                pos: self.pos,
-                msg: EXPECTED_BLOCK,
-            });
+            return Err(SyntaxError::ExpectedBlock { pos: self.pos });
         };
 
         Ok(AstNode::For(For {
@@ -77,10 +56,7 @@ impl<'a> Parser<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::{
-        identifier::{KEYWORD_RESERVED, NAME_RESERVED},
-        tests::*,
-    };
+    use crate::{lang::Span, parser::tests::*};
 
     #[track_caller]
     fn do_test_for_ok(input: &'static str, expected: For, expected_end: isize) {
@@ -88,12 +64,8 @@ mod tests {
     }
 
     #[track_caller]
-    fn do_test_for_err(
-        input: &'static str,
-        expected_err_pos: usize,
-        expected_err_msg: &'static str,
-    ) {
-        do_test_parser_err(Parser::stmt, input, expected_err_pos, expected_err_msg);
+    fn do_test_for_err(input: &'static str, expected_err: SyntaxError) {
+        do_test_parser_err(Parser::stmt, input, expected_err);
     }
 
     #[test]
@@ -119,13 +91,43 @@ mod tests {
             -1,
         );
 
-        do_test_for_err(" for ,a in x { 1 } ", 5, EXPECTED_VARIABLE);
-        do_test_for_err(" for a{ in x { 1 } ", 6, EXPECTED_IN);
-        do_test_for_err(" for a,{ in x { 1 } ", 7, EXPECTED_2ND_VARIABLE);
-        do_test_for_err(" for a,b { in x { 1 } ", 9, EXPECTED_IN);
-        do_test_for_err(" for a in ; x { 1 } ", 10, EXPECTED_EXPRESSION);
-        do_test_for_err(" for a in x ; { 1 } ", 12, EXPECTED_BLOCK);
-        do_test_for_err(" for else in x { 1 } ", 5, KEYWORD_RESERVED);
-        do_test_for_err(" for a, print in x { 1 } ", 8, NAME_RESERVED);
+        do_test_for_err(
+            " for ,a in x { 1 } ",
+            SyntaxError::ExpectedVariableIdentifier { pos: 5 },
+        );
+        do_test_for_err(
+            " for a{ in x { 1 } ",
+            SyntaxError::LoopExpectedInKeyword { pos: 6 },
+        );
+        do_test_for_err(
+            " for a,{ in x { 1 } ",
+            SyntaxError::ExpectedVariableIdentifier { pos: 7 },
+        );
+        do_test_for_err(
+            " for a,b { in x { 1 } ",
+            SyntaxError::LoopExpectedInKeyword { pos: 9 },
+        );
+        do_test_for_err(
+            " for a in ; x { 1 } ",
+            SyntaxError::ExpectsExpression { pos: 10 },
+        );
+        do_test_for_err(
+            " for a in x ; { 1 } ",
+            SyntaxError::ExpectedBlock { pos: 12 },
+        );
+        do_test_for_err(
+            " for else in x { 1 } ",
+            SyntaxError::ReservedKeyword {
+                got: "else".to_string(),
+                span: Span::new(5, 4),
+            },
+        );
+        do_test_for_err(
+            " for a, print in x { 1 } ",
+            SyntaxError::ReservedName {
+                got: "print".to_string(),
+                span: Span::new(8, 5),
+            },
+        );
     }
 }

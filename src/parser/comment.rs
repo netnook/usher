@@ -1,7 +1,5 @@
 use super::{ParseResult, Parser, SyntaxError, chars::WhitespaceDetailed};
 
-pub(crate) const EXPECTED_WS_OR_COMMENT: &str = "Expected whitespace or comment.";
-
 impl<'a> Parser<'a> {
     /// Consume as much whitespace and comments as possible.  Return an error
     /// if neither is found.
@@ -9,7 +7,7 @@ impl<'a> Parser<'a> {
         if self.whitespace_comments() {
             Ok(())
         } else {
-            Err(SyntaxError::new(self.pos, EXPECTED_WS_OR_COMMENT))
+            Err(SyntaxError::ExpectedWhitespaceOrComment { pos: self.pos })
         }
     }
 
@@ -203,10 +201,7 @@ mod tests {
         assert_eq!(
             p.req_whitespace_comments()
                 .expect_err("expected syntax error"),
-            SyntaxError {
-                pos: 1,
-                msg: EXPECTED_WS_OR_COMMENT
-            }
+            SyntaxError::ExpectedWhitespaceOrComment { pos: 1 }
         );
         assert_eq!(p.pos, 1);
     }

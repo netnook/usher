@@ -1,10 +1,6 @@
 use super::{ParseResult, Parser, SyntaxError};
 use crate::lang::Program;
 
-pub(crate) const EXPECTED_NEW_LINE_AFTER_STMT: &str =
-    "Unexpected character. Expected new line after statement.";
-pub(crate) const UNEXPECTED_CHAR: &str = "Unexpected character.";
-
 impl<'a> Parser<'a> {
     // stmt*
     pub(super) fn program(&mut self) -> ParseResult<Program<'a>> {
@@ -21,11 +17,11 @@ impl<'a> Parser<'a> {
             if first {
                 first = false;
             } else if !details.newline {
-                return Err(SyntaxError::new(self.pos, EXPECTED_NEW_LINE_AFTER_STMT));
+                return Err(SyntaxError::ExpectedNewLineAfterStmt { pos: self.pos });
             }
 
             let Some(stmt) = self.stmt()? else {
-                return Err(SyntaxError::new(self.pos, UNEXPECTED_CHAR));
+                return Err(SyntaxError::ExpectedStmt { pos: self.pos });
             };
 
             stmts.push(stmt);
@@ -66,22 +62,14 @@ mod tests {
     }
 
     #[track_caller]
-    fn do_test_program_err(
-        input: &'static str,
-        expected_err_pos: usize,
-        expected_err_msg: &'static str,
-    ) {
+    fn do_test_program_err(input: &'static str, expected_err: SyntaxError) {
         let mut parser = Parser::new(input);
         parser.pos = 1;
 
         let actual = parser.program().expect_err("parser should error");
 
         assert_eq!(
-            actual,
-            SyntaxError {
-                pos: expected_err_pos,
-                msg: expected_err_msg
-            },
+            actual, expected_err,
             "assert actual (left) == expected (right)"
         );
     }
@@ -95,7 +83,7 @@ mod tests {
         do_test_program_ok(" #foo\n 1 #bar\n #baz \n 2 ", _prog![i(1), i(2)]);
         do_test_program_ok(" var a = 1 ", _prog![decl(var("a"), i(1))]);
 
-        do_test_program_err(" 1 2 ", 3, EXPECTED_NEW_LINE_AFTER_STMT);
-        do_test_program_err(" 1 \n ; ", 5, UNEXPECTED_CHAR);
+        do_test_program_err(" 1 2 ", SyntaxError::ExpectedNewLineAfterStmt { pos: 3 });
+        do_test_program_err(" 1 \n ; ", SyntaxError::ExpectedStmt { pos: 5 });
     }
 }
