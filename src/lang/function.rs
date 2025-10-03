@@ -180,45 +180,42 @@ impl Eval for FunctionCall {
         let (this, func) = match &self.method {
             Some(method_name) => {
                 let method = match &on {
-                    Value::Dict(on) => {
-                        on.borrow()
-                            .get(&method_name.name)
-                            .map(|v| match v {
-                                Value::Func(f) => Ok(f),
-                                other => InternalProgramError::ExpectedFunction {
-                                    got: other.value_type(),
-                                    span: Span::new(0, 0),
-                                }
-                                .into(),
-                            })
-                            .transpose()?
-                            .or_else(|| BuiltInFunc::by_name(&method_name.name).map(|f| f.into()))
-                            .ok_or_else(|| {
-                                InternalProgramError::NoSuchMethod {
-                                    name: method_name.as_string(),
-                                    from: ValueType::Dict,
-                                    span: Span::new(0, 0), // FIXME: fix span
-                                }
-                                .into_stop()
-                            })?
-                    }
-                    Value::List(_) => {
-                        BuiltInFunc::by_name(&method_name.name)
-                            .map(|f| f.into())
-                            .ok_or_else(|| {
-                                InternalProgramError::NoSuchMethod {
-                                    name: method_name.as_string(),
-                                    from: ValueType::List,
-                                    span: Span::new(0, 0), // FIXME: fix span
-                                }
-                                .into_stop()
-                            })?
-                    }
+                    Value::Dict(on) => on
+                        .borrow()
+                        .get(&method_name.name)
+                        .map(|v| match v {
+                            Value::Func(f) => Ok(f),
+                            other => InternalProgramError::ExpectedFunction {
+                                got: other.value_type(),
+                                span: self.on.span(),
+                            }
+                            .into(),
+                        })
+                        .transpose()?
+                        .or_else(|| BuiltInFunc::by_name(&method_name.name).map(|f| f.into()))
+                        .ok_or_else(|| {
+                            InternalProgramError::NoSuchMethod {
+                                name: method_name.as_string(),
+                                from: ValueType::Dict,
+                                span: method_name.span,
+                            }
+                            .into_stop()
+                        })?,
+                    Value::List(_) => BuiltInFunc::by_name(&method_name.name)
+                        .map(|f| f.into())
+                        .ok_or_else(|| {
+                            InternalProgramError::NoSuchMethod {
+                                name: method_name.as_string(),
+                                from: ValueType::List,
+                                span: method_name.span,
+                            }
+                            .into_stop()
+                        })?,
                     _ => {
                         return InternalProgramError::NoSuchMethod {
                             name: method_name.as_string(),
                             from: on.value_type(),
-                            span: Span::new(0, 0), // FIXME: fix span
+                            span: method_name.span,
                         }
                         .into();
                     }
