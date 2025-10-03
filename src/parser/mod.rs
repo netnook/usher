@@ -10,6 +10,7 @@ mod if_else;
 mod list;
 mod loops;
 mod numbers;
+pub(crate) mod position;
 mod program;
 mod return_stmt;
 mod stmt;
@@ -19,6 +20,7 @@ mod validation;
 use crate::lang::Program;
 use error::ParseError;
 pub use error::SyntaxError;
+pub use position::SourceRef;
 
 pub(crate) const KEYWORDS: [&str; 18] = [
     "if", "else", "for", "in", "break", "continue", "return", "function", "var", "true", "false",

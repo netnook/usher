@@ -1,8 +1,6 @@
 use std::fs;
-
-mod lang;
-mod parser;
-mod printer;
+use usher::parser;
+use usher::printer;
 
 fn main() {
     let mut args = std::env::args();

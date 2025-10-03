@@ -1,17 +1,24 @@
-use crate::lang::{Dict, EvalStop, Identifier, KeyValue, Span, value::ValueType};
+use crate::{
+    lang::{Dict, EvalStop, Identifier, KeyValue, Span, value::ValueType},
+    parser::{SourceRef, position},
+};
 use std::{cell::RefCell, fmt::Display, rc::Rc};
 use thiserror::Error;
 
 #[derive(PartialEq, Debug)]
 pub struct EvalError<'a> {
-    pub(crate) file: &'a str,
-    pub(crate) source: &'a str,
-    pub(crate) error: InternalProgramError,
+    pub file: &'a str,
+    pub source: &'a str,
+    pub error: InternalProgramError,
 }
 
 impl<'a> EvalError<'a> {
-    pub(crate) fn span(&self) -> Span {
+    pub fn span(&self) -> Span {
         *self.error.span()
+    }
+
+    pub fn find_source_position(&self) -> SourceRef<'a> {
+        position::find_source_position(self.file, self.source, self.span())
     }
 }
 

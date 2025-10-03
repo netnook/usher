@@ -1,4 +1,7 @@
-use crate::lang::Span;
+use crate::{
+    lang::Span,
+    parser::{SourceRef, position},
+};
 use thiserror::Error;
 
 #[derive(PartialEq)]
@@ -9,8 +12,12 @@ pub struct ParseError<'a> {
 }
 
 impl<'a> ParseError<'a> {
-    pub(crate) fn span(&self) -> Span {
+    pub fn span(&self) -> Span {
         self.error.span()
+    }
+
+    pub fn find_source_position(&self) -> SourceRef<'a> {
+        position::find_source_position(self.file, self.source, self.span())
     }
 }
 
