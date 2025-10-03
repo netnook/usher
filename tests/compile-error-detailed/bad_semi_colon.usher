@@ -9,4 +9,4 @@ var a = a.x
 Syntax error in tests/compile-error-detailed/bad_semi_colon.usher at line 5, char 2:
   |
 5 | );
-  |  └ Unexpected character. Expected new line after statement.
+  |  ^ Unexpected character. Expected new line after statement.

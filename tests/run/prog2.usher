@@ -3,7 +3,7 @@ var cow = dict()
 cow
   .add("moo")
 ---
-Evaluation error in tests/run/prog2.usher at line 4, char 3:
+Evaluation error in tests/run/prog2.usher at line 4, char 4:
   |
 4 |   .add("moo")
-  |   └ Method 'add' not applicable to type dict
+  |    ^^^ No such method 'add' on dict.

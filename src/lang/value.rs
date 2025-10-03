@@ -346,6 +346,14 @@ impl List {
             next: 0,
         }
     }
+
+    pub(crate) fn built_in_func(name: &str) -> Option<Func> {
+        match name {
+            "add" => Some(BuiltInFunc::Add.into()),
+            _ => None,
+        }
+        // todo!()
+    }
 }
 
 #[derive(Debug)]
@@ -399,6 +407,13 @@ impl Dict {
 
     pub fn keys(&'_ self) -> Keys<'_, Rc<String>, Value> {
         self.content.keys()
+    }
+
+    pub(crate) fn built_in_func(name: &str) -> Option<Func> {
+        match name {
+            "replace" => todo!(),
+            _ => None,
+        }
     }
 }
 

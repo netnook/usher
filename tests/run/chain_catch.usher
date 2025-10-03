@@ -9,7 +9,7 @@ var a = dict(
 
 var a = a.x
 ----------------
-Evaluation error in tests/run/chain_catch.usher at line 10, char 10:
+Evaluation error in tests/run/chain_catch.usher at line 10, char 11:
    |
 10 | var a = a.x
    |           ^ Property 'x' not found. The following properties are available: b, e
@@ -23,12 +23,12 @@ var a = dict(
   e: 1,
 )
 
-var a = a.b.x
+var a = a.b.xx
 ----------------
-Evaluation error in tests/run/chain_catch.usher at line 10, char 12:
+Evaluation error in tests/run/chain_catch.usher at line 10, char 13:
    |
 10 | var a = a.b.xx
-   |             ^^- Property 'xx' not found. The following properties are available: b, e
+   |             ^^ Property 'xx' not found. The following properties are available: c, d
 *******************************************
 # error variant 3
 var a = dict(
@@ -41,10 +41,10 @@ var a = dict(
 
 var a = a.xxx.b
 ----------------
-Evaluation error in tests/run/chain_catch.usher at line 10, char 10:
+Evaluation error in tests/run/chain_catch.usher at line 10, char 11:
    |
 10 | var a = a.xxx.b
-   |           ^^^- Property 'xxx' not found. The following properties are available: b, e
+   |           ^^^ Property 'xxx' not found. The following properties are available: b, e
 *******************************************
 # catch variant 1
 var a = dict(

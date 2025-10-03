@@ -10,8 +10,8 @@ pub struct EvalError<'a> {
 }
 
 impl<'a> EvalError<'a> {
-    pub(crate) fn start(&self) -> usize {
-        self.error.start()
+    pub(crate) fn span(&self) -> Span {
+        *self.error.span()
     }
 }
 
@@ -19,7 +19,7 @@ impl<'a> EvalError<'a> {
 pub enum InternalProgramError {
     #[error("Expected function but got {got}")]
     ExpectedFunction { got: ValueType, span: Span },
-    #[error("Cannot find method {name} on {from}")]
+    #[error("No such method '{name}' on {from}.")]
     NoSuchMethod {
         name: String,
         from: ValueType,
@@ -132,7 +132,6 @@ macro_rules! bad_type_error_op {
 pub(crate) use bad_type_error_op;
 
 impl InternalProgramError {
-    #[allow(dead_code)] // FIXME: remove allow
     pub(crate) fn span(&self) -> &Span {
         match self {
             InternalProgramError::ExpectedFunction { got: _, span } => span,
@@ -181,51 +180,5 @@ impl InternalProgramError {
 
     pub(crate) fn into_stop(self) -> EvalStop {
         self.into()
-    }
-
-    fn start(&self) -> usize {
-        match self {
-            InternalProgramError::ExpectedFunction { got: _, span } => span.start,
-            InternalProgramError::NoSuchMethod {
-                name: _,
-                from: _,
-                span,
-            } => span.start,
-            InternalProgramError::MethodNotApplicable {
-                name: _,
-                to: _,
-                span,
-            } => span.start,
-            InternalProgramError::SuffixOperatorDoesNotSupportOperand {
-                op: _,
-                got: _,
-                span,
-            } => span.start,
-            InternalProgramError::BadValueType {
-                expected: _,
-                actual: _,
-                span,
-            } => span.start,
-            InternalProgramError::BadValueTypeOp {
-                op: _,
-                expected: _,
-                actual: _,
-                span,
-            } => span.start,
-            InternalProgramError::IndexOutOfRange {
-                index: _,
-                len: _,
-                span,
-            } => span.start,
-            InternalProgramError::CannotAssignToLHS { span } => span.start,
-            InternalProgramError::CannotConvertToString { typ: _, span } => span.start,
-            InternalProgramError::CannotLoopOnValue { got: _, span } => span.start,
-            InternalProgramError::ThisNotAvailable => todo!(),
-            InternalProgramError::NoSuchProperty {
-                prop: _,
-                from: _,
-                span,
-            } => span.start,
-        }
     }
 }

@@ -52,7 +52,7 @@ impl Eval for PropertyOf {
                         return Err(InternalProgramError::NoSuchProperty {
                             prop: self.property.clone(),
                             from: PropertyList::Dict(of),
-                            span: self.span,
+                            span: self.property.span,
                         }
                         .into_stop());
                     }

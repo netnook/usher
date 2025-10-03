@@ -1,7 +1,7 @@
 use crate::lang::{
-    AstNode, Block, Context, Eval, EvalStop, Identifier, InternalProgramError, Span, Value, Var,
-    accept_default,
-    value::{Func, ValueType},
+    AstNode, Block, Context, Dict, Eval, EvalStop, Identifier, InternalProgramError, List, Span,
+    Value, Var, accept_default,
+    value::Func,
     visitor::{Accept, Visitor, VisitorResult},
 };
 use std::rc::Rc;
@@ -97,10 +97,11 @@ pub enum BuiltInFunc {
 }
 
 impl BuiltInFunc {
+    // FIXME: git rid of this
     pub fn by_name(key: &str) -> Option<BuiltInFunc> {
         match key {
             "print" => Some(BuiltInFunc::Print),
-            "add" => Some(BuiltInFunc::Add),
+            //         "add" => Some(BuiltInFunc::Add),
             _ => None,
         }
     }
@@ -128,6 +129,7 @@ impl BuiltInFunc {
                         }
                         Ok(Value::Nil)
                     }
+                    // FIXME: panic - this should not be reachable - can this be ensured programattically
                     _ => InternalProgramError::MethodNotApplicable {
                         name: "add".to_string(),
                         to: this.value_type(),
@@ -174,68 +176,9 @@ impl core::fmt::Debug for FunctionCall {
 
 impl Eval for FunctionCall {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
-        let on = self.on.eval(ctxt)?;
+        // let on = self.on.eval(ctxt)?;
 
-        // get the method
-        let (this, func) = match &self.method {
-            Some(method_name) => {
-                let method = match &on {
-                    Value::Dict(on) => on
-                        .borrow()
-                        .get(&method_name.name)
-                        .map(|v| match v {
-                            Value::Func(f) => Ok(f),
-                            other => InternalProgramError::ExpectedFunction {
-                                got: other.value_type(),
-                                span: self.on.span(),
-                            }
-                            .into(),
-                        })
-                        .transpose()?
-                        .or_else(|| BuiltInFunc::by_name(&method_name.name).map(|f| f.into()))
-                        .ok_or_else(|| {
-                            InternalProgramError::NoSuchMethod {
-                                name: method_name.as_string(),
-                                from: ValueType::Dict,
-                                span: method_name.span,
-                            }
-                            .into_stop()
-                        })?,
-                    Value::List(_) => BuiltInFunc::by_name(&method_name.name)
-                        .map(|f| f.into())
-                        .ok_or_else(|| {
-                            InternalProgramError::NoSuchMethod {
-                                name: method_name.as_string(),
-                                from: ValueType::List,
-                                span: method_name.span,
-                            }
-                            .into_stop()
-                        })?,
-                    _ => {
-                        return InternalProgramError::NoSuchMethod {
-                            name: method_name.as_string(),
-                            from: on.value_type(),
-                            span: method_name.span,
-                        }
-                        .into();
-                    }
-                };
-                (on, method)
-            }
-            None => {
-                let func = match on {
-                    Value::Func(func) => func,
-                    _ => {
-                        return InternalProgramError::ExpectedFunction {
-                            got: on.value_type(),
-                            span: Span::new(0, 0),
-                        }
-                        .into();
-                    }
-                };
-                (Value::Nil, func)
-            }
-        };
+        let (this, func) = self.resolve(ctxt)?;
 
         // evaluate the args
         let mut args = Vec::with_capacity(self.args.len());
@@ -245,8 +188,12 @@ impl Eval for FunctionCall {
 
         // FIXME: normal function call should have a new context, but what about closures ?
         let mut context = Context::new();
-        context.declare_this(this);
 
+        if let Some(this) = this {
+            context.declare_this(this);
+        }
+
+        // match func.call(&mut context, args, &self.method.as_ref().unwrap().span) {
         match func.call(&mut context, args, &self.span) {
             v @ Ok(_) => v,
             e @ Err(EvalStop::Error(_)) => e,
@@ -254,6 +201,56 @@ impl Eval for FunctionCall {
             Err(EvalStop::Break) => todo!(),
             Err(EvalStop::Continue) => todo!(),
             Err(EvalStop::Throw) => todo!(),
+        }
+    }
+}
+
+impl FunctionCall {
+    fn resolve(&self, ctxt: &mut Context) -> Result<(Option<Value>, Func), EvalStop> {
+        let on = self.on.eval(ctxt)?;
+
+        if let Some(method) = &self.method {
+            match &on {
+                Value::Dict(dict) => {
+                    let maybe_func = dict.borrow().get(&method.name);
+                    if let Some(maybe_func) = maybe_func {
+                        if let Value::Func(func) = maybe_func {
+                            return Ok((Some(on), func));
+                        } else {
+                            return Err(InternalProgramError::ExpectedFunction {
+                                got: maybe_func.value_type(),
+                                span: method.span,
+                            }
+                            .into_stop());
+                        }
+                    };
+                    if let Some(func) = Dict::built_in_func(&method.name) {
+                        return Ok((Some(on), func));
+                    }
+                }
+                Value::List(_) => {
+                    if let Some(func) = List::built_in_func(&method.name) {
+                        return Ok((Some(on), func));
+                    }
+                }
+                _ => {}
+            }
+
+            // FIXME: better error - list all methods ?
+            Err(InternalProgramError::NoSuchMethod {
+                name: method.as_string(),
+                from: on.value_type(),
+                span: method.span,
+            }
+            .into_stop())
+        } else if let Value::Func(func) = on {
+            Ok((None, func))
+        } else {
+            Err(InternalProgramError::ExpectedFunction {
+                got: on.value_type(),
+                span: self.on.span(),
+            }
+            .into_stop())
         }
     }
 }

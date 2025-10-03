@@ -9,8 +9,8 @@ pub struct ParseError<'a> {
 }
 
 impl<'a> ParseError<'a> {
-    pub(crate) fn start(&self) -> usize {
-        self.error.start()
+    pub(crate) fn span(&self) -> Span {
+        self.error.span()
     }
 }
 
@@ -115,47 +115,47 @@ pub enum SyntaxError {
 }
 
 impl SyntaxError {
-    fn start(&self) -> usize {
+    fn span(&self) -> Span {
         match self {
-            SyntaxError::ExpectedVariableIdentifier { pos } => *pos,
-            SyntaxError::DeclarationExpectedEquals { got: _, pos } => *pos,
-            SyntaxError::DeclarationExpectedExpression { pos } => *pos,
-            SyntaxError::ReservedKeyword { got: _, span } => span.start,
-            SyntaxError::ReservedName { got: _, span } => span.start,
-            SyntaxError::ExpectedWhitespaceOrComment { pos } => *pos,
-            SyntaxError::DictExpectedOpenParens { pos } => *pos,
-            SyntaxError::DictMissingCloseParens { pos } => *pos,
-            SyntaxError::DictExpectedKeyOrCloseParens { pos } => *pos,
-            SyntaxError::DictExpectedKeyValuePair { span } => span.start,
-            SyntaxError::DictExpectedCommaOrCloseParens { pos } => *pos,
-            SyntaxError::KeyValueExpectsIdentOnLHS { span, pos: _ } => span.start,
-            SyntaxError::ExpectsExpression { pos } => *pos,
-            SyntaxError::MissingClosingParens { pos } => *pos,
-            SyntaxError::ExpectedClosingParens { got: _, pos } => *pos,
-            SyntaxError::PropertyOfExpectedIdentifier { pos } => *pos,
-            SyntaxError::IndexOfExpectedClosingBracket { got: _, pos } => *pos,
-            SyntaxError::FunctionCallExpectedArgOrClosingParens { pos } => *pos,
-            SyntaxError::FunctionCallExpectedCommaOrCloseParens { pos } => *pos,
-            SyntaxError::StringNotAllowdCRLF { pos } => *pos,
-            SyntaxError::StringInvalidEscape { pos } => *pos,
-            SyntaxError::StringMissingCloseBrace { pos } => *pos,
-            SyntaxError::StringExpectedCloseBrace { got: _, pos } => *pos,
-            SyntaxError::StringMissingCloseQuote { pos } => *pos,
-            SyntaxError::ExpectedBlock { pos } => *pos,
-            SyntaxError::ExpectedNewLineAfterStmt { pos } => *pos,
-            SyntaxError::ExpectedStmt { pos } => *pos,
-            SyntaxError::ExpectedBlockOrIf { pos } => *pos,
-            SyntaxError::ExpectedConditionExpression { pos } => *pos,
-            SyntaxError::MissingClosingBrace { pos } => *pos,
-            SyntaxError::AssignmentInvalidLHS { span } => span.start,
-            SyntaxError::LoopExpectedInKeyword { pos } => *pos,
-            SyntaxError::MissingClosingBracket { pos } => *pos,
-            SyntaxError::ListExpectedExpressionOrCloseBracket { pos } => *pos,
-            SyntaxError::ListExpectedCommaOrCloseBracket { pos } => *pos,
-            SyntaxError::FunctionExpectedBody { pos } => *pos,
-            SyntaxError::FunctionExpectedOpenParens { pos } => *pos,
-            SyntaxError::FunctionExpectedParamIdent { pos } => *pos,
-            SyntaxError::FunctionExpectedCommaOrCloseParens { pos } => *pos,
+            SyntaxError::ExpectedVariableIdentifier { pos } => Span::new(*pos, 1),
+            SyntaxError::DeclarationExpectedEquals { got: _, pos } => Span::new(*pos, 1),
+            SyntaxError::DeclarationExpectedExpression { pos } => Span::new(*pos, 1),
+            SyntaxError::ReservedKeyword { got: _, span } => *span,
+            SyntaxError::ReservedName { got: _, span } => *span,
+            SyntaxError::ExpectedWhitespaceOrComment { pos } => Span::new(*pos, 1),
+            SyntaxError::DictExpectedOpenParens { pos } => Span::new(*pos, 1),
+            SyntaxError::DictMissingCloseParens { pos } => Span::new(*pos, 1),
+            SyntaxError::DictExpectedKeyOrCloseParens { pos } => Span::new(*pos, 1),
+            SyntaxError::DictExpectedKeyValuePair { span } => *span,
+            SyntaxError::DictExpectedCommaOrCloseParens { pos } => Span::new(*pos, 1),
+            SyntaxError::KeyValueExpectsIdentOnLHS { span, pos: _ } => *span,
+            SyntaxError::ExpectsExpression { pos } => Span::new(*pos, 1),
+            SyntaxError::MissingClosingParens { pos } => Span::new(*pos, 1),
+            SyntaxError::ExpectedClosingParens { got: _, pos } => Span::new(*pos, 1),
+            SyntaxError::PropertyOfExpectedIdentifier { pos } => Span::new(*pos, 1),
+            SyntaxError::IndexOfExpectedClosingBracket { got: _, pos } => Span::new(*pos, 1),
+            SyntaxError::FunctionCallExpectedArgOrClosingParens { pos } => Span::new(*pos, 1),
+            SyntaxError::FunctionCallExpectedCommaOrCloseParens { pos } => Span::new(*pos, 1),
+            SyntaxError::StringNotAllowdCRLF { pos } => Span::new(*pos, 1),
+            SyntaxError::StringInvalidEscape { pos } => Span::new(*pos, 1),
+            SyntaxError::StringMissingCloseBrace { pos } => Span::new(*pos, 1),
+            SyntaxError::StringExpectedCloseBrace { got: _, pos } => Span::new(*pos, 1),
+            SyntaxError::StringMissingCloseQuote { pos } => Span::new(*pos, 1),
+            SyntaxError::ExpectedBlock { pos } => Span::new(*pos, 1),
+            SyntaxError::ExpectedNewLineAfterStmt { pos } => Span::new(*pos, 1),
+            SyntaxError::ExpectedStmt { pos } => Span::new(*pos, 1),
+            SyntaxError::ExpectedBlockOrIf { pos } => Span::new(*pos, 1),
+            SyntaxError::ExpectedConditionExpression { pos } => Span::new(*pos, 1),
+            SyntaxError::MissingClosingBrace { pos } => Span::new(*pos, 1),
+            SyntaxError::AssignmentInvalidLHS { span } => *span,
+            SyntaxError::LoopExpectedInKeyword { pos } => Span::new(*pos, 1),
+            SyntaxError::MissingClosingBracket { pos } => Span::new(*pos, 1),
+            SyntaxError::ListExpectedExpressionOrCloseBracket { pos } => Span::new(*pos, 1),
+            SyntaxError::ListExpectedCommaOrCloseBracket { pos } => Span::new(*pos, 1),
+            SyntaxError::FunctionExpectedBody { pos } => Span::new(*pos, 1),
+            SyntaxError::FunctionExpectedOpenParens { pos } => Span::new(*pos, 1),
+            SyntaxError::FunctionExpectedParamIdent { pos } => Span::new(*pos, 1),
+            SyntaxError::FunctionExpectedCommaOrCloseParens { pos } => Span::new(*pos, 1),
         }
     }
 }
