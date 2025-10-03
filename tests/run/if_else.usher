@@ -40,5 +40,5 @@ if a {
 
 results.add(x)
 results
----
+---result---
 ["c","b","a","xx"]

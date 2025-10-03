@@ -2,7 +2,7 @@ var cow = dict()
 
 cow
   .add("moo")
----
+---stderr---
 Evaluation error in tests/run/prog2.usher at line 4, char 4:
   |
 4 |   .add("moo")

@@ -40,7 +40,7 @@ impl Eval for For {
         let iterable = self.iterable.eval(ctxt)?;
         let mut result = Value::Nil;
 
-        let mut child_ctxt = ctxt.new_child();
+        let mut child_ctxt = ctxt.new_scope();
 
         match iterable {
             Value::List(list) => {
@@ -162,7 +162,7 @@ mod tests {
         list.add(Value::Integer(1));
         list.add(Value::Integer(2));
         list.add(Value::Integer(4));
-        let mut ctxt = Context::new();
+        let mut ctxt = Context::default();
         ctxt.set(&id("l"), list.into());
         ctxt.set(&id("r"), Value::Integer(0));
         // ctxt.set(&id("f"), Value::Bool(false));

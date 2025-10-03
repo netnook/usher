@@ -54,7 +54,7 @@ mod tests {
     fn test_dict_builder_eval() {
         use crate::parser::tests::*;
         let d = dict_builder(vec![kv(id("a"), i(1)), kv(id("b"), add(i(1), i(3)))]);
-        let actual = d.eval(&mut Context::new()).expect("a value");
+        let actual = d.eval(&mut Context::default()).expect("a value");
         let mut expected = Dict::new();
         expected.set(Rc::new("a".to_string()), 1.to_value());
         expected.set(Rc::new("b".to_string()), 4.to_value());

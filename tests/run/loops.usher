@@ -35,7 +35,7 @@ for kv in data {
 }
 
 [sum1,sum2,sum3,i,a,out]
----
+---result---
 [16,16,12,"i","a",["a",1]]
 ***********************************************
 var lst = [ 1, 2, 3, 4 ]
@@ -46,8 +46,9 @@ for i in lst {
     break
   }
 }
+print(last)
 last
----
+---result---
 2
 ***********************************************
 var dat = dict(a:1, b:2, c:3)
@@ -60,6 +61,6 @@ for kv in dat {
   }
 }
 last
----
+---result---
 (b:2)
 

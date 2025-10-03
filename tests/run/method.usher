@@ -6,5 +6,5 @@
 # a.f()
 #- --
 # dict[f:func..]
----
+---result---
 nil

@@ -26,7 +26,7 @@ impl core::fmt::Debug for Block {
 
 impl Eval for Block {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
-        let mut child_ctxt = ctxt.new_child();
+        let mut child_ctxt = ctxt.new_scope();
         self.eval_with_context(&mut child_ctxt)
     }
 }
@@ -53,7 +53,7 @@ mod tests {
 
     #[track_caller]
     fn do_test_block(block: &Block, expect: Value) {
-        let mut ctxt = Context::new();
+        let mut ctxt = Context::default();
         let actual = block.eval(&mut ctxt).expect("return ok");
         assert_eq!(actual, expect);
     }
@@ -73,7 +73,7 @@ mod tests {
 
     #[test]
     fn test_block_eval_ctxt() {
-        let mut ctxt = Context::new();
+        let mut ctxt = Context::default();
         ctxt.set(&id("a"), "a-initial".to_value());
         ctxt.set(&id("b"), "b-initial".to_value());
 

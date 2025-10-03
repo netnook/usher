@@ -7,13 +7,6 @@ use crate::{
 };
 use std::{error::Error, io::Write};
 
-#[allow(dead_code)] // FIXME: should this be exported
-pub fn print_parse_error_to_string(err: ParseError<'_>) -> String {
-    let mut buf = Vec::new();
-    print_parse_error(&mut buf, err).expect("write to string should not fail");
-    String::from_utf8_lossy(&buf[..]).to_string()
-}
-
 pub fn print_parse_error(w: impl Write, err: ParseError<'_>) -> Result<(), std::io::Error> {
     let info = err.find_source_position();
     let title = match err.cause {
@@ -23,13 +16,6 @@ pub fn print_parse_error(w: impl Write, err: ParseError<'_>) -> Result<(), std::
     print_error(w, title, info, err.cause)?;
 
     Ok(())
-}
-
-#[allow(dead_code)] // FIXME: should this be exported
-pub fn print_eval_error_to_string(err: EvalError) -> String {
-    let mut buf = Vec::new();
-    print_eval_error(&mut buf, err).expect("write to string should not fail");
-    String::from_utf8_lossy(&buf[..]).to_string()
 }
 
 pub fn print_eval_error(w: impl Write, err: EvalError) -> Result<(), std::io::Error> {

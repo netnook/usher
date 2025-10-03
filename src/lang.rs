@@ -21,7 +21,7 @@ mod visitor;
 pub use binary_op::{BinaryOp, BinaryOpCode};
 pub use block::Block;
 pub use catch::ChainCatch;
-pub use context::Context;
+pub use context::{Context, Output};
 pub use dict::DictBuilder;
 pub(crate) use errors::bad_type_error_op;
 pub use errors::{EvalError, InternalProgramError};

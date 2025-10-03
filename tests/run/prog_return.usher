@@ -2,5 +2,5 @@ var a = 999
 if true {
     return a
 }
----
+---result---
 999

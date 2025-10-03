@@ -247,7 +247,7 @@ mod tests {
         use crate::parser::tests::*;
 
         let mut ctxt = {
-            let mut ctxt = Context::new();
+            let mut ctxt = Context::default();
             let mut d = Dict::new();
             d.set(Rc::new("a".to_string()), 1.to_value());
             d.set(Rc::new("b".to_string()), "bbb".to_value());
@@ -276,7 +276,7 @@ mod tests {
         use crate::parser::tests::*;
 
         let mut ctxt = {
-            let mut ctxt = Context::new();
+            let mut ctxt = Context::default();
             let mut l = List::new();
             l.add(7.to_value());
             l.add("aaa".to_value());

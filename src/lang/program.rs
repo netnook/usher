@@ -25,7 +25,7 @@ impl<'a> core::fmt::Debug for Program<'a> {
 
 impl<'a> Program<'a> {
     pub fn eval(&self) -> Result<Value, EvalError<'a>> {
-        let mut ctxt = Context::new();
+        let mut ctxt = Context::default();
         self.eval_with_context(&mut ctxt)
     }
 

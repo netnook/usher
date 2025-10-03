@@ -205,12 +205,12 @@ mod tests {
 
     #[track_caller]
     fn do_test_eval_ok(op: BinaryOp, expected: Literal) {
-        assert_eq!(op.eval(&mut Context::new()).unwrap(), expected.val);
+        assert_eq!(op.eval(&mut Context::default()).unwrap(), expected.val);
     }
 
     #[track_caller]
     fn do_test_eval_err(op: BinaryOp) {
-        op.eval(&mut Context::new())
+        op.eval(&mut Context::default())
             .expect_err("expected error but none occured");
     }
 

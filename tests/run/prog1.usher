@@ -1,8 +1,9 @@
+# test 1
 var e = dict(foo: 1, bar:42)
 e.foo = "bar"
 e.fee = ["moo", "sheep"]
 e.fee[1] = "cow"
-print("e={e}")
+# print("e={e}")
 var l = []
 l.add(e.fee[1])
 l.add("moo")
@@ -26,5 +27,5 @@ l
 #   foo:
 #   "bar"
 # )
----
+---result---
 ["cow","moo"]

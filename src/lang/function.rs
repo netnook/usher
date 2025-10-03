@@ -187,7 +187,7 @@ impl Eval for FunctionCall {
         }
 
         // FIXME: normal function call should have a new context, but what about closures ?
-        let mut context = Context::new();
+        let mut context = Context::default();
 
         if let Some(this) = this {
             context.declare_this(this);
