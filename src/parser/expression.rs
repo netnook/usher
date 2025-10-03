@@ -1,8 +1,11 @@
 use super::{ParseResult, Parser, SyntaxError, chars::is_digit};
-use crate::lang::{
-    Accept, Arg, AstNode, BinaryOp, BinaryOpCode, ChainCatch, End, FunctionCall, Identifier,
-    IndexOf, KeyValueBuilder, Literal, PropertyOf, Span, This, UnaryOp, UnaryOpCode, Value, Var,
-    Visitor, VisitorResult,
+use crate::{
+    lang::{
+        Accept, Arg, AstNode, BinaryOp, BinaryOpCode, ChainCatch, End, FunctionCall, Identifier,
+        IndexOf, KeyValueBuilder, Literal, PropertyOf, Span, This, UnaryOp, UnaryOpCode, Value,
+        Var, Visitor, VisitorResult,
+    },
+    parser::identifier::UncheckedIdentifier,
 };
 use std::rc::Rc;
 
@@ -319,46 +322,46 @@ impl<'a> Parser<'a> {
     //   - parenthesised expression
     fn primary_expression(&mut self) -> ParseResult<Option<AstNode>> {
         let start = self.pos;
-        match self.unchecked_identifier() {
-            Some("this") => return Ok(Some(AstNode::This(This::new()))),
-            Some("nil") => {
-                return Ok(Some(AstNode::Literal(Literal::new(
-                    Value::Nil,
-                    Span::new(start, 3),
-                ))));
-            }
-            Some("end") => {
-                return Ok(Some(AstNode::Literal(Literal::new(
-                    Value::End,
-                    Span::new(start, 3),
-                ))));
-            }
-            Some("dict") => return Ok(Some(AstNode::DictBuilder(self.dict(start)?))),
-            Some("true") => {
-                return Ok(Some(AstNode::Literal(Literal::new(
-                    Value::Bool(true),
-                    Span::new(start, 4),
-                ))));
-            }
-            Some("false") => {
-                return Ok(Some(AstNode::Literal(Literal::new(
-                    Value::Bool(false),
-                    Span::new(start, 5),
-                ))));
-            }
-            Some("function") => {
-                return Ok(Some(AstNode::FunctionDef(Rc::new(self.function_def()?))));
-            }
-            Some(id) => {
-                // FIXME: where is the ident checked to make sure that it is valid/permitted ?
-                return Ok(Some(AstNode::Var(Var::new(Identifier::new(
-                    id.to_string(),
-                    Span::new(start, id.len()),
-                )))));
-            }
-            // FIXME error if function def added to something, for example
-            _ => {
-                self.pos = start;
+
+        if let Some(UncheckedIdentifier(name, span)) = self.unchecked_identifier() {
+            match name {
+                "this" => {
+                    return Ok(Some(AstNode::This(This::new())));
+                }
+                "nil" => {
+                    return Ok(Some(AstNode::Literal(Literal::new(Value::Nil, span))));
+                }
+                "end" => {
+                    return Ok(Some(AstNode::Literal(Literal::new(Value::End, span))));
+                }
+                "dict" => {
+                    return Ok(Some(AstNode::DictBuilder(self.dict(start)?)));
+                }
+                "true" => {
+                    return Ok(Some(AstNode::Literal(Literal::new(
+                        Value::Bool(true),
+                        span,
+                    ))));
+                }
+                "false" => {
+                    return Ok(Some(AstNode::Literal(Literal::new(
+                        Value::Bool(false),
+                        span,
+                    ))));
+                }
+                "function" => {
+                    return Ok(Some(AstNode::FunctionDef(Rc::new(self.function_def()?))));
+                }
+                id => {
+                    // FIXME: where is the ident checked to make sure that it is valid/permitted ?
+                    return Ok(Some(AstNode::Var(Var::new(Identifier::new(
+                        id.to_string(),
+                        span,
+                    )))));
+                } // // FIXME error if function def added to something, for example
+                  // _ => {
+                  //     self.pos = start;
+                  // }
             }
         }
         // FIXME: combine this with above so as not to have to re-parse identifier
@@ -417,14 +420,12 @@ impl<'a> Parser<'a> {
 
         self.whitespace_comments();
 
-        // FIXME: .unchecked_identifier should return an identifier with the span !!
-        let id_start = self.pos;
-        let Some(ident) = self.unchecked_identifier() else {
+        let Some(UncheckedIdentifier(ident, span)) = self.unchecked_identifier() else {
             return Err(SyntaxError::PropertyOfExpectedIdentifier { pos: self.pos });
         };
 
         Ok(Some((
-            Identifier::new(ident.to_string(), Span::start_end(id_start, self.pos)),
+            Identifier::new(ident.to_string(), span),
             Span::start_end(start, self.pos),
         )))
     }

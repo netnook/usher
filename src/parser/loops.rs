@@ -1,5 +1,8 @@
 use super::{ParseResult, Parser, SyntaxError};
-use crate::lang::{AstNode, For};
+use crate::{
+    lang::{AstNode, For},
+    parser::identifier::UncheckedIdentifier,
+};
 
 impl<'a> Parser<'a> {
     // "for" ident "in" expr block
@@ -28,7 +31,7 @@ impl<'a> Parser<'a> {
             self.whitespace_comments();
         }
 
-        if self.unchecked_identifier() != Some("in") {
+        let Some(UncheckedIdentifier("in", _)) = self.unchecked_identifier() else {
             return Err(SyntaxError::LoopExpectedInKeyword { pos: self.pos });
         };
 

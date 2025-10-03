@@ -1,11 +1,14 @@
 use super::{ParseResult, Parser, SyntaxError};
-use crate::lang::{Assignment, AstNode, Block, Break, Continue, End, Span};
+use crate::{
+    lang::{Assignment, AstNode, Block, Break, Continue, End, Span},
+    parser::identifier::UncheckedIdentifier,
+};
 
 impl<'a> Parser<'a> {
     pub(super) fn stmt(&mut self) -> ParseResult<Option<AstNode>> {
         let start = self.pos;
 
-        if let Some(id) = self.unchecked_identifier() {
+        if let Some(UncheckedIdentifier(id, _)) = self.unchecked_identifier() {
             match id {
                 "if" => {
                     return Ok(Some(self.if_stmt()?));

@@ -4,43 +4,41 @@ use super::{
 };
 use crate::lang::{Identifier, Span, Var};
 
+#[derive(Debug)]
+pub struct UncheckedIdentifier<'a>(pub(crate) &'a str, pub(crate) Span);
+
 impl<'a> Parser<'a> {
     /// Consume a identifier if next on input and return it.  Checks that identifier is
     /// not one of the reserved words.
     /// Otherwise consume nothing and return `None`
     // FIXME - handle non-ascii chars !!!
     pub(super) fn declaration_identifier(&mut self) -> ParseResult<Option<Var>> {
-        let start = self.pos;
-
-        let Some(ident) = self.unchecked_identifier() else {
+        let Some(UncheckedIdentifier(id, span)) = self.unchecked_identifier() else {
             return Ok(None);
         };
 
         // let ident = String::from_utf8_lossy(ident).to_string();
 
-        if KEYWORDS.contains(&ident) {
+        if KEYWORDS.contains(&id) {
             return Err(SyntaxError::ReservedKeyword {
-                got: ident.to_string(),
-                span: Span::new(start, ident.len()), // FIXME: should get span from ident
+                got: id.to_string(),
+                span,
             });
         }
-        if RESERVED_NAMES.contains(&ident) {
+        if RESERVED_NAMES.contains(&id) {
             return Err(SyntaxError::ReservedName {
-                got: ident.to_string(),
-                span: Span::new(start, ident.len()), // FIXME: should get span from ident
+                got: id.to_string(),
+                span,
             });
         }
 
-        Ok(Some(Var::new(Identifier::new(
-            ident.to_string(),
-            Span::new(start, ident.len()),
-        ))))
+        Ok(Some(Var::new(Identifier::new(id.to_string(), span))))
     }
 
     /// Consume a identifier if next on input and return it.
     /// Otherwise consume nothing and return `None`
     // FIXME - handle non-ascii chars !!!
-    pub(super) fn unchecked_identifier(&mut self) -> Option<&str> {
+    pub(super) fn unchecked_identifier(&mut self) -> Option<UncheckedIdentifier<'a>> {
         let start = self.pos;
 
         if self.repeat(is_alpha) < 1 {
@@ -53,8 +51,7 @@ impl<'a> Parser<'a> {
 
         let ident = std::str::from_utf8(&self.input[start..end]).expect("to str ok");
 
-        Some(ident)
-        // Some(&self.input[start..end])
+        Some(UncheckedIdentifier(ident, Span::start_end(start, end)))
     }
 }
 
