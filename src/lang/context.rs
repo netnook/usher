@@ -20,7 +20,7 @@ impl Default for Context {
 }
 
 impl Context {
-    pub fn get(&mut self, key: &Key) -> Option<Value> {
+    pub fn get(&self, key: &Key) -> Option<Value> {
         self.inner.borrow().get(key)
     }
 
@@ -48,6 +48,11 @@ impl Context {
 
     pub(crate) fn declare_this(&self, value: Value) {
         self.inner.borrow_mut().declare(This::key(), value);
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn size(&self) -> usize {
+        self.inner.borrow().len()
     }
 
     pub fn reset(&mut self) {
@@ -138,6 +143,10 @@ impl ContextInner {
 
     fn declare(&mut self, key: Key, value: Value) {
         self.vars.insert(key, value);
+    }
+
+    fn len(&self) -> usize {
+        self.vars.len()
     }
 
     fn reset(&mut self) {

@@ -39,112 +39,98 @@ impl core::fmt::Debug for FunctionDef {
 accept_default!(FunctionDef, name:opt:var, params:vec:param, body:block,);
 
 #[derive(PartialEq, Clone)]
-pub struct Param {
-    pub(crate) name: Var,
-    pub(crate) default_value: Option<AstNode>,
+pub enum Param {
+    Required(Var),
+    Optional(Var, AstNode), // FIXME: AstNode should probably be a Value!!!
+    OtherPositional(Var),
+    OtherNamed(Var),
+}
+
+impl Param {
+    pub(crate) fn key(&self) -> &Key {
+        match self {
+            Param::Required(var) => &var.ident.key,
+            Param::Optional(var, _) => &var.ident.key,
+            Param::OtherPositional(var) => &var.ident.key,
+            Param::OtherNamed(var) => &var.ident.key,
+        }
+    }
 }
 
 impl core::fmt::Debug for Param {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let minimal = f.sign_minus();
         if minimal {
-            if let Some(default_value) = &self.default_value {
-                self.name.ident.name.fmt(f)?;
-                f.write_str(": ")?;
-                default_value.fmt(f)
-            } else {
-                self.name.ident.name.fmt(f)
+            match self {
+                Param::Required(var) => var.ident.key.fmt(f),
+                Param::Optional(var, default_value) => {
+                    var.ident.key.fmt(f)?;
+                    f.write_str(": ")?;
+                    default_value.fmt(f)
+                }
+                Param::OtherPositional(var) => {
+                    f.write_str("*")?;
+                    var.ident.key.fmt(f)
+                }
+                Param::OtherNamed(var) => {
+                    f.write_str("**")?;
+                    var.ident.key.fmt(f)
+                }
             }
         } else {
-            f.debug_struct("Param")
-                .field("name", &self.name)
-                .field("default_value", &self.default_value)
-                .finish()
+            match self {
+                Param::Required(var) => f.debug_tuple("Param::Required").field(var).finish(),
+                Param::Optional(var, default_value) => f
+                    .debug_tuple("Param::Optional")
+                    .field(var)
+                    .field(default_value)
+                    .finish(),
+                Param::OtherPositional(var) => {
+                    f.debug_tuple("Param::OtherPositional").field(var).finish()
+                }
+                Param::OtherNamed(var) => f.debug_tuple("Param::OtherNamed").field(var).finish(),
+            }
         }
     }
 }
 
-accept_default!(Param, name:var, default_value:opt:node,);
+impl<T> Accept<T> for Param {
+    fn accept(&self, visitor: &mut impl Visitor<T>) -> VisitorResult<T> {
+        match self {
+            Param::Required(var) => visitor.visit_var(var),
+            Param::Optional(var, default_value) => {
+                match visitor.visit_var(var) {
+                    s @ VisitorResult::Stop(_) => return s,
+                    VisitorResult::Continue => {}
+                };
+                match visitor.visit_node(default_value) {
+                    s @ VisitorResult::Stop(_) => return s,
+                    VisitorResult::Continue => {}
+                };
+                VisitorResult::Continue
+            }
+            Param::OtherPositional(var) => visitor.visit_var(var),
+            Param::OtherNamed(var) => visitor.visit_var(var),
+        }
+    }
+}
 
 impl Eval for Rc<FunctionDef> {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
         let f = Value::Func(Func::Func(Rc::clone(self)));
         if let Some(name) = &self.name {
-            ctxt.set(&name.ident, f.clone());
+            ctxt.set(&name.ident.key, f.clone());
         };
         Ok(f)
     }
 }
 
 impl FunctionDef {
-    pub fn call(
-        &self,
-        ctxt: &mut Context,
-        args: Vec<Value>,
-        _span: &Span,
-    ) -> Result<Value, EvalStop> {
-        let param_count = self.params.len();
-        let arg_count = args.len();
-        let mut positional_count = usize::min(param_count, arg_count);
+    pub(crate) fn params(&self) -> &[Param] {
+        &self.params[..]
+    }
 
-        // assign positional args
-        for i in 0..positional_count {
-            if i == param_count && i == arg_count {
-                break;
-            } else if i == param_count {
-                todo!("too many arguments")
-            } else if i == arg_count {
-                todo!("no more args, fill in defaults")
-            }
-            let param = &self.params[i];
-            let arg = &args[i];
-
-            if let Value::KeyValue(_) = arg {
-                positional_count = i;
-                break;
-            }
-
-            ctxt.declare(&param.name.ident, arg.clone());
-        }
-
-        // set defaults for remaing args
-        for i in positional_count..param_count {
-            let param = &self.params[i];
-
-            let Some(default_value) = &param.default_value else {
-                todo!("no value specified for parameter")
-            };
-
-            // FIXME: default value should always be constant/literal
-            let default_value = default_value.eval(&mut Context::default())?;
-
-            ctxt.declare(&param.name.ident, default_value);
-        }
-
-        // set named arg values
-        for i in positional_count..arg_count {
-            let arg = &args[i];
-
-            let Value::KeyValue(arg) = arg else {
-                todo!("Expected only key value pairs after first one")
-            };
-
-            for param in &self.params[0..positional_count] {
-                if arg.key == param.name.ident.name {
-                    todo!("attempt to assign named arg to param already assigned positionally")
-                }
-            }
-
-            // FIXME: declare/ctxt should take Rc<String> rather than Ident (so that span in not needed)
-            let arg_ident = Identifier::new((*arg.key).clone(), Span::new(888, 888));
-            if !ctxt.contains_key(&arg_ident) {
-                todo!("unknown argument {k}", k = arg.key)
-            }
-
-            // FIXME: would be good if we could avoid cloning these value here
-            ctxt.declare(&arg_ident, arg.value.clone());
-        }
-
+    pub fn call(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
         self.body.eval_with_context(ctxt)
     }
 }
@@ -158,7 +144,8 @@ pub enum BuiltInFunc {
 
 impl BuiltInFunc {
     // FIXME: git rid of this
-    pub fn by_name(key: &str) -> Option<BuiltInFunc> {
+    pub fn by_name(key: &Key) -> Option<BuiltInFunc> {
+        let key = key.0.as_str();
         match key {
             "print" => Some(BuiltInFunc::Print),
             "eprint" => Some(BuiltInFunc::EPrint),
@@ -237,7 +224,7 @@ impl core::fmt::Debug for FunctionCall {
             let mut w = f.debug_struct("FunctionCall");
             w.field("on", &self.on);
             if let Some(method) = &self.method {
-                w.field("method", &method.name);
+                w.field("method", &method.key);
             }
             if !self.args.is_empty() {
                 w.field("args", &self.args);
@@ -258,20 +245,135 @@ impl Eval for FunctionCall {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
         let (this, func) = self.resolve(ctxt)?;
 
+        match func {
+            Func::Func(func) => {
+                // build the function call context
+                // FIXME: normal function call should have a new context, but what about closures ?
+                let mut call_context =
+                    self.build_call_context(ctxt, func.params(), this, &self.span)?;
+
+                match func.call(&mut call_context) {
+                    v @ Ok(_) => v,
+                    e @ Err(EvalStop::Error(_)) => e,
+                    Err(EvalStop::Return(value)) => Ok(value),
+                    Err(EvalStop::Break) => todo!(),
+                    Err(EvalStop::Continue) => todo!(),
+                    Err(EvalStop::Throw) => todo!(),
+                }
+            }
+            Func::BuiltInFunc(func) => self.eval_builtin(ctxt, &func, this, &self.span),
+        }
+    }
+}
+
+impl FunctionCall {
+    fn build_call_context(
+        &self,
+        ctxt: &mut Context,
+        params: &[Param],
+        this: Option<Value>,
+        call_span: &Span,
+    ) -> Result<Context, EvalStop> {
+        let mut call_context = ctxt.new_function_call_ctxt();
+
+        if let Some(this) = this {
+            call_context.declare_this(this);
+        }
+
+        let mut positional_mode = true;
+        for (i, arg) in self.args.iter().enumerate() {
+            if positional_mode {
+                let Some(param) = params.get(i) else {
+                    return Err(
+                        InternalProgramError::FunctionCallTooManyArgs { span: arg.span() }.into(),
+                    );
+                };
+
+                if arg.name.is_some() {
+                    positional_mode = false;
+                } else {
+                    call_context.declare(param.key().clone(), arg.value.eval(ctxt)?);
+                }
+            }
+
+            if !positional_mode {
+                let Some(arg_name) = &arg.name else {
+                    return Err(
+                        InternalProgramError::FunctionCallPositionalArgAfterNamedArg {
+                            span: arg.span(),
+                        }
+                        .into(),
+                    );
+                };
+
+                if !params.iter().any(|p| p.key() == &arg_name.key) {
+                    return Err(InternalProgramError::FunctionCallNoSuchParameter {
+                        name: arg_name.key.as_string(),
+                        span: arg_name.span,
+                    }
+                    .into());
+                };
+
+                if call_context.contains_key(&arg_name.key) {
+                    return Err(InternalProgramError::FunctionCallParamAlreadySet {
+                        name: arg_name.key.as_string(),
+                        span: arg_name.span,
+                    }
+                    .into());
+                }
+
+                call_context.declare(arg_name.key.clone(), arg.value.eval(ctxt)?);
+            }
+        }
+
+        // fill in optional args, check required args
+        for param in params {
+            match param {
+                Param::Required(var) => {
+                    if !call_context.contains_key(&var.ident.key) {
+                        return Err(InternalProgramError::FunctionCallMissingRequiredArgument {
+                            name: var.ident.key.as_string(),
+                            span: *call_span,
+                        }
+                        .into());
+                    }
+                }
+                Param::Optional(var, val) => {
+                    if !call_context.contains_key(&var.ident.key) {
+                        // FIXME: defaul val should be a constant Value and not need evaluating ?
+                        call_context.declare(var.ident.key.clone(), val.eval(ctxt)?);
+                    }
+                }
+                Param::OtherPositional(_) => {}
+                Param::OtherNamed(_) => {}
+            }
+        }
+
+        Ok(call_context)
+    }
+
+    fn eval_builtin(
+        &self,
+        ctxt: &mut Context,
+        func: &BuiltInFunc,
+        this: Option<Value>,
+        span: &Span,
+    ) -> Result<Value, EvalStop> {
+        // build the function call context
+        // FIXME: normal function call should have a new context, but what about closures ?
+        let mut call_context = ctxt.new_function_call_ctxt();
+
+        if let Some(this) = this {
+            call_context.declare_this(this);
+        }
+
         // evaluate the args
         let mut args = Vec::with_capacity(self.args.len());
         for arg_def in &self.args {
             args.push(arg_def.eval(ctxt)?);
         }
 
-        // FIXME: normal function call should have a new context, but what about closures ?
-        let mut context = ctxt.new_function_call_ctxt();
-
-        if let Some(this) = this {
-            context.declare_this(this);
-        }
-
-        match func.call(&mut context, args, &self.span) {
+        match func.call(&mut call_context, args, span) {
             v @ Ok(_) => v,
             e @ Err(EvalStop::Error(_)) => e,
             Err(EvalStop::Return(value)) => Ok(value),
@@ -280,16 +382,14 @@ impl Eval for FunctionCall {
             Err(EvalStop::Throw) => todo!(),
         }
     }
-}
 
-impl FunctionCall {
     fn resolve(&self, ctxt: &mut Context) -> Result<(Option<Value>, Func), EvalStop> {
         let on = self.on.eval(ctxt)?;
 
         if let Some(method) = &self.method {
             match &on {
                 Value::Dict(dict) => {
-                    let maybe_func = dict.borrow().get(&method.name);
+                    let maybe_func = dict.borrow().get(&method.key);
                     if let Some(maybe_func) = maybe_func {
                         if let Value::Func(func) = maybe_func {
                             return Ok((Some(on), func));
@@ -301,12 +401,12 @@ impl FunctionCall {
                             .into_stop());
                         }
                     };
-                    if let Some(func) = Dict::built_in_func(&method.name) {
+                    if let Some(func) = Dict::built_in_func(&method.key) {
                         return Ok((Some(on), func));
                     }
                 }
                 Value::List(_) => {
-                    if let Some(func) = List::built_in_func(&method.name) {
+                    if let Some(func) = List::built_in_func(&method.key) {
                         return Ok((Some(on), func));
                     }
                 }
@@ -347,7 +447,7 @@ impl core::fmt::Debug for Arg {
         let minimal = f.sign_minus();
         if minimal {
             if let Some(name) = &self.name {
-                name.name.fmt(f)?;
+                name.key.fmt(f)?;
                 f.write_str(": ")?;
                 self.value.fmt(f)
             } else {
@@ -367,11 +467,19 @@ impl Arg {
         if let Some(name) = &self.name {
             let val = self.value.eval(ctxt)?;
             Ok(Value::KeyValue(Rc::new(KeyValue {
-                key: name.name.clone(),
+                key: name.key.clone(),
                 value: val,
             })))
         } else {
             self.value.eval(ctxt)
+        }
+    }
+
+    fn span(&self) -> Span {
+        let span = self.value.span();
+        match &self.name {
+            Some(n) => Span::merge(span, n.span),
+            None => span,
         }
     }
 }
@@ -415,4 +523,296 @@ impl Eval for ReturnStmt {
 accept_default!(ReturnStmt, value:opt:node,);
 
 #[cfg(test)]
-mod tests {}
+mod tests {
+    use super::*;
+    use crate::{
+        lang::Span,
+        parser::tests::{arg, i, id, nil, s, var},
+    };
+
+    #[test]
+    fn test_build_call_context_params_none_args_none() -> Result<(), EvalStop> {
+        let params = Vec::new();
+        let call = function_call(Vec::new());
+        let mut ctxt = prepare_ctxt();
+
+        let ctxt = call.build_call_context(&mut ctxt, &params[..], None, &Span::new(88, 888))?;
+
+        assert_eq!(ctxt.get_this(), None);
+        assert_eq!(ctxt.size(), 0);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_build_call_context_params_required_args_positional() -> Result<(), EvalStop> {
+        let params = vec![Param::Required(var("aa")), Param::Required(var("bb"))];
+        let call = function_call(vec![arg!(i(1)), arg!(i(2))]);
+        let mut ctxt = prepare_ctxt();
+
+        let ctxt = call.build_call_context(&mut ctxt, &params[..], None, &Span::new(88, 888))?;
+
+        assert_eq!(ctxt.get_this(), None);
+        assert_eq!(ctxt.size(), 2);
+        assert_eq!(ctxt.get(&"aa".into()), Some(1.into()));
+        assert_eq!(ctxt.get(&"bb".into()), Some(2.into()));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_build_call_context_params_required_args_named() -> Result<(), EvalStop> {
+        let params = vec![Param::Required(var("aa")), Param::Required(var("bb"))];
+        let call = function_call(vec![arg!("bb", i(1)), arg!("aa", i(2))]);
+        let mut ctxt = prepare_ctxt();
+
+        let ctxt = call.build_call_context(&mut ctxt, &params[..], None, &Span::new(88, 888))?;
+
+        assert_eq!(ctxt.get_this(), None);
+        assert_eq!(ctxt.size(), 2);
+        assert_eq!(ctxt.get(&"aa".into()), Some(2.into()));
+        assert_eq!(ctxt.get(&"bb".into()), Some(1.into()));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_build_call_context_params_optional_args_none() -> Result<(), EvalStop> {
+        let params = vec![
+            Param::Optional(var("aa"), s("x").into()),
+            Param::Optional(var("bb"), s("y").into()),
+        ];
+        let call = function_call(vec![]);
+        let mut ctxt = prepare_ctxt();
+
+        let ctxt = call.build_call_context(&mut ctxt, &params[..], None, &Span::new(88, 888))?;
+
+        assert_eq!(ctxt.get_this(), None);
+        assert_eq!(ctxt.size(), 2);
+        assert_eq!(ctxt.get(&"aa".into()), Some("x".into()));
+        assert_eq!(ctxt.get(&"bb".into()), Some("y".into()));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_build_call_context_params_optional_args_positional() -> Result<(), EvalStop> {
+        let params = vec![
+            Param::Optional(var("aa"), s("x").into()),
+            Param::Optional(var("bb"), s("y").into()),
+        ];
+        let call = function_call(vec![arg!(i(1)), arg!(i(2))]);
+        let mut ctxt = prepare_ctxt();
+
+        let ctxt = call.build_call_context(&mut ctxt, &params[..], None, &Span::new(88, 888))?;
+
+        assert_eq!(ctxt.get_this(), None);
+        assert_eq!(ctxt.size(), 2);
+        assert_eq!(ctxt.get(&"aa".into()), Some(1.into()));
+        assert_eq!(ctxt.get(&"bb".into()), Some(2.into()));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_build_call_context_params_optional_args_explicit_nil() -> Result<(), EvalStop> {
+        let params = vec![
+            Param::Optional(var("aa"), s("x").into()),
+            Param::Optional(var("bb"), s("y").into()),
+        ];
+        let call = function_call(vec![arg!(nil())]);
+        let mut ctxt = prepare_ctxt();
+
+        let ctxt = call.build_call_context(&mut ctxt, &params[..], None, &Span::new(88, 888))?;
+
+        assert_eq!(ctxt.get_this(), None);
+        assert_eq!(ctxt.size(), 2);
+        assert_eq!(ctxt.get(&"aa".into()), Some(nil().val));
+        assert_eq!(ctxt.get(&"bb".into()), Some("y".into()));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_build_call_context_mixed() -> Result<(), EvalStop> {
+        let params = vec![
+            Param::Required(var("aa")),
+            Param::Required(var("bb")),
+            Param::Required(var("cc")),
+            Param::Optional(var("dd"), s("x").into()),
+            Param::Required(var("ee")),
+            Param::Optional(var("ff"), s("z").into()),
+        ];
+        let call = function_call(vec![
+            arg!(i(1)),
+            arg!(i(2)),
+            arg!("ee", i(3)),
+            arg!("ff", i(4)),
+            arg!("cc", i(5)),
+        ]);
+        let mut ctxt = prepare_ctxt();
+
+        let ctxt = call.build_call_context(&mut ctxt, &params[..], None, &Span::new(88, 888))?;
+
+        assert_eq!(ctxt.get_this(), None);
+        assert_eq!(ctxt.size(), 6);
+        assert_eq!(ctxt.get(&"aa".into()), Some(1.into()));
+        assert_eq!(ctxt.get(&"bb".into()), Some(2.into()));
+        assert_eq!(ctxt.get(&"cc".into()), Some(5.into()));
+        assert_eq!(ctxt.get(&"dd".into()), Some("x".into()));
+        assert_eq!(ctxt.get(&"ee".into()), Some(3.into()));
+        assert_eq!(ctxt.get(&"ff".into()), Some(4.into()));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_build_call_context_error_too_many_args() {
+        let params = vec![
+            Param::Optional(var("aa"), s("x").into()),
+            Param::Optional(var("bb"), s("y").into()),
+        ];
+        let call = function_call(vec![
+            arg!(i(1).spanned(5, 5)),
+            arg!(i(2).spanned(6, 6)),
+            arg!(i(3).spanned(7, 7)),
+            arg!(i(4).spanned(8, 8)),
+        ]);
+        let mut ctxt = prepare_ctxt();
+
+        let err = call
+            .build_call_context(&mut ctxt, &params[..], None, &Span::new(88, 888))
+            .err()
+            .expect("expect error");
+
+        let EvalStop::Error(InternalProgramError::FunctionCallTooManyArgs { span }) = err else {
+            panic!("unexpected error: {err:#?}");
+        };
+
+        assert_eq!(span, Span::new(7, 7));
+    }
+
+    #[test]
+    fn test_build_call_context_error_positional_after_named() {
+        let params = vec![
+            Param::Optional(var("aa"), s("x").into()),
+            Param::Optional(var("bb"), s("y").into()),
+            Param::Optional(var("cc"), s("z").into()),
+        ];
+        let call = function_call(vec![
+            arg!("bb", i(1).spanned(5, 5)),
+            arg!(i(2).spanned(6, 6)),
+        ]);
+        let mut ctxt = prepare_ctxt();
+
+        let err = call
+            .build_call_context(&mut ctxt, &params[..], None, &Span::new(88, 888))
+            .err()
+            .expect("expect error");
+
+        let EvalStop::Error(InternalProgramError::FunctionCallPositionalArgAfterNamedArg { span }) =
+            err
+        else {
+            panic!("unexpected error: {err:#?}");
+        };
+
+        assert_eq!(span, Span::new(6, 6));
+    }
+
+    #[test]
+    fn test_build_call_context_error_no_such_parameter() {
+        let params = vec![
+            Param::Optional(var("aa"), s("x").into()),
+            Param::Optional(var("bb"), s("y").into()),
+            Param::Optional(var("cc"), s("z").into()),
+        ];
+        let call = function_call(vec![
+            arg!("bb", i(1).spanned(5, 5)),
+            arg!(id("xx").spanned(7, 7), i(1).spanned(6, 6)),
+        ]);
+        let mut ctxt = prepare_ctxt();
+
+        let err = call
+            .build_call_context(&mut ctxt, &params[..], None, &Span::new(88, 888))
+            .err()
+            .expect("expect error");
+
+        let EvalStop::Error(InternalProgramError::FunctionCallNoSuchParameter { span, name }) = err
+        else {
+            panic!("unexpected error: {err:#?}");
+        };
+
+        assert_eq!(name, "xx".to_string());
+        assert_eq!(span, Span::new(7, 7));
+    }
+
+    #[test]
+    fn test_build_call_context_error_parameter_already_set() {
+        let params = vec![
+            Param::Optional(var("aa"), s("x").into()),
+            Param::Optional(var("bb"), s("y").into()),
+            Param::Optional(var("cc"), s("z").into()),
+        ];
+        let call = function_call(vec![
+            arg!(i(1)),
+            arg!(i(2)),
+            arg!(id("aa").spanned(7, 7), i(7)),
+        ]);
+        let mut ctxt = prepare_ctxt();
+
+        let err = call
+            .build_call_context(&mut ctxt, &params[..], None, &Span::new(88, 888))
+            .err()
+            .expect("expect error");
+
+        let EvalStop::Error(InternalProgramError::FunctionCallParamAlreadySet { span, name }) = err
+        else {
+            panic!("unexpected error: {err:#?}");
+        };
+
+        assert_eq!(name, "aa".to_string());
+        assert_eq!(span, Span::new(7, 7));
+    }
+
+    #[test]
+    fn test_build_call_context_error_missing_arg() {
+        let params = vec![
+            Param::Required(var("aa")),
+            Param::Required(var("bb")),
+            Param::Optional(var("cc"), s("z").into()),
+        ];
+        let call = function_call(vec![arg!(i(1)), arg!(id("cc").spanned(7, 7), i(7))]);
+        let mut ctxt = prepare_ctxt();
+
+        let err = call
+            .build_call_context(&mut ctxt, &params[..], None, &Span::new(88, 888))
+            .err()
+            .expect("expect error");
+
+        let EvalStop::Error(InternalProgramError::FunctionCallMissingRequiredArgument {
+            span,
+            name,
+        }) = err
+        else {
+            panic!("unexpected error: {err:#?}");
+        };
+
+        assert_eq!(name, "bb".to_string());
+        assert_eq!(span, Span::new(88, 888));
+    }
+
+    fn function_call(args: Vec<Arg>) -> FunctionCall {
+        FunctionCall {
+            on: Box::new(s("dummy").into()),
+            method: None,
+            args,
+            span: Span::new(999, 1),
+        }
+    }
+
+    fn prepare_ctxt() -> Context {
+        let mut ctxt = Context::default();
+        ctxt.set(&"old".into(), "dummy".into());
+        ctxt
+    }
+}

@@ -152,7 +152,7 @@ fn test_stmt_spanneds() {
         Parser::stmt,
         r#" aaa(123).bbb(456) "#,
         _call!(
-            _call!(var(id("aaa").spanned(1, 3)), arg(i(123).spanned(5, 3)),).spanned(4, 5),
+            _call!(var(id("aaa").spanned(1, 3)), arg(i(123).spanned(5, 3)),).spanned(1, 8),
             method(id("bbb").spanned(10, 3)),
             arg(i(456).spanned(14, 3)),
         )

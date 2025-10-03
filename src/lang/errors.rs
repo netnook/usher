@@ -77,6 +77,16 @@ pub enum InternalProgramError {
         from: PropertyList,
         span: Span,
     },
+    #[error("Too many arguments provided in funcition call.")]
+    FunctionCallTooManyArgs { span: Span },
+    #[error("Positional arguments must come before named arguments.")]
+    FunctionCallPositionalArgAfterNamedArg { span: Span },
+    #[error("Function does not have parameter named '{name}'")]
+    FunctionCallNoSuchParameter { name: String, span: Span },
+    #[error("Parameter '{name}' already set by previous argument")]
+    FunctionCallParamAlreadySet { name: String, span: Span },
+    #[error("Missing argument for parameter '{name}' ")]
+    FunctionCallMissingRequiredArgument { name: String, span: Span },
 }
 
 #[derive(Debug, PartialEq)]
@@ -182,6 +192,11 @@ impl InternalProgramError {
                 from: _,
                 span,
             } => span,
+            InternalProgramError::FunctionCallTooManyArgs { span } => span,
+            InternalProgramError::FunctionCallPositionalArgAfterNamedArg { span } => span,
+            InternalProgramError::FunctionCallNoSuchParameter { name: _, span } => span,
+            InternalProgramError::FunctionCallParamAlreadySet { name: _, span } => span,
+            InternalProgramError::FunctionCallMissingRequiredArgument { name: _, span } => span,
         }
     }
 

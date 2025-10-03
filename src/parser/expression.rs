@@ -265,6 +265,13 @@ impl<'a> Parser<'a> {
                     }),
                     AstNode::IndexOf(_) => todo!(),
                     AstNode::ChainCatch(_) => todo!(),
+                    AstNode::Var(ref var) => AstNode::FunctionCall(FunctionCall {
+                        span: Span::merge(var.span(), span),
+                        on: node.into(),
+                        // FIXME: create a named function call type for this
+                        method: None,
+                        args,
+                    }),
                     _ => AstNode::FunctionCall(FunctionCall {
                         on: node.into(),
                         method: None,

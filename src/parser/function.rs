@@ -44,16 +44,10 @@ impl<'a> Parser<'a> {
 
             match expr {
                 AstNode::Var(var) => {
-                    params.push(Param {
-                        name: var,
-                        default_value: None,
-                    });
+                    params.push(Param::Required(var));
                 }
                 AstNode::KeyValue(KeyValueBuilder { key, value }) => {
-                    params.push(Param {
-                        name: Var::new(key),
-                        default_value: Some(*value),
-                    });
+                    params.push(Param::Optional(Var::new(key), *value));
                 }
                 _ => {
                     return Err(SyntaxError::FunctionExpectedParamIdent { pos: ref_pos });

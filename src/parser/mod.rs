@@ -420,17 +420,11 @@ pub mod tests {
         }};
         (@param $name:expr, $val:expr) => {{
             use crate::lang::Param;
-            Param {
-                name: var($name),
-                default_value: Some($val.into()),
-            }
+            Param::Optional(var($name), $val.into())
         }};
         (@param $name:expr) => {{
             use crate::lang::Param;
-            Param {
-                name: var($name),
-                default_value: None,
-            }
+            Param::Required(var($name))
         }};
         ($body:expr) => {{
             use crate::lang::FunctionDef;
@@ -462,7 +456,7 @@ pub mod tests {
             let mut c = _call!(@inner $($rest)*);
             c.args.insert(0, Arg{
                 name: Some($name),
-                value: $value
+                value: $value,
             });
             c
         }};
@@ -471,7 +465,7 @@ pub mod tests {
             let mut c = _call!(@inner $($rest)*);
             c.args.insert(0, Arg{
                 name: None,
-                value: $value.into()
+                value: $value.into(),
             });
             c
         }};
@@ -488,6 +482,24 @@ pub mod tests {
         }};
     }
     pub(crate) use _call;
+
+    macro_rules! arg {
+        ($name:expr, $value:expr) => {{
+            use crate::lang::Arg;
+            Arg {
+                name: Some($name.into()),
+                value: $value.into(),
+            }
+        }};
+        ($value:expr) => {{
+            use crate::lang::Arg;
+            Arg {
+                name: None,
+                value: $value.into(),
+            }
+        }};
+    }
+    pub(crate) use arg;
 
     #[track_caller]
     pub(crate) fn do_test_parser_ok<'a, F>(

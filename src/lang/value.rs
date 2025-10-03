@@ -254,20 +254,6 @@ pub enum Func {
     BuiltInFunc(BuiltInFunc),
 }
 
-impl Func {
-    pub fn call(
-        &self,
-        ctxt: &mut Context,
-        args: Vec<Value>,
-        span: &Span,
-    ) -> Result<Value, EvalStop> {
-        match self {
-            Func::Func(f) => f.call(ctxt, args, span),
-            Func::BuiltInFunc(f) => f.call(ctxt, args, span),
-        }
-    }
-}
-
 impl From<BuiltInFunc> for Func {
     fn from(value: BuiltInFunc) -> Self {
         Self::BuiltInFunc(value)
@@ -309,6 +295,12 @@ impl From<KeyValue> for Value {
 impl From<&str> for Value {
     fn from(value: &str) -> Self {
         Value::Str(Rc::new(value.to_string()))
+    }
+}
+
+impl From<isize> for Value {
+    fn from(value: isize) -> Self {
+        Value::Integer(value)
     }
 }
 
