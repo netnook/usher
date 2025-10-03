@@ -48,8 +48,7 @@ impl Eval for For {
                 let list = list.borrow();
                 for val in list.iter() {
                     child_ctxt.reset();
-                    // FIXME: push declaration into Var
-                    child_ctxt.declare(&self.loop_item.ident, val);
+                    self.loop_item.declare(&mut child_ctxt, val);
                     result = match self.block.eval_with_context(&mut child_ctxt) {
                         Ok(v) => v,
                         Err(EvalStop::Break) => todo!(),
@@ -64,8 +63,7 @@ impl Eval for For {
                 for (k, val) in dict.iter() {
                     let loop_val = KeyValue::new(k, val.clone()).into();
                     child_ctxt.reset();
-                    // FIXME: push declaration into Var
-                    child_ctxt.declare(&self.loop_item.ident, loop_val);
+                    self.loop_item.declare(&mut child_ctxt, loop_val);
                     result = match self.block.eval_with_context(&mut child_ctxt) {
                         Ok(v) => v,
                         Err(EvalStop::Break) => todo!(),

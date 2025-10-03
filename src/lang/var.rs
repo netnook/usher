@@ -47,6 +47,10 @@ impl Var {
     pub(crate) fn span(&self) -> Span {
         self.ident.span
     }
+
+    pub(crate) fn declare(&self, ctxt: &mut Context, value: Value) {
+        ctxt.declare(&self.ident, value)
+    }
 }
 
 impl Eval for Var {
@@ -94,8 +98,7 @@ impl core::fmt::Debug for Declaration {
 impl Eval for Declaration {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
         let value = self.value.eval(ctxt)?;
-        // FIXME: move declare method to Var
-        ctxt.declare(&self.var.ident, value);
+        self.var.declare(ctxt, value);
         Ok(Value::Nil)
     }
 }
