@@ -153,12 +153,14 @@ impl Eval for KeyValueBuilder {
 
 accept_default!(KeyValueBuilder, value:node,);
 
-#[derive(PartialEq, Debug, Clone)]
-pub struct End {}
+#[derive(PartialEq, Clone)]
+pub struct End {
+    pub(crate) span: Span,
+}
 
 impl End {
-    pub(crate) fn new() -> Self {
-        Self {}
+    pub(crate) fn new(span: Span) -> Self {
+        Self { span }
     }
 }
 
@@ -169,6 +171,17 @@ impl Eval for End {
 }
 
 accept_default!(End);
+
+impl core::fmt::Debug for End {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let minimal = f.sign_minus();
+        if minimal {
+            write!(f, "End")
+        } else {
+            f.debug_struct("End").field("span", &self.span).finish()
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {}

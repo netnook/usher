@@ -164,6 +164,9 @@ impl AstNode {
             AstNode::Literal(v) => v.span,
             AstNode::BinaryOp(v) => v.span(),
             AstNode::UnaryOp(v) => v.span(),
+            AstNode::Break(v) => v.span,
+            AstNode::Continue(v) => v.span,
+            AstNode::End(v) => v.span,
             // FIXME: finish pos
             // AstNode::Declaration(v) => v.eval(ctxt),
             // AstNode::FunctionCall(v) => v.eval(ctxt),

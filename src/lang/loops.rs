@@ -97,8 +97,7 @@ impl core::fmt::Debug for Break {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let minimal = f.sign_minus();
         if minimal {
-            let mut w = f.debug_struct("Break");
-            w.finish()
+            write!(f, "Break")
         } else {
             f.debug_struct("Break").field("span", &self.span).finish()
         }
@@ -128,8 +127,7 @@ impl core::fmt::Debug for Continue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let minimal = f.sign_minus();
         if minimal {
-            let mut w = f.debug_struct("Continue");
-            w.finish()
+            write!(f, "Continue")
         } else {
             f.debug_struct("Continue")
                 .field("span", &self.span)

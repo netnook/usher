@@ -23,7 +23,7 @@ impl<'a> Parser<'a> {
                     return Ok(Some(Break::new(span).into()));
                 }
                 "end" => {
-                    return Ok(Some(End::new().into()));
+                    return Ok(Some(End::new(span).into()));
                 }
                 "continue" => {
                     return Ok(Some(Continue::new(span).into()));
@@ -228,6 +228,6 @@ pub(super) mod tests {
         do_test_stmt_ok(" vario + 2 ", add(var("vario"), i(2)), -1);
         do_test_stmt_ok(" break ", _break(), -1);
         do_test_stmt_ok(" continue ", _continue(), -1);
-        do_test_stmt_ok(" end ", End::new(), -1);
+        do_test_stmt_ok(" end ", _end(), -1);
     }
 }

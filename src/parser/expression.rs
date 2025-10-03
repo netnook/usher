@@ -196,7 +196,7 @@ impl<'a> Parser<'a> {
             if self.char(b'!') {
                 ops.push(UnaryOp {
                     op: UnaryOpCode::Not,
-                    on: Box::new(End::new().into()), // dummy
+                    on: Box::new(End::new(Span::new(0, 0)).into()), // dummy
                     span: Span::new(self.pos - 1, 1),
                 });
                 continue;
@@ -208,7 +208,7 @@ impl<'a> Parser<'a> {
                 }
                 ops.push(UnaryOp {
                     op: UnaryOpCode::Negative,
-                    on: Box::new(End::new().into()), // dummy
+                    on: Box::new(End::new(Span::new(0, 0)).into()), // dummy
                     span: Span::new(self.pos - 1, 1),
                 });
                 continue;

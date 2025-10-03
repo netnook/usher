@@ -85,7 +85,7 @@ pub mod tests {
     use crate::{
         lang::{
             Assignment, AstNode, BinaryOp, BinaryOpCode, Block, Break, ChainCatch, Continue,
-            Declaration, Dict, DictBuilder, For, FunctionCall, Identifier, IndexOf, KeyValue,
+            Declaration, Dict, DictBuilder, End, For, FunctionCall, Identifier, IndexOf, KeyValue,
             KeyValueBuilder, List, ListBuilder, Literal, PropertyOf, Span, This, UnaryOp,
             UnaryOpCode, Value, Var,
         },
@@ -327,6 +327,9 @@ pub mod tests {
     }
     pub(crate) fn _continue() -> Continue {
         Continue::new(Span::new(999, 9999))
+    }
+    pub(crate) fn _end() -> End {
+        End::new(Span::new(999, 9999))
     }
 
     macro_rules! _ret {
@@ -698,4 +701,5 @@ pub mod tests {
     with_span!(FunctionCall);
     with_span!(Break);
     with_span!(Continue);
+    with_span!(End);
 }
