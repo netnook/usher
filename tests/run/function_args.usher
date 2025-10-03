@@ -1,0 +1,25 @@
+# test 1
+function one() {
+    print("aaa")
+}
+one()
+---stdout---
+aaa
+*****************************************************
+# test 2
+function one(a, b, c: "-C-", d: "-D-") {
+    print(a, b, c, d)
+}
+one("111", "bbb")
+one("222", "bbb", "ccc")
+one("333", "bbb", "ccc", "ddd")
+one("444", "bbb", c:"cc1")
+one("555", "bbb", d:"dd1")
+one("666", "bbb", d:"dd2", c:"cc2")
+---stdout---
+111, bbb, -C-, -D-
+222, bbb, ccc, -D-
+333, bbb, ccc, ddd
+444, bbb, cc1, -D-
+555, bbb, -C-, dd1
+666, bbb, cc2, dd2

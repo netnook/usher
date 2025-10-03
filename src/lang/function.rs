@@ -1,6 +1,6 @@
 use crate::lang::{
-    AstNode, Block, Context, Dict, Eval, EvalStop, Identifier, InternalProgramError, List, Span,
-    Value, Var, accept_default,
+    AstNode, Block, Context, Dict, Eval, EvalStop, Identifier, InternalProgramError, KeyValue,
+    List, Span, Value, Var, accept_default,
     value::Func,
     visitor::{Accept, Visitor, VisitorResult},
 };
@@ -80,19 +80,79 @@ impl FunctionDef {
     pub fn call(
         &self,
         ctxt: &mut Context,
-        params: Vec<Value>,
-        span: &Span,
+        args: Vec<Value>,
+        _span: &Span,
     ) -> Result<Value, EvalStop> {
-        let _ = ctxt;
-        let _ = params;
-        let _ = span;
-        todo!()
+        let param_count = self.params.len();
+        let arg_count = args.len();
+        let mut positional_count = usize::min(param_count, arg_count);
+
+        // assign positional args
+        for i in 0..positional_count {
+            if i == param_count && i == arg_count {
+                break;
+            } else if i == param_count {
+                todo!("too many arguments")
+            } else if i == arg_count {
+                todo!("no more args, fill in defaults")
+            }
+            let param = &self.params[i];
+            let arg = &args[i];
+
+            if let Value::KeyValue(_) = arg {
+                positional_count = i;
+                break;
+            }
+
+            ctxt.declare(&param.name.ident, arg.clone());
+        }
+
+        // set defaults for remaing args
+        for i in positional_count..param_count {
+            let param = &self.params[i];
+
+            let Some(default_value) = &param.default_value else {
+                todo!("no value specified for parameter")
+            };
+
+            // FIXME: default value should always be constant/literal
+            let default_value = default_value.eval(&mut Context::default())?;
+
+            ctxt.declare(&param.name.ident, default_value);
+        }
+
+        // set named arg values
+        for i in positional_count..arg_count {
+            let arg = &args[i];
+
+            let Value::KeyValue(arg) = arg else {
+                todo!("Expected only key value pairs after first one")
+            };
+
+            for param in &self.params[0..positional_count] {
+                if arg.key == param.name.ident.name {
+                    todo!("attempt to assign named arg to param already assigned positionally")
+                }
+            }
+
+            // FIXME: declare/ctxt should take Rc<String> rather than Ident (so that span in not needed)
+            let arg_ident = Identifier::new((*arg.key).clone(), Span::new(888, 888));
+            if !ctxt.contains_key(&arg_ident) {
+                todo!("unknown argument {k}", k = arg.key)
+            }
+
+            // FIXME: would be good if we could avoid cloning these value here
+            ctxt.declare(&arg_ident, arg.value.clone());
+        }
+
+        self.body.eval_with_context(ctxt)
     }
 }
 
 #[derive(PartialEq, Debug, Clone)]
 pub enum BuiltInFunc {
     Print,
+    EPrint,
     Add,
 }
 
@@ -101,7 +161,7 @@ impl BuiltInFunc {
     pub fn by_name(key: &str) -> Option<BuiltInFunc> {
         match key {
             "print" => Some(BuiltInFunc::Print),
-            //         "add" => Some(BuiltInFunc::Add),
+            "eprint" => Some(BuiltInFunc::EPrint),
             _ => None,
         }
     }
@@ -109,14 +169,34 @@ impl BuiltInFunc {
     pub fn call(
         &self,
         ctxt: &mut Context,
-        params: Vec<Value>,
+        args: Vec<Value>,
         span: &Span,
     ) -> Result<Value, EvalStop> {
         match self {
             BuiltInFunc::Print => {
-                for p in params {
-                    println!("got {}", p.as_string()?);
+                let mut first = true;
+                for arg in args {
+                    if first {
+                        first = false;
+                    } else {
+                        ctxt.stdout(", ");
+                    }
+                    ctxt.stdout(arg.as_string()?.as_ref());
                 }
+                ctxt.stdout("\n");
+                Ok(Value::Nil)
+            }
+            BuiltInFunc::EPrint => {
+                let mut first = true;
+                for arg in args {
+                    if first {
+                        first = false;
+                    } else {
+                        ctxt.stderr(", ");
+                    }
+                    ctxt.stderr(arg.as_string()?.as_ref());
+                }
+                ctxt.stderr("\n");
                 Ok(Value::Nil)
             }
             BuiltInFunc::Add => {
@@ -124,8 +204,8 @@ impl BuiltInFunc {
                 match this {
                     Value::List(list) => {
                         let mut list = list.borrow_mut();
-                        for v in params {
-                            list.add(v);
+                        for arg in args {
+                            list.add(arg);
                         }
                         Ok(Value::Nil)
                     }
@@ -176,8 +256,6 @@ impl core::fmt::Debug for FunctionCall {
 
 impl Eval for FunctionCall {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
-        // let on = self.on.eval(ctxt)?;
-
         let (this, func) = self.resolve(ctxt)?;
 
         // evaluate the args
@@ -187,13 +265,12 @@ impl Eval for FunctionCall {
         }
 
         // FIXME: normal function call should have a new context, but what about closures ?
-        let mut context = Context::default();
+        let mut context = ctxt.new_function_call_ctxt();
 
         if let Some(this) = this {
             context.declare_this(this);
         }
 
-        // match func.call(&mut context, args, &self.method.as_ref().unwrap().span) {
         match func.call(&mut context, args, &self.span) {
             v @ Ok(_) => v,
             e @ Err(EvalStop::Error(_)) => e,
@@ -284,12 +361,18 @@ impl core::fmt::Debug for Arg {
         }
     }
 }
+
 impl Arg {
     pub fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
-        if self.name.is_some() {
-            todo!("named arg not handleld");
+        if let Some(name) = &self.name {
+            let val = self.value.eval(ctxt)?;
+            Ok(Value::KeyValue(Rc::new(KeyValue {
+                key: name.name.clone(),
+                value: val,
+            })))
+        } else {
+            self.value.eval(ctxt)
         }
-        self.value.eval(ctxt)
     }
 }
 

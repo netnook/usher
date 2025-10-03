@@ -258,12 +258,12 @@ impl Func {
     pub fn call(
         &self,
         ctxt: &mut Context,
-        params: Vec<Value>,
+        args: Vec<Value>,
         span: &Span,
     ) -> Result<Value, EvalStop> {
         match self {
-            Func::Func(f) => f.call(ctxt, params, span),
-            Func::BuiltInFunc(f) => f.call(ctxt, params, span),
+            Func::Func(f) => f.call(ctxt, args, span),
+            Func::BuiltInFunc(f) => f.call(ctxt, args, span),
         }
     }
 }

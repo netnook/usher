@@ -50,6 +50,8 @@ print(last)
 last
 ---result---
 2
+---stdout---
+2
 ***********************************************
 var dat = dict(a:1, b:2, c:3)
 var last = nil
