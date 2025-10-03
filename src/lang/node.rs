@@ -160,7 +160,7 @@ impl AstNode {
 
     pub fn span(&self) -> Span {
         match self {
-            AstNode::Var(v) => v.span,
+            AstNode::Var(v) => v.span(),
             AstNode::Literal(v) => v.span,
             AstNode::BinaryOp(v) => v.span(),
             AstNode::UnaryOp(v) => v.span(),

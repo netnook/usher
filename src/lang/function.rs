@@ -19,7 +19,7 @@ impl core::fmt::Debug for FunctionDef {
         if minimal {
             let mut w = f.debug_struct("FunctionDef");
             if let Some(name) = &self.name {
-                w.field("name", &name.name.name);
+                w.field("name", &name.ident.name);
             }
             if !self.params.is_empty() {
                 w.field("params", &self.params);
@@ -49,11 +49,11 @@ impl core::fmt::Debug for Param {
         let minimal = f.sign_minus();
         if minimal {
             if let Some(default_value) = &self.default_value {
-                self.name.name.name.fmt(f)?;
+                self.name.ident.name.fmt(f)?;
                 f.write_str(": ")?;
                 default_value.fmt(f)
             } else {
-                self.name.name.name.fmt(f)
+                self.name.ident.name.fmt(f)
             }
         } else {
             f.debug_struct("Param")
@@ -70,7 +70,7 @@ impl Eval for Rc<FunctionDef> {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
         let f = Value::Func(Func::Func(Rc::clone(self)));
         if let Some(name) = &self.name {
-            ctxt.set(&name.name, f.clone());
+            ctxt.set(&name.ident, f.clone());
         };
         Ok(f)
     }

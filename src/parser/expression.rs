@@ -45,7 +45,7 @@ impl<'a> Parser<'a> {
         };
 
         Ok(Some(AstNode::KeyValue(KeyValueBuilder {
-            key: id.name,
+            key: id.ident,
             value: rhs.into(),
         })))
     }
@@ -350,10 +350,11 @@ impl<'a> Parser<'a> {
                 return Ok(Some(AstNode::FunctionDef(Rc::new(self.function_def()?))));
             }
             Some(id) => {
-                return Ok(Some(AstNode::Var(Var::new(
-                    Identifier::new(id.to_string()),
+                // FIXME: where is the ident checked to make sure that it is valid/permitted ?
+                return Ok(Some(AstNode::Var(Var::new(Identifier::new(
+                    id.to_string(),
                     Span::new(start, id.len()),
-                ))));
+                )))));
             }
             // FIXME error if function def added to something, for example
             _ => {
@@ -416,12 +417,14 @@ impl<'a> Parser<'a> {
 
         self.whitespace_comments();
 
+        // FIXME: .unchecked_identifier should return an identifier with the span !!
+        let id_start = self.pos;
         let Some(ident) = self.unchecked_identifier() else {
             return Err(SyntaxError::PropertyOfExpectedIdentifier { pos: self.pos });
         };
 
         Ok(Some((
-            Identifier::new(ident.to_string()),
+            Identifier::new(ident.to_string(), Span::start_end(id_start, self.pos)),
             Span::start_end(start, self.pos),
         )))
     }

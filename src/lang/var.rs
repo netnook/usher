@@ -25,35 +25,35 @@ accept_default!(This);
 
 #[derive(PartialEq, Clone)]
 pub struct Var {
-    pub(crate) name: Identifier,
-    pub(crate) span: Span,
+    pub(crate) ident: Identifier,
 }
 
 impl core::fmt::Debug for Var {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let minimal = f.sign_minus();
         if minimal {
-            write!(f, r#"Var("{}")"#, self.name.name)
+            write!(f, r#"Var("{}")"#, self.ident.name)
         } else {
-            f.debug_struct("Var")
-                .field("name", &self.name)
-                .field("span", &self.span)
-                .finish()
+            f.debug_struct("Var").field("ident", &self.ident).finish()
         }
     }
 }
 
 impl Var {
-    pub(crate) const fn new(name: Identifier, span: Span) -> Self {
-        Self { name, span }
+    pub(crate) const fn new(name: Identifier) -> Self {
+        Self { ident: name }
+    }
+
+    pub(crate) fn span(&self) -> Span {
+        self.ident.span
     }
 }
 
 impl Eval for Var {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
         let value = ctxt
-            .get(&self.name)
-            .or_else(|| BuiltInFunc::by_name(&self.name.name).map(|f| f.into()))
+            .get(&self.ident)
+            .or_else(|| BuiltInFunc::by_name(&self.ident.name).map(|f| f.into()))
             .unwrap_or(Value::Nil);
         Ok(value)
     }
@@ -63,7 +63,7 @@ accept_default!(Var);
 
 impl Setter for Var {
     fn set(&self, ctxt: &mut Context, value: Value) -> Result<(), EvalStop> {
-        ctxt.set(&self.name, value);
+        ctxt.set(&self.ident, value);
         Ok(())
     }
 }
@@ -79,7 +79,7 @@ impl core::fmt::Debug for Declaration {
         let minimal = f.sign_minus();
         if minimal {
             f.debug_struct("Declaration")
-                .field("var", &self.var.name.name)
+                .field("var", &self.var.ident.name)
                 .field("value", &self.value)
                 .finish()
         } else {
@@ -95,7 +95,7 @@ impl Eval for Declaration {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
         let value = self.value.eval(ctxt)?;
         // FIXME: move declare method to Var
-        ctxt.declare(&self.var.name, value);
+        ctxt.declare(&self.var.ident, value);
         Ok(Value::Nil)
     }
 }

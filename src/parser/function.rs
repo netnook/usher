@@ -1,5 +1,5 @@
 use super::{ParseResult, Parser, SyntaxError};
-use crate::lang::{AstNode, FunctionDef, KeyValueBuilder, Param, Span, Var};
+use crate::lang::{AstNode, FunctionDef, KeyValueBuilder, Param, Var};
 
 impl<'a> Parser<'a> {
     // "function" name? "(" param,* ")"
@@ -51,7 +51,7 @@ impl<'a> Parser<'a> {
                 }
                 AstNode::KeyValue(KeyValueBuilder { key, value }) => {
                     params.push(Param {
-                        name: Var::new(key, Span::new(9999, 9999)), // FIXME: fix span
+                        name: Var::new(key),
                         default_value: Some(*value),
                     });
                 }
@@ -81,9 +81,12 @@ impl<'a> Parser<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::{
-        expression::tests::{do_test_expr_err, do_test_expr_ok},
-        tests::*,
+    use crate::{
+        lang::Span,
+        parser::{
+            expression::tests::{do_test_expr_err, do_test_expr_ok},
+            tests::*,
+        },
     };
 
     #[test]

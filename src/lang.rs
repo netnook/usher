@@ -110,6 +110,7 @@ impl Span {
 pub struct Identifier {
     // FIXME: Rc<String>
     pub(crate) name: String,
+    pub(crate) span: Span,
 }
 
 impl core::fmt::Debug for Identifier {
@@ -120,14 +121,15 @@ impl core::fmt::Debug for Identifier {
         } else {
             f.debug_struct("Identifier")
                 .field("name", &self.name)
+                .field("span", &self.span)
                 .finish()
         }
     }
 }
 
 impl Identifier {
-    pub(crate) const fn new(name: String) -> Self {
-        Self { name }
+    pub(crate) const fn new(name: String, span: Span) -> Self {
+        Self { name, span }
     }
 }
 

@@ -19,9 +19,9 @@ impl core::fmt::Debug for For {
         if minimal {
             let mut w = f.debug_struct("For");
             w.field("iterable", &self.iterable);
-            w.field("loop_item", &self.loop_item.name.name);
+            w.field("loop_item", &self.loop_item.ident.name);
             if let Some(loop_info) = &self.loop_info {
-                w.field("loop_info", &loop_info.name.name);
+                w.field("loop_info", &loop_info.ident.name);
             }
             w.field("block", &self.block);
             w.finish()
@@ -50,7 +50,7 @@ impl Eval for For {
                 for val in list.iter() {
                     child_ctxt.reset();
                     // FIXME: push declaration into Var
-                    child_ctxt.declare(&self.loop_item.name, val);
+                    child_ctxt.declare(&self.loop_item.ident, val);
                     result = match self.block.eval_with_context(&mut child_ctxt) {
                         Ok(v) => v,
                         Err(EvalStop::Break) => todo!(),
@@ -66,7 +66,7 @@ impl Eval for For {
                     let loop_val = Value::KeyValue(Rc::new(KeyValue::new(k.clone(), val.clone())));
                     child_ctxt.reset();
                     // FIXME: push declaration into Var
-                    child_ctxt.declare(&self.loop_item.name, loop_val);
+                    child_ctxt.declare(&self.loop_item.ident, loop_val);
                     result = match self.block.eval_with_context(&mut child_ctxt) {
                         Ok(v) => v,
                         Err(EvalStop::Break) => todo!(),

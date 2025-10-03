@@ -31,10 +31,10 @@ impl<'a> Parser<'a> {
             });
         }
 
-        Ok(Some(Var::new(
-            Identifier::new(ident.to_string()),
+        Ok(Some(Var::new(Identifier::new(
+            ident.to_string(),
             Span::new(start, ident.len()),
-        )))
+        ))))
     }
 
     /// Consume a identifier if next on input and return it.
@@ -62,16 +62,16 @@ impl<'a> Parser<'a> {
 mod tests {
     use super::*;
     use crate::parser::tests::{
-        do_test_parser_err, do_test_parser_none_t, do_test_parser_some_t, var,
+        do_test_parser_err, do_test_parser_none_t, do_test_parser_some_t, id, var,
     };
 
     #[test]
     fn test_identifiers() {
         let f = Parser::declaration_identifier;
-        do_test_parser_some_t(f, "-one_TwO33_-", var("one_TwO33_").spanned(1, 10), -1);
-        do_test_parser_some_t(f, "-one_TwO33_ ", var("one_TwO33_").spanned(1, 10), -1);
-        do_test_parser_some_t(f, "-one_TwO33_", var("one_TwO33_").spanned(1, 10), 0);
-        do_test_parser_some_t(f, "-o-", var("o").spanned(1, 1), -1);
+        do_test_parser_some_t(f, "-one_TwO33_-", var(id("one_TwO33_").spanned(1, 10)), -1);
+        do_test_parser_some_t(f, "-one_TwO33_ ", var(id("one_TwO33_").spanned(1, 10)), -1);
+        do_test_parser_some_t(f, "-one_TwO33_", var(id("one_TwO33_").spanned(1, 10)), 0);
+        do_test_parser_some_t(f, "-o-", var(id("o").spanned(1, 1)), -1);
 
         do_test_parser_none_t(f, "-1-");
         do_test_parser_none_t(f, "-_-");

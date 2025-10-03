@@ -148,10 +148,10 @@ pub mod tests {
         AstNode::This(This::new())
     }
     pub fn id(val: &str) -> Identifier {
-        Identifier::new(val.to_string())
+        Identifier::new(val.to_string(), Span::new(999, 9999))
     }
-    pub fn var(val: &str) -> Var {
-        Var::new(Identifier::new(val.to_string()), Span::new(999, 9999))
+    pub fn var(id: impl Into<Identifier>) -> Var {
+        Var::new(id.into())
     }
 
     pub(crate) fn kv(key: impl Into<Identifier>, value: impl Into<AstNode>) -> KeyValueBuilder {
@@ -645,7 +645,7 @@ pub mod tests {
 
     impl From<&str> for Identifier {
         fn from(value: &str) -> Self {
-            Identifier::new(value.to_string())
+            Identifier::new(value.to_string(), Span::new(999, 9999))
         }
     }
 
@@ -663,7 +663,7 @@ pub mod tests {
     with_span!(BinaryOp);
     with_span!(UnaryOp);
     with_span!(Literal);
-    with_span!(Var);
+    with_span!(Identifier);
     with_span!(DictBuilder);
     with_span!(PropertyOf);
     with_span!(ListBuilder);
