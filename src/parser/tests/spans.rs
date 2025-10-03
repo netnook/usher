@@ -7,7 +7,7 @@ where
     F: FnOnce(&mut Parser<'a>) -> Result<Option<T>, SyntaxError>,
     T: PartialEq<T> + std::fmt::Debug,
 {
-    let mut parser = Parser::new(input);
+    let mut parser = Parser::new("dummy", input);
     parser.pos = 1;
 
     let actual = func(&mut parser)

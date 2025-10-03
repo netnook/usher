@@ -2,6 +2,7 @@ use std::fs;
 
 mod lang;
 mod parser;
+mod printer;
 
 fn main() {
     let mut args = std::env::args();
@@ -35,25 +36,23 @@ fn main() {
     let prog = match parser::parse(&file, &script) {
         Ok(prog) => prog,
         Err(e) => {
-            eprintln!();
-            eprintln!("{}", e.to_display());
-
+            if printer::print_parse_error(std::io::stderr(), e).is_err() {
+                // Error writing to stderr
+                std::process::exit(99)
+            }
             std::process::exit(102)
         }
     };
 
     // println!("{prog:#?}");
 
-    match prog.run() {
+    match prog.eval() {
         Ok(_) => {}
         Err(e) => {
-            eprintln!(
-                "Program error at line {}, char {}: {}",
-                e.line_no, e.char_no, e.msg
-            );
-            eprintln!();
-            eprintln!("> {}", e.line);
-            eprintln!("> {}^", " ".repeat(e.char_no));
+            if printer::print_eval_error(std::io::stderr(), e).is_err() {
+                // Error writing to stderr
+                std::process::exit(99)
+            }
             std::process::exit(1)
         }
     }

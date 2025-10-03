@@ -3,11 +3,16 @@ use std::{cell::RefCell, fmt::Display, rc::Rc};
 use thiserror::Error;
 
 #[derive(PartialEq, Debug)]
-pub struct ProgramError {
-    pub(crate) msg: String,
-    pub(crate) line_no: usize,
-    pub(crate) char_no: usize,
-    pub(crate) line: String,
+pub struct EvalError<'a> {
+    pub(crate) file: &'a str,
+    pub(crate) source: &'a str,
+    pub(crate) error: InternalProgramError,
+}
+
+impl<'a> EvalError<'a> {
+    pub(crate) fn start(&self) -> usize {
+        self.error.start()
+    }
 }
 
 #[derive(Error, PartialEq, Debug)]
@@ -127,6 +132,7 @@ macro_rules! bad_type_error_op {
 pub(crate) use bad_type_error_op;
 
 impl InternalProgramError {
+    #[allow(dead_code)] // FIXME: remove allow
     pub(crate) fn span(&self) -> &Span {
         match self {
             InternalProgramError::ExpectedFunction { got: _, span } => span,
@@ -175,5 +181,51 @@ impl InternalProgramError {
 
     pub(crate) fn into_stop(self) -> EvalStop {
         self.into()
+    }
+
+    fn start(&self) -> usize {
+        match self {
+            InternalProgramError::ExpectedFunction { got: _, span } => span.start,
+            InternalProgramError::NoSuchMethod {
+                name: _,
+                from: _,
+                span,
+            } => span.start,
+            InternalProgramError::MethodNotApplicable {
+                name: _,
+                to: _,
+                span,
+            } => span.start,
+            InternalProgramError::SuffixOperatorDoesNotSupportOperand {
+                op: _,
+                got: _,
+                span,
+            } => span.start,
+            InternalProgramError::BadValueType {
+                expected: _,
+                actual: _,
+                span,
+            } => span.start,
+            InternalProgramError::BadValueTypeOp {
+                op: _,
+                expected: _,
+                actual: _,
+                span,
+            } => span.start,
+            InternalProgramError::IndexOutOfRange {
+                index: _,
+                len: _,
+                span,
+            } => span.start,
+            InternalProgramError::CannotAssignToLHS { span } => span.start,
+            InternalProgramError::CannotConvertToString { typ: _, span } => span.start,
+            InternalProgramError::CannotLoopOnValue { got: _, span } => span.start,
+            InternalProgramError::ThisNotAvailable => todo!(),
+            InternalProgramError::NoSuchProperty {
+                prop: _,
+                from: _,
+                span,
+            } => span.start,
+        }
     }
 }

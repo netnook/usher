@@ -28,6 +28,7 @@ impl<'a> Parser<'a> {
         }
 
         let prog = Program {
+            file: self.filename,
             source: self.input_str,
             stmts,
         };
@@ -44,7 +45,7 @@ mod tests {
 
     #[track_caller]
     fn do_test_program_ok(input: &'static str, expected: Program) {
-        let mut parser = Parser::new(input);
+        let mut parser = Parser::new("dummy", input);
         parser.pos = 1;
 
         let actual = parser.program().expect("parser should succeed");
@@ -63,7 +64,7 @@ mod tests {
 
     #[track_caller]
     fn do_test_program_err(input: &'static str, expected_err: SyntaxError) {
-        let mut parser = Parser::new(input);
+        let mut parser = Parser::new("dummy", input);
         parser.pos = 1;
 
         let actual = parser.program().expect_err("parser should error");

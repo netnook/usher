@@ -17,8 +17,8 @@ mod string;
 mod validation;
 
 use crate::lang::Program;
+use error::ParseError;
 pub use error::SyntaxError;
-use error::{ParseError, build_parse_error};
 
 pub(crate) const KEYWORDS: [&str; 18] = [
     "if", "else", "for", "in", "break", "continue", "return", "function", "var", "true", "false",
@@ -28,11 +28,17 @@ pub(crate) const KEYWORDS: [&str; 18] = [
 pub(crate) const RESERVED_NAMES: [&str; 3] = ["print", "error", "std"];
 
 pub fn parse<'a>(filename: &'a str, input: &'a str) -> Result<Program<'a>, ParseError<'a>> {
-    let mut p = Parser::new(input);
+    let mut p = Parser::new(filename, input);
 
     let program = match p.program() {
         Ok(p) => p,
-        Err(se) => return Err(build_parse_error(filename, input, se)),
+        Err(se) => {
+            return Err(ParseError {
+                file: filename,
+                source: input,
+                error: se,
+            });
+        }
     };
 
     Ok(program)
@@ -42,14 +48,16 @@ type ParseResult<T> = Result<T, SyntaxError>;
 
 #[derive(Debug)]
 pub struct Parser<'a> {
+    filename: &'a str,
     input_str: &'a str,
     input: &'a [u8],
     pos: usize,
 }
 
 impl<'a> Parser<'a> {
-    fn new(input: &'a str) -> Self {
+    fn new(filename: &'a str, input: &'a str) -> Self {
         Self {
+            filename,
             input_str: input,
             input: input.as_bytes(),
             pos: 0,
@@ -369,6 +377,7 @@ pub mod tests {
         ($($stmt:expr),+) => {{
             use crate::lang::Program;
             Program{
+                file: "",
                 source: "",
                 stmts:vec![$($stmt.into()),+]
             }
@@ -469,7 +478,7 @@ pub mod tests {
     ) where
         F: FnOnce(&mut Parser<'a>) -> Result<Option<AstNode>, SyntaxError>,
     {
-        let mut parser = Parser::new(input);
+        let mut parser = Parser::new("dummy", input);
         parser.pos = 1;
 
         let actual = func(&mut parser)
@@ -512,7 +521,7 @@ pub mod tests {
         F: FnOnce(&mut Parser<'a>) -> Result<Option<T>, SyntaxError>,
         T: PartialEq<T> + std::fmt::Debug,
     {
-        let mut parser = Parser::new(input);
+        let mut parser = Parser::new("dummy", input);
         parser.pos = 1;
 
         let actual = func(&mut parser).expect("parser should succeed");
@@ -586,7 +595,7 @@ pub mod tests {
         F: FnOnce(&mut Parser<'a>) -> Result<Option<T>, SyntaxError>,
         T: PartialEq<T> + std::fmt::Debug,
     {
-        let mut parser = Parser::new(input);
+        let mut parser = Parser::new("dummy", input);
         parser.pos = 1;
 
         let actual = func(&mut parser).expect_err("parser should error");
@@ -607,7 +616,7 @@ pub mod tests {
         F: FnOnce(&mut Parser<'a>) -> Option<T>,
         T: PartialEq<T> + std::fmt::Debug,
     {
-        let mut parser = Parser::new(input);
+        let mut parser = Parser::new("dummy", input);
         parser.pos = 1;
 
         let actual = func(&mut parser);

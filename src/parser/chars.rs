@@ -164,7 +164,7 @@ mod tests {
 
     #[track_caller]
     fn do_test_tag(input: &str, tag: &str, expected: bool) {
-        let mut p = Parser::new(input);
+        let mut p = Parser::new("dummy", input);
         assert_eq!(p.tag(tag.as_bytes()), expected);
 
         match expected {
@@ -181,7 +181,7 @@ mod tests {
 
     #[track_caller]
     fn do_test_char(input: &str, c: u8, pass: bool) {
-        let mut p = Parser::new(input);
+        let mut p = Parser::new("dummy", input);
         p.pos = 1;
 
         match pass {
@@ -204,7 +204,7 @@ mod tests {
 
     #[track_caller]
     fn do_test_repeat(input: &str, test: CharTest, expect_count: usize) {
-        let mut p = Parser::new(input);
+        let mut p = Parser::new("dummy", input);
         p.pos = 1;
 
         assert_eq!(p.repeat(test), expect_count);
@@ -220,7 +220,7 @@ mod tests {
 
     #[track_caller]
     fn do_test_repeat_and_peek(input: &str, test: CharTest, expect_count: usize, expect_peek: u8) {
-        let mut p = Parser::new(input);
+        let mut p = Parser::new("dummy", input);
         p.pos = 1;
 
         assert_eq!(p.repeat_and_peek(test), (expect_count, expect_peek));
@@ -237,7 +237,7 @@ mod tests {
 
     #[track_caller]
     fn do_test_linespace(input: &str, expect_count: usize) {
-        let mut p = Parser::new(input);
+        let mut p = Parser::new("dummy", input);
         p.pos = 1;
 
         assert_eq!(p.linespace(), expect_count);
@@ -260,7 +260,7 @@ mod tests {
 
     #[track_caller]
     fn do_test_whitespace(input: &str, expect_count: usize) {
-        let mut p = Parser::new(input);
+        let mut p = Parser::new("dummy", input);
         p.pos = 1;
 
         assert_eq!(p.whitespace(), expect_count);
@@ -283,7 +283,7 @@ mod tests {
 
     #[track_caller]
     fn do_test_whitespace_detailed(input: &str, expect_count: usize, expect_newline: bool) {
-        let mut p = Parser::new(input);
+        let mut p = Parser::new("dummy", input);
         p.pos = 1;
 
         assert_eq!(
@@ -312,7 +312,7 @@ mod tests {
 
     #[track_caller]
     fn do_test_peek(input: &str, start: usize, expect: u8) {
-        let mut p = Parser::new(input);
+        let mut p = Parser::new("dummy", input);
         p.pos = start;
 
         assert_eq!(p.peek(), expect);
@@ -329,7 +329,7 @@ mod tests {
 
     #[track_caller]
     fn do_test_eoi(input: &str, start: usize, eoi: bool) {
-        let mut p = Parser::new(input);
+        let mut p = Parser::new("dummy", input);
         p.pos = start;
 
         assert_eq!(p.is_eoi(), eoi);

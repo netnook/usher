@@ -3,9 +3,7 @@ var cow = dict()
 cow
   .add("moo")
 ---
-ProgramError {
-    msg: "Method 'add' not applicable to type dict",
-    line_no: 3,
-    char_no: 2,
-    line: "  .add(\"moo\")",
-}
+Evaluation error in tests/run/prog2.usher at line 4, char 3:
+  |
+4 |   .add("moo")
+  |   └ Method 'add' not applicable to type dict

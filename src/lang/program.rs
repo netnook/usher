@@ -1,10 +1,8 @@
-use crate::{
-    lang::{AstNode, Context, EvalStop, ProgramError, Value},
-    parser::error::find_source_position,
-};
+use crate::lang::{AstNode, Context, EvalError, EvalStop, Value};
 
 #[derive(PartialEq, Clone)]
 pub struct Program<'a> {
+    pub file: &'a str,
     pub source: &'a str,
     pub stmts: Vec<AstNode>,
 }
@@ -26,28 +24,32 @@ impl<'a> core::fmt::Debug for Program<'a> {
 }
 
 impl<'a> Program<'a> {
-    pub fn run(&self) -> Result<Value, ProgramError> {
-        match self.do_run() {
+    pub fn eval(&self) -> Result<Value, EvalError<'a>> {
+        let mut ctxt = Context::new();
+        self.eval_with_context(&mut ctxt)
+    }
+
+    pub fn eval_with_context(&self, ctxt: &mut Context) -> Result<Value, EvalError<'a>> {
+        self.internal_eval(ctxt)
+    }
+
+    fn internal_eval(&self, ctxt: &mut Context) -> Result<Value, EvalError<'a>> {
+        match self.do_internal_eval(ctxt) {
             Ok(v) => Ok(v),
             Err(EvalStop::Return(v)) => Ok(v),
-            Err(EvalStop::Error(e)) => {
-                let info = find_source_position(self.source, e.span().start);
-                Err(ProgramError {
-                    msg: format!("{e}"),
-                    line_no: info.0.line,
-                    char_no: info.0.char,
-                    line: info.1.to_string(),
-                })
-            }
+            Err(EvalStop::Error(e)) => Err(EvalError {
+                file: self.file,
+                source: self.source,
+                error: e,
+            }),
             Err(v) => panic!("unexpected program response {v:?}. This is a bug!"),
         }
     }
 
-    fn do_run(&self) -> Result<Value, EvalStop> {
-        let mut ctxt = Context::new();
+    fn do_internal_eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
         let mut res = Value::Nil;
         for stmt in &self.stmts {
-            res = stmt.eval(&mut ctxt)?;
+            res = stmt.eval(ctxt)?;
         }
         Ok(res)
     }

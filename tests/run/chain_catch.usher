@@ -9,12 +9,10 @@ var a = dict(
 
 var a = a.x
 ----------------
-ProgramError {
-    msg: "Property 'x' not found. The following properties are available: b, e",
-    line_no: 9,
-    char_no: 9,
-    line: "var a = a.x",
-}
+Evaluation error in tests/run/chain_catch.usher at line 10, char 10:
+   |
+10 | var a = a.x
+   |           ^ Property 'x' not found. The following properties are available: b, e
 *******************************************
 # error variant 2
 var a = dict(
@@ -27,12 +25,10 @@ var a = dict(
 
 var a = a.b.x
 ----------------
-ProgramError {
-    msg: "Property 'x' not found. The following properties are available: c, d",
-    line_no: 9,
-    char_no: 11,
-    line: "var a = a.b.x",
-}
+Evaluation error in tests/run/chain_catch.usher at line 10, char 12:
+   |
+10 | var a = a.b.xx
+   |             ^^- Property 'xx' not found. The following properties are available: b, e
 *******************************************
 # error variant 3
 var a = dict(
@@ -43,14 +39,12 @@ var a = dict(
   e: 1,
 )
 
-var a = a.x.b
+var a = a.xxx.b
 ----------------
-ProgramError {
-    msg: "Property 'x' not found. The following properties are available: b, e",
-    line_no: 9,
-    char_no: 9,
-    line: "var a = a.x.b",
-}
+Evaluation error in tests/run/chain_catch.usher at line 10, char 10:
+   |
+10 | var a = a.xxx.b
+   |           ^^^- Property 'xxx' not found. The following properties are available: b, e
 *******************************************
 # catch variant 1
 var a = dict(

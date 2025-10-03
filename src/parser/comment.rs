@@ -74,7 +74,7 @@ mod tests {
 
     #[track_caller]
     fn do_test_comment(input: &str, expect_match: bool, expect_end: usize) {
-        let mut p = Parser::new(input);
+        let mut p = Parser::new("dummy", input);
         p.pos = 1;
         assert_eq!(p.comment(), expect_match);
         assert_eq!(p.pos, expect_end);
@@ -92,7 +92,7 @@ mod tests {
 
     #[track_caller]
     fn do_test_whitespace_comments(input: &str, expect_len: usize, expect_next: u8) {
-        let mut p = Parser::new(input);
+        let mut p = Parser::new("dummy", input);
         p.pos = 1;
         let r = p.whitespace_comments();
         assert_eq!(r, expect_len > 0);
@@ -124,7 +124,7 @@ mod tests {
         expected_end: isize,
         expected_newline: bool,
     ) {
-        let mut parser = Parser::new(input);
+        let mut parser = Parser::new("dummy", input);
         parser.pos = 1;
         let actual = parser.whitespace_comments_detailed();
         // assert_eq!(p.pos, expect_len + 1);
@@ -172,7 +172,7 @@ mod tests {
 
     #[track_caller]
     fn do_test_req_whitespace_comments_ok(input: &str, expected_end: isize) {
-        let mut parser = Parser::new(input);
+        let mut parser = Parser::new("dummy", input);
         parser.pos = 1;
 
         assert!(parser.req_whitespace_comments().is_ok());
@@ -195,7 +195,7 @@ mod tests {
 
     #[track_caller]
     fn do_test_req_whitespace_comments_err(input: &str) {
-        let mut p = Parser::new(input);
+        let mut p = Parser::new("dummy", input);
         p.pos = 1;
 
         assert_eq!(

@@ -1,5 +1,6 @@
 use pretty_assertions::assert_eq;
 use std::path::Path;
+use usher::printer;
 
 datatest_stable::harness! {
     { test = compile_error_detailed, root = "tests/compile-error-detailed", pattern = ".usher" },
@@ -45,7 +46,7 @@ fn compile_error_detailed(path: &Path, src: String) -> datatest_stable::Result<(
 
         let actual = match usher::parse(path.to_str().unwrap(), input) {
             Ok(prog) => format!("{prog:-#?}"),
-            Err(err) => err.to_display(),
+            Err(err) => printer::print_parse_error_to_string(err),
         };
 
         assert_eq!(
@@ -71,9 +72,9 @@ fn run_script(path: &Path, src: String) -> datatest_stable::Result<()> {
 
         let prog = usher::parse(path.to_str().unwrap(), input).expect("script to parse ok");
 
-        let actual = match prog.run() {
+        let actual = match prog.eval() {
             Ok(ok) => format!("{ok:#?}"),
-            Err(err) => format!("{err:#?}"),
+            Err(err) => printer::print_eval_error_to_string(err),
         };
 
         assert_eq!(
