@@ -16,14 +16,14 @@ impl Context {
     }
 
     pub fn set(&mut self, ident: &Identifier, value: Value) {
-        if ident.name == THIS {
+        if *ident.name == THIS {
             panic!("should not be able to modify 'this'")
         }
         self.inner.borrow_mut().set(&ident.name, value);
     }
 
     pub fn declare(&mut self, ident: &Identifier, value: Value) {
-        if ident.name == THIS {
+        if *ident.name == THIS {
             panic!("should not be able to declare 'this'")
         }
         self.inner.borrow_mut().declare(&ident.name, value);

@@ -3,7 +3,6 @@ use crate::lang::{
     Accept, AstNode, Block, Eval, EvalStop, InternalProgramError, KeyValue, Var, Visitor,
     VisitorResult, accept_default,
 };
-use std::rc::Rc;
 
 #[derive(PartialEq, Clone)]
 pub struct For {
@@ -63,7 +62,7 @@ impl Eval for For {
                 // FIXME: what happen if list is modified during iteration ???
                 let dict = dict.borrow();
                 for (k, val) in dict.iter() {
-                    let loop_val = Value::KeyValue(Rc::new(KeyValue::new(k.clone(), val.clone())));
+                    let loop_val = KeyValue::new(k, val.clone()).into();
                     child_ctxt.reset();
                     // FIXME: push declaration into Var
                     child_ctxt.declare(&self.loop_item.ident, loop_val);

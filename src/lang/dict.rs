@@ -2,6 +2,7 @@ use crate::lang::{
     Accept, Context, Eval, EvalStop, KeyValueBuilder, Span, Value, Visitor, VisitorResult,
     accept_default, value::Dict,
 };
+use std::rc::Rc;
 
 #[derive(PartialEq, Clone)]
 pub struct DictBuilder {
@@ -33,7 +34,7 @@ impl Eval for DictBuilder {
         let mut dict = Dict::new();
 
         for e in &self.entries {
-            let key = e.key.name.clone();
+            let key = Rc::clone(&e.key.name);
             let value = e.value.eval(ctxt)?;
             dict.set(key, value);
         }
@@ -47,6 +48,7 @@ accept_default!(DictBuilder, entries:vec:kv,);
 #[cfg(test)]
 mod tests {
     use crate::lang::{Context, Eval, value::Dict};
+    use std::rc::Rc;
 
     #[test]
     fn test_dict_builder_eval() {
@@ -54,8 +56,8 @@ mod tests {
         let d = dict_builder(vec![kv(id("a"), i(1)), kv(id("b"), add(i(1), i(3)))]);
         let actual = d.eval(&mut Context::new()).expect("a value");
         let mut expected = Dict::new();
-        expected.set("a".to_string(), 1.to_value());
-        expected.set("b".to_string(), 4.to_value());
+        expected.set(Rc::new("a".to_string()), 1.to_value());
+        expected.set(Rc::new("b".to_string()), 4.to_value());
         assert_eq!(actual, expected.into());
     }
 }

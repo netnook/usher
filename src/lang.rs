@@ -108,8 +108,7 @@ impl Span {
 
 #[derive(PartialEq, Eq, Clone)]
 pub struct Identifier {
-    // FIXME: Rc<String>
-    pub(crate) name: String,
+    pub(crate) name: Rc<String>,
     pub(crate) span: Span,
 }
 
@@ -128,8 +127,15 @@ impl core::fmt::Debug for Identifier {
 }
 
 impl Identifier {
-    pub(crate) const fn new(name: String, span: Span) -> Self {
-        Self { name, span }
+    pub(crate) fn new(name: String, span: Span) -> Self {
+        Self {
+            name: Rc::new(name),
+            span,
+        }
+    }
+
+    pub(crate) fn as_string(&self) -> String {
+        (*self.name).clone()
     }
 }
 
@@ -141,10 +147,7 @@ pub struct KeyValueBuilder {
 
 impl Eval for KeyValueBuilder {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
-        Ok(Value::KeyValue(Rc::new(KeyValue::new(
-            self.key.name.clone(),
-            self.value.eval(ctxt)?,
-        ))))
+        Ok(KeyValue::new(&self.key.name, self.value.eval(ctxt)?).into())
     }
 }
 

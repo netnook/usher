@@ -59,8 +59,8 @@ impl Eval for PropertyOf {
                 };
                 v
             }
-            Value::KeyValue(of) => match self.property.name.as_ref() {
-                "key" => Value::Str(Rc::new(of.key.clone())),
+            Value::KeyValue(of) => match (*self.property.name).as_ref() {
+                "key" => Value::Str(of.key.clone()),
                 "value" => of.value.clone(),
                 _ => {
                     if self.throw_on_missing_prop {
@@ -95,7 +95,7 @@ impl Setter for PropertyOf {
         let of = self.of.eval(ctxt)?;
 
         match of {
-            Value::Dict(of) => of.borrow_mut().set(self.property.name.clone(), value),
+            Value::Dict(of) => of.borrow_mut().set(Rc::clone(&self.property.name), value),
             _ => {
                 return InternalProgramError::SuffixOperatorDoesNotSupportOperand {
                     op: "property-of",
@@ -234,6 +234,8 @@ impl Setter for IndexOf {
 
 #[cfg(test)]
 mod tests {
+    use std::rc::Rc;
+
     use crate::lang::{
         AstNode, Context, EvalStop, InternalProgramError, Span,
         errors::PropertyList,
@@ -247,8 +249,8 @@ mod tests {
         let mut ctxt = {
             let mut ctxt = Context::new();
             let mut d = Dict::new();
-            d.set("a".to_string(), 1.to_value());
-            d.set("b".to_string(), "bbb".to_value());
+            d.set(Rc::new("a".to_string()), 1.to_value());
+            d.set(Rc::new("b".to_string()), "bbb".to_value());
             ctxt.set(&id("dict"), d.into());
             ctxt
         };

@@ -96,7 +96,7 @@ impl core::fmt::Debug for Value {
 
                 // make the output sortable for testing
                 let v = v.borrow();
-                let mut keys: Vec<&String> = v.content.keys().collect();
+                let mut keys: Vec<&Rc<String>> = v.content.keys().collect();
                 keys.sort();
 
                 let mut first = true;
@@ -300,6 +300,12 @@ impl From<List> for Value {
     }
 }
 
+impl From<KeyValue> for Value {
+    fn from(value: KeyValue) -> Self {
+        Self::KeyValue(Rc::new(value))
+    }
+}
+
 pub type ListCell = Rc<RefCell<List>>;
 
 #[derive(Debug, Clone, PartialEq, Default)]
@@ -366,7 +372,7 @@ pub type DictCell = Rc<RefCell<Dict>>;
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Dict {
-    pub content: HashMap<String, Value>,
+    pub content: HashMap<Rc<String>, Value>,
 }
 
 impl Dict {
@@ -374,24 +380,24 @@ impl Dict {
         Self::default()
     }
 
-    pub fn get(&self, key: &str) -> Option<Value> {
+    pub fn get(&self, key: &Rc<String>) -> Option<Value> {
         self.content.get(key).cloned()
     }
 
-    pub fn set(&mut self, key: String, value: Value) {
+    pub fn set(&mut self, key: Rc<String>, value: Value) {
         self.content.insert(key, value);
     }
 
     #[allow(dead_code)] // FIXME: remove later
-    pub fn remove(&mut self, key: &str) -> Option<Value> {
+    pub fn remove(&mut self, key: &Rc<String>) -> Option<Value> {
         self.content.remove(key)
     }
 
-    pub fn iter(&self) -> Iter<'_, String, Value> {
+    pub fn iter(&self) -> Iter<'_, Rc<String>, Value> {
         self.content.iter()
     }
 
-    pub fn keys(&'_ self) -> Keys<'_, String, Value> {
+    pub fn keys(&'_ self) -> Keys<'_, Rc<String>, Value> {
         self.content.keys()
     }
 }
@@ -400,13 +406,16 @@ pub type KeyValueCell = Rc<KeyValue>;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct KeyValue {
-    pub key: String,
+    pub key: Rc<String>,
     pub value: Value,
 }
 
 impl KeyValue {
-    pub(crate) fn new(key: String, value: Value) -> Self {
-        Self { key, value }
+    pub(crate) fn new(key: &Rc<String>, value: Value) -> Self {
+        Self {
+            key: key.clone(),
+            value,
+        }
     }
 }
 
@@ -479,13 +488,13 @@ mod tests {
 
         {
             let mut dict = Dict::new();
-            dict.set("one".to_string(), Value::Integer(1));
-            dict.set("nil".to_string(), Value::Nil);
+            dict.set(Rc::new("one".to_string()), Value::Integer(1));
+            dict.set(Rc::new("nil".to_string()), Value::Nil);
             let dict_a = Dict::new();
-            dict.set("dict_a".to_string(), dict_a.into());
+            dict.set(Rc::new("dict_a".to_string()), dict_a.into());
             let mut dict_b = Dict::new();
-            dict_b.set("foo".to_string(), "bar".to_value());
-            dict.set("dict_b".to_string(), dict_b.into());
+            dict_b.set(Rc::new("foo".to_string()), "bar".to_value());
+            dict.set(Rc::new("dict_b".to_string()), dict_b.into());
 
             let str = format!("{}", Value::Dict(dict.into()).as_string().unwrap());
             assert!(str.starts_with("dict("));
@@ -507,16 +516,18 @@ mod tests {
     fn test_dict() {
         let mut d = Dict::new();
 
-        assert_eq!(d.get("foo"), None);
+        let key = Rc::new("foo".to_string());
 
-        d.set("foo".to_string(), 42.to_value());
-        assert_eq!(d.get("foo"), Some(42.to_value()));
+        assert_eq!(d.get(&key), None);
 
-        d.set("foo".to_string(), "aaa".to_value());
-        assert_eq!(d.get("foo"), Some("aaa".to_value()));
+        d.set(Rc::clone(&key), 42.to_value());
+        assert_eq!(d.get(&key), Some(42.to_value()));
 
-        assert_eq!(d.remove("foo"), Some("aaa".to_value()));
-        assert_eq!(d.get("foo"), None);
+        d.set(Rc::clone(&key), "aaa".to_value());
+        assert_eq!(d.get(&key), Some("aaa".to_value()));
+
+        assert_eq!(d.remove(&key), Some("aaa".to_value()));
+        assert_eq!(d.get(&key), None);
     }
 
     #[test]
@@ -555,7 +566,7 @@ mod tests {
         do_test_debug_str(Value::Nil, r#"nil"#);
         do_test_debug_str(Value::End, r#"end"#);
         do_test_debug_str(
-            KeyValue::new("a".to_string(), 123.to_value()).to_value(),
+            KeyValue::new(&Rc::new("a".to_string()), 123.to_value()).to_value(),
             r#"(a:123)"#,
         );
         {
@@ -567,23 +578,23 @@ mod tests {
 
         {
             let mut dict = Dict::new();
-            dict.set("one".to_string(), 1.to_value());
-            dict.set("two".to_string(), Value::Nil);
+            dict.set(Rc::new("one".to_string()), 1.to_value());
+            dict.set(Rc::new("two".to_string()), Value::Nil);
             do_test_debug_str(dict.to_value(), r#"dict(one:1,two:nil)"#);
         }
         {
             let mut dict = Dict::new();
-            dict.set("one".to_string(), Value::Integer(1));
-            dict.set("nil".to_string(), Value::Nil);
+            dict.set(Rc::new("one".to_string()), Value::Integer(1));
+            dict.set(Rc::new("nil".to_string()), Value::Nil);
             let dict_a = Dict::new();
-            dict.set("dict_a".to_string(), dict_a.into());
+            dict.set(Rc::new("dict_a".to_string()), dict_a.into());
             let mut dict_b = Dict::new();
-            dict_b.set("foo".to_string(), "bar".to_value());
-            dict.set("dict_b".to_string(), dict_b.into());
+            dict_b.set(Rc::new("foo".to_string()), "bar".to_value());
+            dict.set(Rc::new("dict_b".to_string()), dict_b.into());
             let mut list_a = List::new();
             list_a.add(42.to_value());
             list_a.add(43.to_value());
-            dict.set("list_a".to_string(), list_a.into());
+            dict.set(Rc::new("list_a".to_string()), list_a.into());
             do_test_debug_str(
                 dict.to_value(),
                 r#"dict(dict_a:dict(),dict_b:dict(foo:"bar"),list_a:[42,43],nil:nil,one:1)"#,

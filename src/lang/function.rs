@@ -195,7 +195,7 @@ impl Eval for FunctionCall {
                             .or_else(|| BuiltInFunc::by_name(&method_name.name).map(|f| f.into()))
                             .ok_or_else(|| {
                                 InternalProgramError::NoSuchMethod {
-                                    name: method_name.name.clone(),
+                                    name: method_name.as_string(),
                                     from: ValueType::Dict,
                                     span: Span::new(0, 0), // FIXME: fix span
                                 }
@@ -207,7 +207,7 @@ impl Eval for FunctionCall {
                             .map(|f| f.into())
                             .ok_or_else(|| {
                                 InternalProgramError::NoSuchMethod {
-                                    name: method_name.name.clone(),
+                                    name: method_name.as_string(),
                                     from: ValueType::List,
                                     span: Span::new(0, 0), // FIXME: fix span
                                 }
@@ -216,7 +216,7 @@ impl Eval for FunctionCall {
                     }
                     _ => {
                         return InternalProgramError::NoSuchMethod {
-                            name: method_name.name.clone(),
+                            name: method_name.as_string(),
                             from: on.value_type(),
                             span: Span::new(0, 0), // FIXME: fix span
                         }
