@@ -358,13 +358,9 @@ impl<'a> Parser<'a> {
                         id.to_string(),
                         span,
                     )))));
-                } // // FIXME error if function def added to something, for example
-                  // _ => {
-                  //     self.pos = start;
-                  // }
+                }
             }
         }
-        // FIXME: combine this with above so as not to have to re-parse identifier
         if let Some(v) = self.list()? {
             return Ok(Some(AstNode::ListBuilder(v)));
         }

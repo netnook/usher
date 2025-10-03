@@ -89,7 +89,7 @@ impl<'a> Parser<'a> {
 
     /// Consume as many space, tab, CR and LF chacters as possible.
     /// Return the number of characters consumed.
-    // FIXME: replace all occurrences with `whitespace_detailed` ? - check performance
+    // TODO: replace all occurrences with `whitespace_detailed` ? - check performance
     pub(super) fn whitespace(&mut self) -> usize {
         self.repeat(|c| c == b' ' || c == b'\t' || c == b'\r' || c == b'\n')
     }

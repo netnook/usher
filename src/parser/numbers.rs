@@ -57,7 +57,6 @@ mod tests {
 
     #[test]
     fn test_integers() {
-        // FIXME check exact/location matach
         do_test_opt_parser_some(Parser::integer, "_1_", i(1).spanned(1, 1), 1);
         do_test_opt_parser_some(Parser::integer, "_1", i(1).spanned(1, 1), 0);
         do_test_opt_parser_some(Parser::integer, "_-1_", i(-1).spanned(1, 2), 1);

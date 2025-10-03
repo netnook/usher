@@ -12,7 +12,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Consume as much whitespace and comments as possible.
-    // FIXME: replace all occurrences with `whitespace_comments_detailed` ? - check performance
+    // TODO: replace all occurrences with `whitespace_comments_detailed` ? - check performance
     pub(super) fn whitespace_comments(&mut self) -> bool {
         let start = self.pos;
         loop {
