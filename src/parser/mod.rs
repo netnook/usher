@@ -153,7 +153,7 @@ pub mod tests {
             use crate::lang::Dict;
             let mut d = Dict::new();
             $(
-                d.set(Rc::new($key.to_string()), $value.to_value());
+                d.set($key.into(), $value.to_value());
             )*
             d
         }};

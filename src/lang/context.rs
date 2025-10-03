@@ -1,4 +1,4 @@
-use crate::lang::{Identifier, THIS, Value};
+use crate::lang::{Key, This, Value};
 use std::{cell::RefCell, collections::HashMap, io::Write, rc::Rc};
 
 #[derive()]
@@ -20,34 +20,34 @@ impl Default for Context {
 }
 
 impl Context {
-    pub fn get(&mut self, ident: &Identifier) -> Option<Value> {
-        self.inner.borrow().get(&ident.name)
+    pub fn get(&mut self, key: &Key) -> Option<Value> {
+        self.inner.borrow().get(key)
     }
 
-    pub fn contains_key(&mut self, ident: &Identifier) -> bool {
-        self.inner.borrow().contains_key(&ident.name)
+    pub fn contains_key(&mut self, key: &Key) -> bool {
+        self.inner.borrow().contains_key(key)
     }
 
-    pub fn set(&mut self, ident: &Identifier, value: Value) {
-        if *ident.name == THIS {
+    pub fn set(&mut self, key: &Key, value: Value) {
+        if key.is_this() {
             panic!("should not be able to modify 'this'")
         }
-        self.inner.borrow_mut().set(&ident.name, value);
+        self.inner.borrow_mut().set(key, value);
     }
 
-    pub fn declare(&mut self, ident: &Identifier, value: Value) {
-        if *ident.name == THIS {
+    pub fn declare(&mut self, key: Key, value: Value) {
+        if key.is_this() {
             panic!("should not be able to declare 'this'")
         }
-        self.inner.borrow_mut().declare(&ident.name, value);
+        self.inner.borrow_mut().declare(key, value);
     }
 
     pub(crate) fn get_this(&self) -> Option<Value> {
-        self.inner.borrow().get(THIS)
+        self.inner.borrow().get(&This::key())
     }
 
     pub(crate) fn declare_this(&self, value: Value) {
-        self.inner.borrow_mut().declare(THIS, value);
+        self.inner.borrow_mut().declare(This::key(), value);
     }
 
     pub fn reset(&mut self) {
@@ -92,51 +92,52 @@ impl Context {
 #[derive()]
 pub struct ContextInner {
     pub parent: Option<Rc<RefCell<ContextInner>>>,
-    pub vars: HashMap<String, Value>,
+    pub vars: HashMap<Key, Value>,
     pub stdout: Output,
     pub stderr: Output,
 }
 
 impl ContextInner {
-    fn get(&self, ident: &str) -> Option<Value> {
-        if let Some(v) = self.vars.get(ident) {
+    fn get(&self, key: &Key) -> Option<Value> {
+        if let Some(v) = self.vars.get(key) {
             return Some(v.clone());
         }
         if let Some(parent) = &self.parent {
-            return parent.borrow().get(ident);
+            return parent.borrow().get(key);
         }
         None
     }
 
-    fn contains_key(&self, ident: &str) -> bool {
-        if self.vars.contains_key(ident) {
+    fn contains_key(&self, key: &Key) -> bool {
+        if self.vars.contains_key(key) {
             return true;
         }
         if let Some(parent) = &self.parent {
-            return parent.borrow().contains_key(ident);
+            return parent.borrow().contains_key(key);
         }
         false
     }
 
-    fn set(&mut self, ident: &str, value: Value) {
-        if let Some(v) = self.do_set(ident, value) {
-            self.vars.insert(ident.to_string(), v);
+    fn set(&mut self, key: &Key, value: Value) {
+        if let Some(v) = self.do_set(key, value) {
+            self.vars.insert(key.clone(), v);
         }
     }
 
-    fn do_set(&mut self, ident: &str, value: Value) -> Option<Value> {
-        if self.vars.contains_key(ident) {
-            self.vars.insert(ident.to_string(), value);
+    fn do_set(&mut self, key: &Key, value: Value) -> Option<Value> {
+        if self.vars.contains_key(key) {
+            // FIXME: can we avoid cloning key if alrady in ctxt ?
+            self.vars.insert(key.clone(), value);
             return None;
         }
         if let Some(parent) = &self.parent {
-            return parent.borrow_mut().do_set(ident, value);
+            return parent.borrow_mut().do_set(key, value);
         }
         Some(value)
     }
 
-    fn declare(&mut self, ident: &str, value: Value) {
-        self.vars.insert(ident.to_string(), value);
+    fn declare(&mut self, key: Key, value: Value) {
+        self.vars.insert(key, value);
     }
 
     fn reset(&mut self) {

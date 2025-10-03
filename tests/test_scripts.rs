@@ -109,8 +109,8 @@ fn run_script(path: &Path, src: String) -> datatest_stable::Result<()> {
 
         let actual_stdout = String::from_utf8(stdout_buf.take()).unwrap();
         let actual_stderr = String::from_utf8(stderr_buf.take()).unwrap();
-        println!("actual out: {actual_stdout}");
-        println!("actual err: {actual_stderr}");
+        // println!("actual out: {actual_stdout}");
+        // println!("actual err: {actual_stderr}");
 
         if let Some(expected_result) = expected_result {
             assert_eq!(

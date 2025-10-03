@@ -71,7 +71,7 @@ pub enum InternalProgramError {
     CannotLoopOnValue { got: ValueType, span: Span },
     #[error("This not available in current scope.")]
     ThisNotAvailable,
-    #[error("Property '{prop}' not found. The following properties are available: {available}", prop = prop.name, available = from)]
+    #[error("Property '{prop}' not found. The following properties are available: {available}", prop = prop.key, available = from)]
     NoSuchProperty {
         prop: Identifier,
         from: PropertyList,
@@ -98,7 +98,7 @@ impl Display for PropertyList {
                         true => first = false,
                         false => f.write_str(", ")?,
                     }
-                    f.write_str(key)?
+                    f.write_str(&key.0)?
                 }
                 Ok(())
             }

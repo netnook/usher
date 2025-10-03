@@ -18,9 +18,9 @@ impl core::fmt::Debug for For {
         if minimal {
             let mut w = f.debug_struct("For");
             w.field("iterable", &self.iterable);
-            w.field("loop_item", &self.loop_item.ident.name);
+            w.field("loop_item", &self.loop_item);
             if let Some(loop_info) = &self.loop_info {
-                w.field("loop_info", &loop_info.ident.name);
+                w.field("loop_info", &loop_info.ident.key);
             }
             w.field("block", &self.block);
             w.finish()
@@ -61,7 +61,7 @@ impl Eval for For {
                 // FIXME: what happen if list is modified during iteration ???
                 let dict = dict.borrow();
                 for (k, val) in dict.iter() {
-                    let loop_val = KeyValue::new(k, val.clone()).into();
+                    let loop_val = KeyValue::new(k.clone(), val.clone()).into();
                     child_ctxt.reset();
                     self.loop_item.declare(&mut child_ctxt, loop_val);
                     result = match self.block.eval_with_context(&mut child_ctxt) {
@@ -163,8 +163,8 @@ mod tests {
         list.add(Value::Integer(2));
         list.add(Value::Integer(4));
         let mut ctxt = Context::default();
-        ctxt.set(&id("l"), list.into());
-        ctxt.set(&id("r"), Value::Integer(0));
+        ctxt.set(&"l".into(), list.into());
+        ctxt.set(&"r".into(), Value::Integer(0));
         // ctxt.set(&id("f"), Value::Bool(false));
 
         let stmt = _for(
@@ -174,7 +174,7 @@ mod tests {
             _block![assign(var("r"), add(var("r"), var("i")))],
         );
         let actual = stmt.eval(&mut ctxt).expect("a value");
-        assert_eq!(ctxt.get(&id("r")), Some(Value::Integer(7)));
+        assert_eq!(ctxt.get(&"r".into()), Some(Value::Integer(7)));
         assert_eq!(actual, Value::Nil); // assignment (last stmt in loop) returns Nil
 
         let stmt = _for(
@@ -184,7 +184,7 @@ mod tests {
             _block![assign(var("r"), add(var("r"), var("i"))), var("r")],
         );
         let actual = stmt.eval(&mut ctxt).expect("a value");
-        assert_eq!(ctxt.get(&id("r")), Some(Value::Integer(14)));
+        assert_eq!(ctxt.get(&"r".into()), Some(Value::Integer(14)));
         assert_eq!(actual, Value::Integer(14)); // last stmt in loop "recalls" value r and leads to loop result
     }
 }

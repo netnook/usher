@@ -79,8 +79,8 @@ mod tests {
         use crate::parser::tests::*;
 
         let mut ctxt = Context::default();
-        ctxt.set(&id("t"), Value::Bool(true));
-        ctxt.set(&id("f"), Value::Bool(false));
+        ctxt.set(&"t".into(), Value::Bool(true));
+        ctxt.set(&"f".into(), Value::Bool(false));
 
         let stmt = _if!(
             cond(var("t") => _block![i(1)]),

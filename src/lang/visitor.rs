@@ -238,7 +238,7 @@ mod tests {
                 v.accept(self)
             }
             fn visit_var(&mut self, v: &Var) -> VisitorResult<()> {
-                self.push(format!("Var {}", v.ident.name));
+                self.push(format!("Var {}", v.ident.key));
                 v.accept(self)
             }
             fn visit_literal(&mut self, v: &Literal) -> VisitorResult<()> {

@@ -4,7 +4,6 @@ use crate::lang::{
     Value, Visitor, VisitorResult, accept_default,
     value::{ListCell, ValueType},
 };
-use std::rc::Rc;
 
 #[derive(PartialEq, Clone)]
 pub struct PropertyOf {
@@ -44,7 +43,7 @@ impl Eval for PropertyOf {
 
         let result = match of {
             Value::Dict(of) => {
-                let v = of.borrow().get(&self.property.name);
+                let v = of.borrow().get(&self.property.key);
                 let Some(v) = v else {
                     if self.throw_on_missing_prop {
                         return Err(EvalStop::Throw);
@@ -59,8 +58,8 @@ impl Eval for PropertyOf {
                 };
                 v
             }
-            Value::KeyValue(of) => match (*self.property.name).as_ref() {
-                "key" => Value::Str(of.key.clone()),
+            Value::KeyValue(of) => match self.property.key.0.as_str() {
+                "key" => Value::Str(of.key.0.clone()),
                 "value" => of.value.clone(),
                 _ => {
                     if self.throw_on_missing_prop {
@@ -95,7 +94,7 @@ impl Setter for PropertyOf {
         let of = self.of.eval(ctxt)?;
 
         match of {
-            Value::Dict(of) => of.borrow_mut().set(Rc::clone(&self.property.name), value),
+            Value::Dict(of) => of.borrow_mut().set(self.property.key.clone(), value),
             _ => {
                 return InternalProgramError::SuffixOperatorDoesNotSupportOperand {
                     op: "property-of",
@@ -234,8 +233,6 @@ impl Setter for IndexOf {
 
 #[cfg(test)]
 mod tests {
-    use std::rc::Rc;
-
     use crate::lang::{
         AstNode, Context, EvalStop, InternalProgramError, Span,
         errors::PropertyList,
@@ -249,9 +246,9 @@ mod tests {
         let mut ctxt = {
             let mut ctxt = Context::default();
             let mut d = Dict::new();
-            d.set(Rc::new("a".to_string()), 1.to_value());
-            d.set(Rc::new("b".to_string()), "bbb".to_value());
-            ctxt.set(&id("dict"), d.into());
+            d.set("a".into(), 1.to_value());
+            d.set("b".into(), "bbb".to_value());
+            ctxt.set(&"dict".into(), d.into());
             ctxt
         };
 
@@ -281,7 +278,7 @@ mod tests {
             l.add(7.to_value());
             l.add("aaa".to_value());
             l.add(8.to_value());
-            ctxt.set(&id("list"), l.into());
+            ctxt.set(&"list".into(), l.into());
             ctxt
         };
 

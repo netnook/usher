@@ -21,7 +21,7 @@ end
 ---
 Program { [
     Declaration {
-        var: "a",
+        var: a,
         value: Literal(1),
     },
     IfElse {
@@ -64,7 +64,7 @@ Program { [
     },
     For {
         iterable: Var("b"),
-        loop_item: "a",
+        loop_item: Var("a"),
         block: Block {[
             IfElse {
                 conditional: ConditionalBlock {

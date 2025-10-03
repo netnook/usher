@@ -1,6 +1,8 @@
+use std::cell::LazyCell;
+
 use crate::lang::{
-    Accept, AstNode, BuiltInFunc, Context, Eval, EvalStop, Identifier, InternalProgramError,
-    Setter, Span, Value, Visitor, VisitorResult, accept_default,
+    Accept, AstNode, BuiltInFunc, Context, Eval, EvalStop, Identifier, InternalProgramError, Key,
+    Setter, Span, THIS, Value, Visitor, VisitorResult, accept_default,
 };
 
 #[derive(PartialEq, Debug, Clone)]
@@ -9,6 +11,13 @@ pub struct This {}
 impl This {
     pub(crate) fn new() -> Self {
         Self {}
+    }
+
+    pub(crate) fn key() -> Key {
+        #[allow(clippy::declare_interior_mutable_const)]
+        const THIS_KEY: LazyCell<Key> = LazyCell::new(|| Key::new(THIS.to_string()));
+        #[allow(clippy::borrow_interior_mutable_const)]
+        (*THIS_KEY).clone()
     }
 }
 
@@ -32,7 +41,7 @@ impl core::fmt::Debug for Var {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let minimal = f.sign_minus();
         if minimal {
-            write!(f, r#"Var("{}")"#, self.ident.name)
+            write!(f, r#"Var("{}")"#, self.ident.key)
         } else {
             f.debug_struct("Var").field("ident", &self.ident).finish()
         }
@@ -49,15 +58,15 @@ impl Var {
     }
 
     pub(crate) fn declare(&self, ctxt: &mut Context, value: Value) {
-        ctxt.declare(&self.ident, value)
+        ctxt.declare(self.ident.key.clone(), value)
     }
 }
 
 impl Eval for Var {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
         let value = ctxt
-            .get(&self.ident)
-            .or_else(|| BuiltInFunc::by_name(&self.ident.name).map(|f| f.into()))
+            .get(&self.ident.key)
+            .or_else(|| BuiltInFunc::by_name(&self.ident.key).map(|f| f.into()))
             .unwrap_or(Value::Nil);
         Ok(value)
     }
@@ -67,7 +76,7 @@ accept_default!(Var);
 
 impl Setter for Var {
     fn set(&self, ctxt: &mut Context, value: Value) -> Result<(), EvalStop> {
-        ctxt.set(&self.ident, value);
+        ctxt.set(&self.ident.key, value);
         Ok(())
     }
 }
@@ -83,7 +92,7 @@ impl core::fmt::Debug for Declaration {
         let minimal = f.sign_minus();
         if minimal {
             f.debug_struct("Declaration")
-                .field("var", &self.var.ident.name)
+                .field("var", &self.var.ident.key)
                 .field("value", &self.value)
                 .finish()
         } else {

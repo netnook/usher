@@ -1,5 +1,5 @@
 use crate::lang::{
-    AstNode, Block, Context, Dict, Eval, EvalStop, Identifier, InternalProgramError, KeyValue,
+    AstNode, Block, Context, Dict, Eval, EvalStop, Identifier, InternalProgramError, Key, KeyValue,
     List, Span, Value, Var, accept_default,
     value::Func,
     visitor::{Accept, Visitor, VisitorResult},
@@ -19,7 +19,7 @@ impl core::fmt::Debug for FunctionDef {
         if minimal {
             let mut w = f.debug_struct("FunctionDef");
             if let Some(name) = &self.name {
-                w.field("name", &name.ident.name);
+                w.field("name", &name.ident.key);
             }
             if !self.params.is_empty() {
                 w.field("params", &self.params);

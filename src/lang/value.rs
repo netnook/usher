@@ -1,5 +1,5 @@
 use super::{BuiltInFunc, FunctionDef, InternalProgramError, Span};
-use crate::lang::{Context, EvalStop};
+use crate::lang::{EvalStop, Key};
 use std::{
     borrow::Cow,
     cell::RefCell,
@@ -96,7 +96,7 @@ impl core::fmt::Debug for Value {
 
                 // make the output sortable for testing
                 let v = v.borrow();
-                let mut keys: Vec<&Rc<String>> = v.content.keys().collect();
+                let mut keys: Vec<&Key> = v.content.keys().collect();
                 keys.sort();
 
                 let mut first = true;
@@ -105,7 +105,7 @@ impl core::fmt::Debug for Value {
                         true => first = false,
                         false => f.write_char(',')?,
                     }
-                    f.write_str(k)?;
+                    f.write_str(k.as_str())?;
                     f.write_char(':')?;
                     match v.get(k) {
                         Some(v) => v.fmt(f)?,
@@ -117,7 +117,7 @@ impl core::fmt::Debug for Value {
             }
             Value::KeyValue(kv) => {
                 f.write_str("(")?;
-                f.write_str(&kv.key)?;
+                f.write_str(kv.key.as_str())?;
                 f.write_char(':')?;
                 kv.value.fmt(f)?;
                 f.write_str(")")?;
@@ -211,7 +211,7 @@ impl Value {
                         first = false;
                     }
                     into.push('"');
-                    into.push_str(k);
+                    into.push_str(k.as_str());
                     into.push('"');
                     into.push(':');
                     v.write_to(into)?;
@@ -221,7 +221,7 @@ impl Value {
             }
             Value::KeyValue(v) => {
                 into.push_str("(\"");
-                into.push_str(&v.key);
+                into.push_str(v.key.as_str());
                 into.push_str("\":");
                 v.value.write_to(into)?;
                 into.push(')');
@@ -306,6 +306,12 @@ impl From<KeyValue> for Value {
     }
 }
 
+impl From<&str> for Value {
+    fn from(value: &str) -> Self {
+        Value::Str(Rc::new(value.to_string()))
+    }
+}
+
 pub type ListCell = Rc<RefCell<List>>;
 
 #[derive(Debug, Clone, PartialEq, Default)]
@@ -347,7 +353,8 @@ impl List {
         }
     }
 
-    pub(crate) fn built_in_func(name: &str) -> Option<Func> {
+    pub(crate) fn built_in_func(name: &Key) -> Option<Func> {
+        let name: &str = &name.0;
         match name {
             "add" => Some(BuiltInFunc::Add.into()),
             _ => None,
@@ -379,7 +386,7 @@ pub type DictCell = Rc<RefCell<Dict>>;
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Dict {
-    pub content: HashMap<Rc<String>, Value>,
+    pub content: HashMap<Key, Value>,
 }
 
 impl Dict {
@@ -387,28 +394,29 @@ impl Dict {
         Self::default()
     }
 
-    pub fn get(&self, key: &Rc<String>) -> Option<Value> {
+    pub fn get(&self, key: &Key) -> Option<Value> {
         self.content.get(key).cloned()
     }
 
-    pub fn set(&mut self, key: Rc<String>, value: Value) {
+    pub fn set(&mut self, key: Key, value: Value) {
         self.content.insert(key, value);
     }
 
     #[allow(dead_code)] // FIXME: remove later
-    pub fn remove(&mut self, key: &Rc<String>) -> Option<Value> {
+    pub fn remove(&mut self, key: &Key) -> Option<Value> {
         self.content.remove(key)
     }
 
-    pub fn iter(&self) -> Iter<'_, Rc<String>, Value> {
+    pub fn iter(&self) -> Iter<'_, Key, Value> {
         self.content.iter()
     }
 
-    pub fn keys(&'_ self) -> Keys<'_, Rc<String>, Value> {
+    pub fn keys(&'_ self) -> Keys<'_, Key, Value> {
         self.content.keys()
     }
 
-    pub(crate) fn built_in_func(name: &str) -> Option<Func> {
+    pub(crate) fn built_in_func(name: &Key) -> Option<Func> {
+        let name: &str = &name.0;
         match name {
             "replace" => todo!(),
             _ => None,
@@ -420,16 +428,13 @@ pub type KeyValueCell = Rc<KeyValue>;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct KeyValue {
-    pub key: Rc<String>,
+    pub key: Key,
     pub value: Value,
 }
 
 impl KeyValue {
-    pub(crate) fn new(key: &Rc<String>, value: Value) -> Self {
-        Self {
-            key: key.clone(),
-            value,
-        }
+    pub(crate) fn new(key: Key, value: Value) -> Self {
+        Self { key, value }
     }
 }
 
@@ -502,13 +507,13 @@ mod tests {
 
         {
             let mut dict = Dict::new();
-            dict.set(Rc::new("one".to_string()), Value::Integer(1));
-            dict.set(Rc::new("nil".to_string()), Value::Nil);
+            dict.set("one".into(), Value::Integer(1));
+            dict.set("nil".into(), Value::Nil);
             let dict_a = Dict::new();
-            dict.set(Rc::new("dict_a".to_string()), dict_a.into());
+            dict.set("dict_a".into(), dict_a.into());
             let mut dict_b = Dict::new();
-            dict_b.set(Rc::new("foo".to_string()), "bar".to_value());
-            dict.set(Rc::new("dict_b".to_string()), dict_b.into());
+            dict_b.set("foo".into(), "bar".to_value());
+            dict.set("dict_b".into(), dict_b.into());
 
             let str = format!("{}", Value::Dict(dict.into()).as_string().unwrap());
             assert!(str.starts_with("dict("));
@@ -530,14 +535,14 @@ mod tests {
     fn test_dict() {
         let mut d = Dict::new();
 
-        let key = Rc::new("foo".to_string());
+        let key = "foo".into();
 
         assert_eq!(d.get(&key), None);
 
-        d.set(Rc::clone(&key), 42.to_value());
+        d.set(key.clone(), 42.to_value());
         assert_eq!(d.get(&key), Some(42.to_value()));
 
-        d.set(Rc::clone(&key), "aaa".to_value());
+        d.set(key.clone(), "aaa".to_value());
         assert_eq!(d.get(&key), Some("aaa".to_value()));
 
         assert_eq!(d.remove(&key), Some("aaa".to_value()));
@@ -580,7 +585,7 @@ mod tests {
         do_test_debug_str(Value::Nil, r#"nil"#);
         do_test_debug_str(Value::End, r#"end"#);
         do_test_debug_str(
-            KeyValue::new(&Rc::new("a".to_string()), 123.to_value()).to_value(),
+            KeyValue::new("a".into(), 123.to_value()).to_value(),
             r#"(a:123)"#,
         );
         {
@@ -592,23 +597,23 @@ mod tests {
 
         {
             let mut dict = Dict::new();
-            dict.set(Rc::new("one".to_string()), 1.to_value());
-            dict.set(Rc::new("two".to_string()), Value::Nil);
+            dict.set("one".into(), 1.to_value());
+            dict.set("two".into(), Value::Nil);
             do_test_debug_str(dict.to_value(), r#"dict(one:1,two:nil)"#);
         }
         {
             let mut dict = Dict::new();
-            dict.set(Rc::new("one".to_string()), Value::Integer(1));
-            dict.set(Rc::new("nil".to_string()), Value::Nil);
+            dict.set("one".into(), Value::Integer(1));
+            dict.set("nil".into(), Value::Nil);
             let dict_a = Dict::new();
-            dict.set(Rc::new("dict_a".to_string()), dict_a.into());
+            dict.set("dict_a".into(), dict_a.into());
             let mut dict_b = Dict::new();
-            dict_b.set(Rc::new("foo".to_string()), "bar".to_value());
-            dict.set(Rc::new("dict_b".to_string()), dict_b.into());
+            dict_b.set("foo".into(), "bar".to_value());
+            dict.set("dict_b".into(), dict_b.into());
             let mut list_a = List::new();
             list_a.add(42.to_value());
             list_a.add(43.to_value());
-            dict.set(Rc::new("list_a".to_string()), list_a.into());
+            dict.set("list_a".into(), list_a.into());
             do_test_debug_str(
                 dict.to_value(),
                 r#"dict(dict_a:dict(),dict_b:dict(foo:"bar"),list_a:[42,43],nil:nil,one:1)"#,

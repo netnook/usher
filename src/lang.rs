@@ -108,7 +108,7 @@ impl Span {
 
 #[derive(PartialEq, Eq, Clone)]
 pub struct Identifier {
-    pub(crate) name: Rc<String>,
+    pub(crate) key: Key,
     pub(crate) span: Span,
 }
 
@@ -116,10 +116,10 @@ impl core::fmt::Debug for Identifier {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let minimal = f.sign_minus();
         if minimal {
-            write!(f, r#"Ident("{}")"#, self.name)
+            write!(f, r#"Ident("{}")"#, self.key.0)
         } else {
             f.debug_struct("Identifier")
-                .field("name", &self.name)
+                .field("key", &self.key)
                 .field("span", &self.span)
                 .finish()
         }
@@ -129,13 +129,51 @@ impl core::fmt::Debug for Identifier {
 impl Identifier {
     pub(crate) fn new(name: String, span: Span) -> Self {
         Self {
-            name: Rc::new(name),
+            key: Key::new(name),
             span,
         }
     }
 
     pub(crate) fn as_string(&self) -> String {
-        (*self.name).clone()
+        (*self.key.0).clone()
+    }
+}
+
+#[derive(PartialEq, Eq, Clone, Hash, PartialOrd, Ord)]
+pub struct Key(Rc<String>);
+
+impl core::fmt::Debug for Key {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+impl core::fmt::Display for Key {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl Key {
+    pub(crate) fn new(name: String) -> Self {
+        Self(Rc::new(name))
+    }
+
+    fn is_this(&self) -> bool {
+        *self.0 == THIS
+    }
+
+    fn as_string(&self) -> String {
+        (*self.0).clone()
+    }
+
+    fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl From<&str> for Key {
+    fn from(value: &str) -> Self {
+        Self::new(value.to_string())
     }
 }
 
@@ -147,7 +185,7 @@ pub struct KeyValueBuilder {
 
 impl Eval for KeyValueBuilder {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
-        Ok(KeyValue::new(&self.key.name, self.value.eval(ctxt)?).into())
+        Ok(KeyValue::new(self.key.key.clone(), self.value.eval(ctxt)?).into())
     }
 }
 
