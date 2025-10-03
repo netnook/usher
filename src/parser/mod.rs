@@ -468,21 +468,23 @@ pub mod tests {
         expected_end: isize,
     ) where
         F: FnOnce(&mut Parser<'a>) -> Result<Option<AstNode>, SyntaxError>,
-        // T: PartialEq<T> + std::fmt::Debug,
     {
         let mut parser = Parser::new(input);
         parser.pos = 1;
-
-        // let a = expected.unwrap();
-        // a.print();
-        // print(n)
 
         let actual = func(&mut parser)
             .expect("parser should succeed")
             .map(|a| format!("{a:-#?}"));
         let expected = expected.map(|e| format!("{e:-#?}"));
 
-        assert_eq!(actual, expected, "assert actual (left) == expected (right)");
+        match (actual, expected) {
+            (Some(actual), Some(expected)) => {
+                assert_eq!(actual, expected, "assert actual (left) == expected (right)");
+            }
+            (actual, expected) => {
+                assert_eq!(actual, expected, "assert actual (left) == expected (right)");
+            }
+        };
 
         if expected_end > 0 {
             assert_eq!(

@@ -85,7 +85,6 @@ mod tests {
 
     #[test]
     fn test_if() {
-        // FIXME: test nested if-else
         do_test_if_ok(r" if x { 1 } ", _if!(cond(var("x") => _block![i(1)])), -1);
         do_test_if_ok(
             " if x { 1 } else if y { 2 } ",
@@ -122,6 +121,43 @@ mod tests {
                 cond(var("x") => _block![i(1)]),
                 cond(var("y") => _block![i(2)]),
                 else(_block![i(3)])
+            ),
+            -1,
+        );
+        do_test_if_ok(
+            r" if x {
+                1
+                if a { 10 } else { 11 }
+            } else if y {
+                2
+                if a { 12 } else if b { 13 }
+            } else {
+                3
+                if a { 14 } else if b { 15 } else { 16 }
+            } ",
+            _if!(
+                cond(var("x") => _block![
+                    i(1),
+                    _if!(
+                        cond(var("a") => _block![i(10)]),
+                        else(_block!(i(11)))
+                    )
+                ]),
+                cond(var("y") => _block![
+                    i(2),
+                    _if!(
+                        cond(var("a") => _block![i(12)]),
+                        cond(var("b") => _block![i(13)])
+                    )
+                ]),
+                else(_block![
+                    i(3),
+                    _if!(
+                        cond(var("a") => _block![i(14)]),
+                        cond(var("b") => _block![i(15)]),
+                        else(_block![i(16)])
+                    )
+                ])
             ),
             -1,
         );
