@@ -352,7 +352,6 @@ impl List {
             "add" => Some(BuiltInFunc::Add.into()),
             _ => None,
         }
-        // todo!()
     }
 }
 

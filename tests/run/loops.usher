@@ -37,4 +37,29 @@ for kv in data {
 [sum1,sum2,sum3,i,a,out]
 ---
 [16,16,12,"i","a",["a",1]]
+***********************************************
+var lst = [ 1, 2, 3, 4 ]
+var last = nil
+for i in lst {
+  last = i
+  if i == 2 {
+    break
+  }
+}
+last
+---
+2
+***********************************************
+var dat = dict(a:1, b:2, c:3)
+var last = nil
+for kv in dat {
+  print(kv)
+  last = kv
+  if kv.key == "b" {
+    break
+  }
+}
+last
+---
+(b:2)
 
