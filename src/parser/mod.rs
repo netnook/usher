@@ -17,7 +17,7 @@ mod stmt;
 mod string;
 mod validation;
 
-use crate::lang::Program;
+use crate::{lang::Program, parser::validation::Validator};
 use error::ParseError;
 pub use error::SyntaxError;
 pub use position::SourceRef;
@@ -34,14 +34,22 @@ pub fn parse<'a>(filename: &'a str, input: &'a str) -> Result<Program<'a>, Parse
 
     let program = match p.program() {
         Ok(p) => p,
-        Err(se) => {
+        Err(err) => {
             return Err(ParseError {
                 file: filename,
                 source: input,
-                error: se,
+                cause: err.into(),
             });
         }
     };
+
+    if let Err(err) = Validator::validate(&program) {
+        return Err(ParseError {
+            file: filename,
+            source: input,
+            cause: err.into(),
+        });
+    }
 
     Ok(program)
 }
@@ -74,14 +82,14 @@ pub mod tests {
 
     use std::{cell::RefCell, rc::Rc};
 
-    use super::SyntaxError;
     use crate::{
         lang::{
-            Assignment, AstNode, BinaryOp, BinaryOpCode, Block, ChainCatch, Declaration, Dict,
-            DictBuilder, For, FunctionCall, Identifier, IndexOf, KeyValue, KeyValueBuilder, List,
-            ListBuilder, Literal, PropertyOf, Span, This, UnaryOp, UnaryOpCode, Value, Var,
+            Assignment, AstNode, BinaryOp, BinaryOpCode, Block, Break, ChainCatch, Continue,
+            Declaration, Dict, DictBuilder, For, FunctionCall, Identifier, IndexOf, KeyValue,
+            KeyValueBuilder, List, ListBuilder, Literal, PropertyOf, Span, This, UnaryOp,
+            UnaryOpCode, Value, Var,
         },
-        parser::Parser,
+        parser::{Parser, SyntaxError},
     };
     use pretty_assertions::assert_eq;
 
@@ -314,6 +322,13 @@ pub mod tests {
             block,
         }
     }
+    pub(crate) fn _break() -> Break {
+        Break::new(Span::new(999, 9999))
+    }
+    pub(crate) fn _continue() -> Continue {
+        Continue::new(Span::new(999, 9999))
+    }
+
     macro_rules! _ret {
         ($val:expr) => {{
             AstNode::ReturnStmt(ReturnStmt {
@@ -462,7 +477,7 @@ pub mod tests {
             use crate::lang::AstNode;
             use crate::lang::Break;
             FunctionCall{
-                 on: AstNode::Break(Break::new()).into(), // dummy value
+                 on: AstNode::Break(Break::new(Span::new(999,9998))).into(), // dummy value
                  method: None,
                  args: Vec::new(),
                 span: Span::new(999, 9999),
@@ -681,4 +696,6 @@ pub mod tests {
     with_span!(IndexOf);
     with_span!(Block);
     with_span!(FunctionCall);
+    with_span!(Break);
+    with_span!(Continue);
 }

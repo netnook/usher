@@ -25,6 +25,10 @@ pub(crate) trait Visitor<T>: Sized {
     }
 
     fn visit_node(&mut self, n: &AstNode) -> VisitorResult<T> {
+        self.do_visit_node(n)
+    }
+
+    fn do_visit_node(&mut self, n: &AstNode) -> VisitorResult<T> {
         match n {
             AstNode::This(v) => self.visit_this(v),
             AstNode::Literal(v) => self.visit_literal(v),

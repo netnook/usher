@@ -249,3 +249,23 @@ fn test_nil_spans() {
         -1,
     );
 }
+
+#[test]
+fn test_break_spans() {
+    do_test_parser_exact(
+        Parser::stmt,
+        r#" break "#,
+        _break().spanned(1, 5).into(),
+        -1,
+    );
+}
+
+#[test]
+fn test_continue_spans() {
+    do_test_parser_exact(
+        Parser::stmt,
+        r#" continue "#,
+        _continue().spanned(1, 8).into(),
+        -1,
+    );
+}

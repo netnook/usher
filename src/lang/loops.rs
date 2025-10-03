@@ -1,6 +1,6 @@
 use super::{Context, Value};
 use crate::lang::{
-    Accept, AstNode, Block, Eval, EvalStop, InternalProgramError, KeyValue, Var, Visitor,
+    Accept, AstNode, Block, Eval, EvalStop, InternalProgramError, KeyValue, Span, Var, Visitor,
     VisitorResult, accept_default,
 };
 
@@ -88,12 +88,26 @@ impl Eval for For {
 
 accept_default!(For, iterable:node, loop_item:var, loop_info:opt:var, block:block,);
 
-#[derive(PartialEq, Debug, Clone)]
-pub struct Break {}
+#[derive(PartialEq, Clone)]
+pub struct Break {
+    pub(crate) span: Span,
+}
+
+impl core::fmt::Debug for Break {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let minimal = f.sign_minus();
+        if minimal {
+            let mut w = f.debug_struct("Break");
+            w.finish()
+        } else {
+            f.debug_struct("Break").field("span", &self.span).finish()
+        }
+    }
+}
 
 impl Break {
-    pub(crate) fn new() -> Self {
-        Self {}
+    pub(crate) fn new(span: Span) -> Self {
+        Self { span }
     }
 }
 
@@ -105,12 +119,28 @@ impl Eval for Break {
 
 accept_default!(Break);
 
-#[derive(PartialEq, Debug, Clone)]
-pub struct Continue {}
+#[derive(PartialEq, Clone)]
+pub struct Continue {
+    pub(crate) span: Span,
+}
+
+impl core::fmt::Debug for Continue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let minimal = f.sign_minus();
+        if minimal {
+            let mut w = f.debug_struct("Continue");
+            w.finish()
+        } else {
+            f.debug_struct("Continue")
+                .field("span", &self.span)
+                .finish()
+        }
+    }
+}
 
 impl Continue {
-    pub(crate) fn new() -> Self {
-        Self {}
+    pub(crate) fn new(span: Span) -> Self {
+        Self { span }
     }
 }
 

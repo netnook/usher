@@ -8,12 +8,12 @@ use thiserror::Error;
 pub struct ParseError<'a> {
     pub file: &'a str,
     pub source: &'a str,
-    pub error: SyntaxError,
+    pub cause: ParseErrorCause,
 }
 
 impl<'a> ParseError<'a> {
     pub fn span(&self) -> Span {
-        self.error.span()
+        self.cause.span()
     }
 
     pub fn find_source_position(&self) -> SourceRef<'a> {
@@ -27,14 +27,48 @@ impl<'a> core::fmt::Debug for ParseError<'a> {
         if minimal {
             f.debug_struct("ParseError")
                 .field("file", &self.file)
-                .field("error", &self.error)
+                .field("cause", &self.cause)
                 .finish_non_exhaustive()
         } else {
             f.debug_struct("ParseError")
                 .field("file", &self.file)
                 .field("source", &self.source)
-                .field("error", &self.error)
+                .field("cause", &self.cause)
                 .finish()
+        }
+    }
+}
+
+#[derive(Error, PartialEq, Debug)]
+pub enum ParseErrorCause {
+    #[error(transparent)]
+    SyntaxError(#[from] SyntaxError),
+    #[error(transparent)]
+    SemanticError(#[from] SemanticError),
+}
+
+impl ParseErrorCause {
+    fn span(&self) -> Span {
+        match self {
+            ParseErrorCause::SyntaxError(e) => e.span(),
+            ParseErrorCause::SemanticError(e) => e.span(),
+        }
+    }
+}
+
+#[derive(Error, PartialEq, Debug)]
+pub enum SemanticError {
+    #[error("Break without for")]
+    BreakWithoutFor { span: Span },
+    #[error("Continue without for")]
+    ContinueWithoutFor { span: Span },
+}
+
+impl SemanticError {
+    fn span(&self) -> Span {
+        match self {
+            SemanticError::BreakWithoutFor { span } => *span,
+            SemanticError::ContinueWithoutFor { span } => *span,
         }
     }
 }

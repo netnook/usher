@@ -1,6 +1,9 @@
 use crate::{
     lang::EvalError,
-    parser::{SourceRef, error::ParseError},
+    parser::{
+        SourceRef,
+        error::{ParseError, ParseErrorCause},
+    },
 };
 use std::{error::Error, io::Write};
 
@@ -13,7 +16,11 @@ pub fn print_parse_error_to_string(err: ParseError<'_>) -> String {
 
 pub fn print_parse_error(w: impl Write, err: ParseError<'_>) -> Result<(), std::io::Error> {
     let info = err.find_source_position();
-    print_error(w, "Syntax error", info, err.error)?;
+    let title = match err.cause {
+        ParseErrorCause::SyntaxError(_) => "Syntax error",
+        ParseErrorCause::SemanticError(_) => "Semantic error",
+    };
+    print_error(w, title, info, err.cause)?;
 
     Ok(())
 }

@@ -8,7 +8,7 @@ impl<'a> Parser<'a> {
     pub(super) fn stmt(&mut self) -> ParseResult<Option<AstNode>> {
         let start = self.pos;
 
-        if let Some(UncheckedIdentifier(id, _)) = self.unchecked_identifier() {
+        if let Some(UncheckedIdentifier(id, span)) = self.unchecked_identifier() {
             match id {
                 "if" => {
                     return Ok(Some(self.if_stmt()?));
@@ -20,13 +20,13 @@ impl<'a> Parser<'a> {
                     return Ok(Some(self.var_stmt()?));
                 }
                 "break" => {
-                    return Ok(Some(Break::new().into()));
+                    return Ok(Some(Break::new(span).into()));
                 }
                 "end" => {
                     return Ok(Some(End::new().into()));
                 }
                 "continue" => {
-                    return Ok(Some(Continue::new().into()));
+                    return Ok(Some(Continue::new(span).into()));
                 }
                 "return" => {
                     return Ok(Some(self.return_stmt()?));
@@ -226,8 +226,8 @@ pub(super) mod tests {
         do_test_stmt_ok(" iffy + 2 ", add(var("iffy"), i(2)), -1);
         do_test_stmt_ok(" for_me + 2 ", add(var("for_me"), i(2)), -1);
         do_test_stmt_ok(" vario + 2 ", add(var("vario"), i(2)), -1);
-        do_test_stmt_ok(" break ", Break::new(), -1);
-        do_test_stmt_ok(" continue ", Continue::new(), -1);
+        do_test_stmt_ok(" break ", _break(), -1);
+        do_test_stmt_ok(" continue ", _continue(), -1);
         do_test_stmt_ok(" end ", End::new(), -1);
     }
 }
