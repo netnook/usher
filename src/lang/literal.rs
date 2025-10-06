@@ -30,7 +30,7 @@ impl Literal {
 
 impl Eval for Literal {
     fn eval(&self, _: &mut Context) -> Result<Value, EvalStop> {
-        Ok(self.val.clone())
+        Ok(self.val.deep_clone())
     }
 }
 

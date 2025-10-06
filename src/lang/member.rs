@@ -60,7 +60,7 @@ impl Eval for PropertyOf {
             }
             Value::KeyValue(of) => match self.property.key.0.as_str() {
                 "key" => Value::Str(of.key.0.clone()),
-                "value" => of.value.clone(),
+                "value" => of.value.ref_clone(),
                 _ => {
                     if self.throw_on_missing_prop {
                         // FIXME: do we really want to allow ? operator on a key/value object?

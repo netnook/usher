@@ -61,7 +61,7 @@ impl Eval for For {
                 // FIXME: what happen if list is modified during iteration ???
                 let dict = dict.borrow();
                 for (k, val) in dict.iter() {
-                    let loop_val = KeyValue::new(k.clone(), val.clone()).into();
+                    let loop_val = KeyValue::new(k.clone(), val.ref_clone()).into();
                     child_ctxt.reset();
                     self.loop_item.declare(&mut child_ctxt, loop_val);
                     result = match self.block.eval_with_context(&mut child_ctxt) {

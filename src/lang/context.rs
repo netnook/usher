@@ -105,7 +105,7 @@ pub struct ContextInner {
 impl ContextInner {
     fn get(&self, key: &Key) -> Option<Value> {
         if let Some(v) = self.vars.get(key) {
-            return Some(v.clone());
+            return Some(v.ref_clone());
         }
         if let Some(parent) = &self.parent {
             return parent.borrow().get(key);

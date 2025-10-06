@@ -130,6 +130,51 @@ impl core::fmt::Debug for Value {
 }
 
 impl Value {
+    pub fn ref_clone(&self) -> Self {
+        match self {
+            Value::Func(v) => Value::Func(v.clone()),
+            Value::Str(v) => Value::Str(Rc::clone(v)),
+            Value::Integer(v) => Value::Integer(*v),
+            Value::Float(v) => Value::Float(*v),
+            Value::Bool(v) => Value::Bool(*v),
+            Value::List(v) => Value::List(Rc::clone(v)),
+            Value::Dict(v) => Value::Dict(Rc::clone(v)),
+            Value::KeyValue(v) => Value::KeyValue(Rc::clone(v)),
+            Value::Nil => Value::Nil,
+            Value::End => Value::End,
+        }
+    }
+
+    pub fn shallow_clone(&self) -> Self {
+        match self {
+            Value::Func(v) => Value::Func(v.clone()),
+            Value::Str(v) => Value::Str(Rc::new(v.as_str().to_string())),
+            Value::Integer(v) => Value::Integer(*v),
+            Value::Float(v) => Value::Float(*v),
+            Value::Bool(v) => Value::Bool(*v),
+            Value::List(v) => Value::List(v.borrow().shallow_clone().into()),
+            Value::Dict(v) => Value::Dict(v.borrow().shallow_clone().into()),
+            Value::KeyValue(v) => Value::KeyValue(v.shallow_clone().into()),
+            Value::Nil => Value::Nil,
+            Value::End => Value::End,
+        }
+    }
+
+    pub fn deep_clone(&self) -> Self {
+        match self {
+            Value::Func(v) => Value::Func(v.clone()),
+            Value::Str(v) => Value::Str(Rc::new(v.as_str().to_string())),
+            Value::Integer(v) => Value::Integer(*v),
+            Value::Float(v) => Value::Float(*v),
+            Value::Bool(v) => Value::Bool(*v),
+            Value::List(v) => Value::List(v.borrow().deep_clone().into()),
+            Value::Dict(v) => Value::Dict(v.borrow().deep_clone().into()),
+            Value::KeyValue(v) => Value::KeyValue(v.deep_clone().into()),
+            Value::Nil => Value::Nil,
+            Value::End => Value::End,
+        }
+    }
+
     pub fn as_string(&'_ self) -> Result<Cow<'_, str>, EvalStop> {
         Ok(match self {
             Value::Func(_) => {
@@ -352,6 +397,22 @@ impl List {
             _ => None,
         }
     }
+
+    pub(crate) fn shallow_clone(&self) -> Self {
+        let mut result = Self::new();
+        for e in &self.content {
+            result.add(e.ref_clone());
+        }
+        result
+    }
+
+    pub(crate) fn deep_clone(&self) -> Self {
+        let mut result = Self::new();
+        for e in &self.content {
+            result.add(e.deep_clone());
+        }
+        result
+    }
 }
 
 #[derive(Debug)]
@@ -414,6 +475,22 @@ impl Dict {
             _ => None,
         }
     }
+
+    pub(crate) fn shallow_clone(&self) -> Self {
+        let mut result = Self::new();
+        for (k, v) in &self.content {
+            result.set(k.clone(), v.ref_clone());
+        }
+        result
+    }
+
+    pub(crate) fn deep_clone(&self) -> Self {
+        let mut result = Self::new();
+        for (k, v) in &self.content {
+            result.set(k.clone(), v.deep_clone());
+        }
+        result
+    }
 }
 
 pub type KeyValueCell = Rc<KeyValue>;
@@ -427,6 +504,20 @@ pub struct KeyValue {
 impl KeyValue {
     pub(crate) fn new(key: Key, value: Value) -> Self {
         Self { key, value }
+    }
+
+    pub(crate) fn shallow_clone(&self) -> Self {
+        Self {
+            key: self.key.clone(),
+            value: self.value.ref_clone(),
+        }
+    }
+
+    pub(crate) fn deep_clone(&self) -> Self {
+        Self {
+            key: self.key.clone(),
+            value: self.value.deep_clone(),
+        }
     }
 }
 
@@ -442,6 +533,356 @@ mod tests {
     use crate::lang::BuiltInFunc;
     use crate::lang::Value;
     use crate::parser::tests::ToValue;
+
+    #[test]
+    fn test_ref_clone() {
+        assert_eq!(
+            Value::Func(Func::BuiltInFunc(BuiltInFunc::Print)).ref_clone(),
+            Value::Func(Func::BuiltInFunc(BuiltInFunc::Print))
+        );
+
+        {
+            let a = Value::Str(Rc::new("string".to_string()));
+            let b = a.ref_clone();
+            assert_eq!(a, b);
+
+            let Value::Str(mut v) = a else { panic!() };
+            if Rc::get_mut(&mut v).is_some() {
+                panic!("expected none");
+            };
+        }
+        {
+            let mut a = Value::Integer(42);
+            let b = a.ref_clone();
+            assert_eq!(a, b);
+
+            let Value::Integer(v) = &mut a else { panic!() };
+            *v = 24;
+            assert_ne!(a, b);
+        }
+        {
+            let mut a = Value::Float(42.1);
+            let b = a.ref_clone();
+            assert_eq!(a, b);
+
+            let Value::Float(v) = &mut a else { panic!() };
+            *v = 24.2;
+            assert_ne!(a, b);
+        }
+        {
+            let mut a = Value::Bool(true);
+            let b = a.ref_clone();
+            assert_eq!(a, b);
+
+            let Value::Bool(v) = &mut a else { panic!() };
+            *v = false;
+            assert_ne!(a, b);
+        }
+        {
+            let mut l = List::new();
+            l.add(42.into());
+            l.add(43.into());
+            let mut a = Value::List(l.into());
+            let b = a.ref_clone();
+            assert_eq!(a, b);
+
+            let Value::List(l) = &mut a else { panic!() };
+            l.borrow_mut().add(45.into());
+            assert_eq!(a, b);
+        }
+        {
+            let mut sub = List::new();
+            sub.add(42.to_value());
+            sub.add(43.to_value());
+            let mut l = List::new();
+            l.add(44.to_value());
+            l.add(sub.into());
+            let mut a = Value::List(l.into());
+            let b = a.ref_clone();
+            assert_eq!(a, b);
+
+            let Value::List(l) = &mut a else { panic!() };
+            let Value::List(sub) = &mut l.borrow().get(1).unwrap() else {
+                panic!()
+            };
+            sub.borrow_mut().add(45.into());
+            assert_eq!(a, b); // a and b still differ after sub list modified
+        }
+        {
+            let mut d = Dict::new();
+            d.set("a".into(), 42.into());
+            d.set("b".into(), 43.into());
+            let mut a = Value::Dict(d.into());
+            let b = a.ref_clone();
+            assert_eq!(a, b);
+
+            let Value::Dict(l) = &mut a else { panic!() };
+            l.borrow_mut().set("c".into(), 45.into());
+            assert_eq!(a, b);
+        }
+        {
+            let mut sub = Dict::new();
+            sub.set("a".into(), 42.to_value());
+            sub.set("b".into(), 43.to_value());
+            let mut l = Dict::new();
+            l.set("c".into(), 44.to_value());
+            l.set("d".into(), sub.into());
+            let mut a = Value::Dict(l.into());
+            let b = a.ref_clone();
+            assert_eq!(a, b);
+
+            let Value::Dict(l) = &mut a else { panic!() };
+            let Value::Dict(sub) = &mut l.borrow().get(&"d".into()).unwrap() else {
+                panic!()
+            };
+            sub.borrow_mut().set("e".into(), 45.into());
+            assert_eq!(a, b); // a and b still differ after sub list modified
+        }
+        {
+            let a = KeyValue::new("k".into(), "v".into());
+            let a = Value::KeyValue(Rc::new(a));
+            let b = a.ref_clone();
+            assert_eq!(a, b);
+        }
+        {
+            let a = Value::Nil;
+            let b = a.ref_clone();
+            assert_eq!(a, b);
+        }
+        {
+            let a = Value::End;
+            let b = a.ref_clone();
+            assert_eq!(a, b);
+        }
+    }
+
+    #[test]
+    fn test_shallow_clone() {
+        assert_eq!(
+            Value::Func(Func::BuiltInFunc(BuiltInFunc::Print)).shallow_clone(),
+            Value::Func(Func::BuiltInFunc(BuiltInFunc::Print))
+        );
+
+        {
+            let a = Value::Str(Rc::new("string".to_string()));
+            let b = a.shallow_clone();
+            assert_eq!(a, b);
+
+            let Value::Str(mut v) = a else { panic!() };
+            Rc::get_mut(&mut v).unwrap().push_str("xxx");
+            let a = Value::Str(v);
+            assert_ne!(a, b);
+        }
+        {
+            let mut a = Value::Integer(42);
+            let b = a.shallow_clone();
+            assert_eq!(a, b);
+
+            let Value::Integer(v) = &mut a else { panic!() };
+            *v = 24;
+            assert_ne!(a, b);
+        }
+        {
+            let mut a = Value::Float(42.1);
+            let b = a.shallow_clone();
+            assert_eq!(a, b);
+
+            let Value::Float(v) = &mut a else { panic!() };
+            *v = 24.2;
+            assert_ne!(a, b);
+        }
+        {
+            let mut a = Value::Bool(true);
+            let b = a.shallow_clone();
+            assert_eq!(a, b);
+
+            let Value::Bool(v) = &mut a else { panic!() };
+            *v = false;
+            assert_ne!(a, b);
+        }
+        {
+            let mut sub = List::new();
+            sub.add(42.to_value());
+            sub.add(43.to_value());
+            let mut l = List::new();
+            l.add(44.to_value());
+            l.add(sub.into());
+            let mut a = Value::List(l.into());
+            let b = a.shallow_clone();
+            assert_eq!(a, b);
+
+            let Value::List(l) = &mut a else { panic!() };
+            let Value::List(sub) = &mut l.borrow().get(1).unwrap() else {
+                panic!()
+            };
+            sub.borrow_mut().add(45.into());
+            assert_eq!(a, b); // a and b still same after sub list modified (shallow copy only)
+
+            let Value::List(l) = &mut a else { panic!() };
+            l.borrow_mut().add(46.into());
+            assert_ne!(a, b); // and and b differ after top list modified
+        }
+        {
+            let mut sub = Dict::new();
+            sub.set("a".into(), 42.to_value());
+            sub.set("b".into(), 43.to_value());
+            let mut l = Dict::new();
+            l.set("c".into(), 44.to_value());
+            l.set("d".into(), sub.into());
+            let mut a = Value::Dict(l.into());
+            let b = a.shallow_clone();
+            assert_eq!(a, b);
+
+            let Value::Dict(l) = &mut a else { panic!() };
+            let Value::Dict(sub) = &mut l.borrow().get(&"d".into()).unwrap() else {
+                panic!()
+            };
+            sub.borrow_mut().set("e".into(), 45.into());
+            assert_eq!(a, b); // a and b still differ after sub list modified
+
+            let Value::Dict(l) = &mut a else { panic!() };
+            l.borrow_mut().set("c".into(), 45.into());
+            assert_ne!(a, b);
+        }
+        {
+            let a = KeyValue::new("k".into(), "v".into());
+            let a = Value::KeyValue(Rc::new(a));
+            let b = a.shallow_clone();
+            assert_eq!(a, b);
+        }
+        {
+            let a = Value::Nil;
+            let b = a.shallow_clone();
+            assert_eq!(a, b);
+        }
+        {
+            let a = Value::End;
+            let b = a.shallow_clone();
+            assert_eq!(a, b);
+        }
+    }
+
+    #[test]
+    fn test_deep_clone() {
+        assert_eq!(
+            Value::Func(Func::BuiltInFunc(BuiltInFunc::Print)).deep_clone(),
+            Value::Func(Func::BuiltInFunc(BuiltInFunc::Print))
+        );
+
+        {
+            let a = Value::Str(Rc::new("string".to_string()));
+            let b = a.deep_clone();
+            assert_eq!(a, b);
+
+            let Value::Str(mut v) = a else { panic!() };
+            Rc::get_mut(&mut v).unwrap().push_str("xxx");
+            let a = Value::Str(v);
+            assert_ne!(a, b);
+        }
+        {
+            let mut a = Value::Integer(42);
+            let b = a.deep_clone();
+            assert_eq!(a, b);
+
+            let Value::Integer(v) = &mut a else { panic!() };
+            *v = 24;
+            assert_ne!(a, b);
+        }
+        {
+            let mut a = Value::Float(42.1);
+            let b = a.deep_clone();
+            assert_eq!(a, b);
+
+            let Value::Float(v) = &mut a else { panic!() };
+            *v = 24.2;
+            assert_ne!(a, b);
+        }
+        {
+            let mut a = Value::Bool(true);
+            let b = a.deep_clone();
+            assert_eq!(a, b);
+
+            let Value::Bool(v) = &mut a else { panic!() };
+            *v = false;
+            assert_ne!(a, b);
+        }
+        {
+            let mut l = List::new();
+            l.add(42.into());
+            l.add(43.into());
+            let mut a = Value::List(l.into());
+            let b = a.deep_clone();
+            assert_eq!(a, b);
+
+            let Value::List(l) = &mut a else { panic!() };
+            l.borrow_mut().add(45.into());
+            assert_ne!(a, b);
+        }
+        {
+            let mut sub = List::new();
+            sub.add(42.to_value());
+            sub.add(43.to_value());
+            let mut l = List::new();
+            l.add(44.to_value());
+            l.add(sub.into());
+            let mut a = Value::List(l.into());
+            let b = a.deep_clone();
+            assert_eq!(a, b);
+
+            let Value::List(l) = &mut a else { panic!() };
+            let Value::List(sub) = &mut l.borrow().get(1).unwrap() else {
+                panic!()
+            };
+            sub.borrow_mut().add(45.into());
+            assert_ne!(a, b);
+        }
+        {
+            let mut d = Dict::new();
+            d.set("a".into(), 42.into());
+            d.set("b".into(), 43.into());
+            let mut a = Value::Dict(d.into());
+            let b = a.deep_clone();
+            assert_eq!(a, b);
+
+            let Value::Dict(l) = &mut a else { panic!() };
+            l.borrow_mut().set("c".into(), 45.into());
+            assert_ne!(a, b);
+        }
+        {
+            let mut sub = Dict::new();
+            sub.set("a".into(), 42.to_value());
+            sub.set("b".into(), 43.to_value());
+            let mut l = Dict::new();
+            l.set("c".into(), 44.to_value());
+            l.set("d".into(), sub.into());
+            let mut a = Value::Dict(l.into());
+            let b = a.deep_clone();
+            assert_eq!(a, b);
+
+            let Value::Dict(l) = &mut a else { panic!() };
+            let Value::Dict(sub) = &mut l.borrow().get(&"d".into()).unwrap() else {
+                panic!()
+            };
+            sub.borrow_mut().set("e".into(), 45.into());
+            assert_ne!(a, b);
+        }
+        {
+            let a = KeyValue::new("k".into(), "v".into());
+            let a = Value::KeyValue(Rc::new(a));
+            let b = a.deep_clone();
+            assert_eq!(a, b);
+        }
+        {
+            let a = Value::Nil;
+            let b = a.deep_clone();
+            assert_eq!(a, b);
+        }
+        {
+            let a = Value::End;
+            let b = a.deep_clone();
+            assert_eq!(a, b);
+        }
+    }
 
     #[track_caller]
     fn do_test_as_string(val: Value, expected: &str) {

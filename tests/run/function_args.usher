@@ -54,3 +54,18 @@ Syntax error in tests/run/function_args.usher at line 3, char 18:
   |
 3 | function one(aa: aa+2) {}
   |                  ^^ Error in constant expression: Unknown variable 'aa'
+
+*****************************************************
+# test 6 - test default list/dict does not get modified
+function f(l:[], d:dict(a:[])) {
+    l.add(1)
+	d.a.add(2)
+    print(l, d)
+}
+f()
+f()
+f()
+---stdout---
+[1], dict("a":[2])
+[1], dict("a":[2])
+[1], dict("a":[2])

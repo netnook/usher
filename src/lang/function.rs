@@ -115,7 +115,7 @@ impl Eval for Rc<FunctionDef> {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
         let f = Value::Func(Func::Func(Rc::clone(self)));
         if let Some(name) = &self.name {
-            ctxt.set(&name.ident.key, f.clone());
+            ctxt.set(&name.ident.key, f.ref_clone());
         };
         Ok(f)
     }
@@ -336,7 +336,7 @@ impl FunctionCall {
                 }
                 Param::Optional(var, val) => {
                     if !call_context.contains_key(&var.ident.key) {
-                        call_context.declare(var.ident.key.clone(), val.clone());
+                        call_context.declare(var.ident.key.clone(), val.deep_clone());
                     }
                 }
                 Param::OtherPositional(_) => {}

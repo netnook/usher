@@ -48,6 +48,7 @@ impl<'a> Parser<'a> {
                 }
                 AstNode::KeyValue(KeyValueBuilder { key, value }) => {
                     // FIXME: check value tree to see that it only contains constant "compatible" expressions
+                    // FIXME: check that lists as default values do not end of modified when used and modified within funcion
                     let mut ctxt = Context::default();
                     let value = value.eval(&mut ctxt).map_err(|e| match e {
                         EvalStop::Error(err) => SyntaxError::ConstantEvalError { cause: err },
