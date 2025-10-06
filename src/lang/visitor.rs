@@ -448,7 +448,6 @@ mod tests {
                 "Var b",
                 "Param",
                 "Var c",
-                "Literal 1",
                 "Block",
                 "ReturnStmt",
                 "Literal 22",

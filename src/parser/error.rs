@@ -1,5 +1,5 @@
 use crate::{
-    lang::Span,
+    lang::{InternalProgramError, Span},
     parser::{SourceRef, position},
 };
 use thiserror::Error;
@@ -153,6 +153,8 @@ pub enum SyntaxError {
     FunctionExpectedParamIdent { pos: usize },
     #[error("Expected ',' or ')'.")]
     FunctionExpectedCommaOrCloseParens { pos: usize },
+    #[error("Error in constant expression: {cause}")]
+    ConstantEvalError { cause: InternalProgramError },
 }
 
 impl SyntaxError {
@@ -197,6 +199,7 @@ impl SyntaxError {
             SyntaxError::FunctionExpectedOpenParens { pos } => Span::new(*pos, 1),
             SyntaxError::FunctionExpectedParamIdent { pos } => Span::new(*pos, 1),
             SyntaxError::FunctionExpectedCommaOrCloseParens { pos } => Span::new(*pos, 1),
+            SyntaxError::ConstantEvalError { cause } => *cause.span(),
         }
     }
 }

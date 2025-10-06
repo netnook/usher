@@ -1,0 +1,22 @@
+# test 1
+var aaa = 1
+aaa = 2
+aaa
+---result---
+2
+**************************************
+# test 2
+aaa = 1
+---stderr---
+Evaluation error in tests/run/vars.usher at line 2, char 1:
+  |
+2 | aaa = 1
+  | ^^^ Unknown variable 'aaa'
+**************************************
+# test 3
+aaa
+---stderr---
+Evaluation error in tests/run/vars.usher at line 2, char 1:
+  |
+2 | aaa
+  | ^^^ Unknown variable 'aaa'

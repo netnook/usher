@@ -1,5 +1,5 @@
 use super::{ParseResult, Parser, SyntaxError};
-use crate::lang::{AstNode, FunctionDef, KeyValueBuilder, Param, Var};
+use crate::lang::{AstNode, Context, EvalStop, FunctionDef, KeyValueBuilder, Param, Var};
 
 impl<'a> Parser<'a> {
     // "function" name? "(" param,* ")"
@@ -47,7 +47,16 @@ impl<'a> Parser<'a> {
                     params.push(Param::Required(var));
                 }
                 AstNode::KeyValue(KeyValueBuilder { key, value }) => {
-                    params.push(Param::Optional(Var::new(key), *value));
+                    // FIXME: check value tree to see that it only contains constant "compatible" expressions
+                    let mut ctxt = Context::default();
+                    let value = value.eval(&mut ctxt).map_err(|e| match e {
+                        EvalStop::Error(err) => SyntaxError::ConstantEvalError { cause: err },
+                        EvalStop::Return(_) => todo!(),
+                        EvalStop::Break => todo!(),
+                        EvalStop::Continue => todo!(),
+                        EvalStop::Throw => todo!(),
+                    })?;
+                    params.push(Param::Optional(Var::new(key), value));
                 }
                 _ => {
                     return Err(SyntaxError::FunctionExpectedParamIdent { pos: ref_pos });
@@ -97,12 +106,12 @@ mod tests {
         do_test_expr_ok(" function(a) { 1 } ", _func!(param("a"), _block![i(1)]), -1);
         do_test_expr_ok(
             " function(a:1) { 1 } ",
-            _func!(param("a", i(1)), _block![i(1)]),
+            _func!(param("a", 1.to_value()), _block![i(1)]),
             -1,
         );
         do_test_expr_ok(
             " function(a:1, b) { 1 } ",
-            _func!(param("a", i(1)), param("b"), _block![i(1)]),
+            _func!(param("a", 1.to_value()), param("b"), _block![i(1)]),
             -1,
         );
         do_test_expr_ok(
@@ -120,7 +129,7 @@ mod tests {
             _func!(
                 name("meme"),
                 param("a"),
-                param("b", i(8)),
+                param("b", 8.to_value()),
                 param("cd"),
                 _block![i(1)]
             ),

@@ -7,7 +7,7 @@ var foo = function(a, b, c:77) {
 
 a.b().foo("22", c:"cc", e:dict( c: 44, d:45))
 
-function foo(a:1*2, b: dict( c: 44, d:45)) {
+function foo(a:4*2, b: dict( c: 44, d:45)) {
    return 42
 }
 # error("this is the error", exit_code=7)
@@ -28,7 +28,7 @@ Program { [
             params: [
                 a,
                 b,
-                c: Literal(77),
+                c: 77,
             ],
             body: Block {[
                 Return { Literal(42) },
@@ -53,14 +53,8 @@ Program { [
     FunctionDef {
         name: foo,
         params: [
-            a: multiplication {
-                lhs: Literal(1),
-                rhs: Literal(2),
-            },
-            b: DictBuilder {
-                c: Literal(44),
-                d: Literal(45),
-            },
+            a: 8,
+            b: dict(c:44,d:45),
         ],
         body: Block {[
             Return { Literal(42) },

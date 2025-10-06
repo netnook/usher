@@ -64,10 +64,18 @@ impl Var {
 
 impl Eval for Var {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
-        let value = ctxt
+        let Some(value) = ctxt
             .get(&self.ident.key)
             .or_else(|| BuiltInFunc::by_name(&self.ident.key).map(|f| f.into()))
-            .unwrap_or(Value::Nil);
+        else {
+            return Err(InternalProgramError::UndeclaredVariable {
+                name: self.ident.key.as_string(),
+                span: self.span(),
+            }
+            .into());
+        };
+
+        // .unwrap_or(Value::Nil);
         Ok(value)
     }
 }
@@ -76,6 +84,13 @@ accept_default!(Var);
 
 impl Setter for Var {
     fn set(&self, ctxt: &mut Context, value: Value) -> Result<(), EvalStop> {
+        if !ctxt.contains_key(&self.ident.key) {
+            return Err(InternalProgramError::UndeclaredVariable {
+                name: self.ident.as_string(),
+                span: self.ident.span,
+            }
+            .into());
+        }
         ctxt.set(&self.ident.key, value);
         Ok(())
     }

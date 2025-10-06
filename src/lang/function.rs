@@ -41,7 +41,7 @@ accept_default!(FunctionDef, name:opt:var, params:vec:param, body:block,);
 #[derive(PartialEq, Clone)]
 pub enum Param {
     Required(Var),
-    Optional(Var, AstNode), // FIXME: AstNode should probably be a Value!!!
+    Optional(Var, Value),
     OtherPositional(Var),
     OtherNamed(Var),
 }
@@ -98,12 +98,8 @@ impl<T> Accept<T> for Param {
     fn accept(&self, visitor: &mut impl Visitor<T>) -> VisitorResult<T> {
         match self {
             Param::Required(var) => visitor.visit_var(var),
-            Param::Optional(var, default_value) => {
+            Param::Optional(var, _) => {
                 match visitor.visit_var(var) {
-                    s @ VisitorResult::Stop(_) => return s,
-                    VisitorResult::Continue => {}
-                };
-                match visitor.visit_node(default_value) {
                     s @ VisitorResult::Stop(_) => return s,
                     VisitorResult::Continue => {}
                 };
@@ -340,8 +336,7 @@ impl FunctionCall {
                 }
                 Param::Optional(var, val) => {
                     if !call_context.contains_key(&var.ident.key) {
-                        // FIXME: defaul val should be a constant Value and not need evaluating ?
-                        call_context.declare(var.ident.key.clone(), val.eval(ctxt)?);
+                        call_context.declare(var.ident.key.clone(), val.clone());
                     }
                 }
                 Param::OtherPositional(_) => {}
@@ -546,7 +541,7 @@ mod tests {
 
     #[test]
     fn test_build_call_context_params_required_args_positional() -> Result<(), EvalStop> {
-        let params = vec![Param::Required(var("aa")), Param::Required(var("bb"))];
+        let params = [Param::Required(var("aa")), Param::Required(var("bb"))];
         let call = function_call(vec![arg!(i(1)), arg!(i(2))]);
         let mut ctxt = prepare_ctxt();
 
@@ -562,7 +557,7 @@ mod tests {
 
     #[test]
     fn test_build_call_context_params_required_args_named() -> Result<(), EvalStop> {
-        let params = vec![Param::Required(var("aa")), Param::Required(var("bb"))];
+        let params = [Param::Required(var("aa")), Param::Required(var("bb"))];
         let call = function_call(vec![arg!("bb", i(1)), arg!("aa", i(2))]);
         let mut ctxt = prepare_ctxt();
 
@@ -578,9 +573,9 @@ mod tests {
 
     #[test]
     fn test_build_call_context_params_optional_args_none() -> Result<(), EvalStop> {
-        let params = vec![
-            Param::Optional(var("aa"), s("x").into()),
-            Param::Optional(var("bb"), s("y").into()),
+        let params = [
+            Param::Optional(var("aa"), "x".into()),
+            Param::Optional(var("bb"), "y".into()),
         ];
         let call = function_call(vec![]);
         let mut ctxt = prepare_ctxt();
@@ -597,9 +592,9 @@ mod tests {
 
     #[test]
     fn test_build_call_context_params_optional_args_positional() -> Result<(), EvalStop> {
-        let params = vec![
-            Param::Optional(var("aa"), s("x").into()),
-            Param::Optional(var("bb"), s("y").into()),
+        let params = [
+            Param::Optional(var("aa"), "x".into()),
+            Param::Optional(var("bb"), "y".into()),
         ];
         let call = function_call(vec![arg!(i(1)), arg!(i(2))]);
         let mut ctxt = prepare_ctxt();
@@ -616,9 +611,9 @@ mod tests {
 
     #[test]
     fn test_build_call_context_params_optional_args_explicit_nil() -> Result<(), EvalStop> {
-        let params = vec![
-            Param::Optional(var("aa"), s("x").into()),
-            Param::Optional(var("bb"), s("y").into()),
+        let params = [
+            Param::Optional(var("aa"), "x".into()),
+            Param::Optional(var("bb"), "y".into()),
         ];
         let call = function_call(vec![arg!(nil())]);
         let mut ctxt = prepare_ctxt();
@@ -635,13 +630,13 @@ mod tests {
 
     #[test]
     fn test_build_call_context_mixed() -> Result<(), EvalStop> {
-        let params = vec![
+        let params = [
             Param::Required(var("aa")),
             Param::Required(var("bb")),
             Param::Required(var("cc")),
-            Param::Optional(var("dd"), s("x").into()),
+            Param::Optional(var("dd"), "x".into()),
             Param::Required(var("ee")),
-            Param::Optional(var("ff"), s("z").into()),
+            Param::Optional(var("ff"), "z".into()),
         ];
         let call = function_call(vec![
             arg!(i(1)),
@@ -668,9 +663,9 @@ mod tests {
 
     #[test]
     fn test_build_call_context_error_too_many_args() {
-        let params = vec![
-            Param::Optional(var("aa"), s("x").into()),
-            Param::Optional(var("bb"), s("y").into()),
+        let params = [
+            Param::Optional(var("aa"), "x".into()),
+            Param::Optional(var("bb"), "y".into()),
         ];
         let call = function_call(vec![
             arg!(i(1).spanned(5, 5)),
@@ -694,10 +689,10 @@ mod tests {
 
     #[test]
     fn test_build_call_context_error_positional_after_named() {
-        let params = vec![
-            Param::Optional(var("aa"), s("x").into()),
-            Param::Optional(var("bb"), s("y").into()),
-            Param::Optional(var("cc"), s("z").into()),
+        let params = [
+            Param::Optional(var("aa"), "x".into()),
+            Param::Optional(var("bb"), "y".into()),
+            Param::Optional(var("cc"), "z".into()),
         ];
         let call = function_call(vec![
             arg!("bb", i(1).spanned(5, 5)),
@@ -721,10 +716,10 @@ mod tests {
 
     #[test]
     fn test_build_call_context_error_no_such_parameter() {
-        let params = vec![
-            Param::Optional(var("aa"), s("x").into()),
-            Param::Optional(var("bb"), s("y").into()),
-            Param::Optional(var("cc"), s("z").into()),
+        let params = [
+            Param::Optional(var("aa"), "x".into()),
+            Param::Optional(var("bb"), "y".into()),
+            Param::Optional(var("cc"), "z".into()),
         ];
         let call = function_call(vec![
             arg!("bb", i(1).spanned(5, 5)),
@@ -748,10 +743,10 @@ mod tests {
 
     #[test]
     fn test_build_call_context_error_parameter_already_set() {
-        let params = vec![
-            Param::Optional(var("aa"), s("x").into()),
-            Param::Optional(var("bb"), s("y").into()),
-            Param::Optional(var("cc"), s("z").into()),
+        let params = [
+            Param::Optional(var("aa"), "x".into()),
+            Param::Optional(var("bb"), "y".into()),
+            Param::Optional(var("cc"), "z".into()),
         ];
         let call = function_call(vec![
             arg!(i(1)),
@@ -776,10 +771,10 @@ mod tests {
 
     #[test]
     fn test_build_call_context_error_missing_arg() {
-        let params = vec![
+        let params = [
             Param::Required(var("aa")),
             Param::Required(var("bb")),
-            Param::Optional(var("cc"), s("z").into()),
+            Param::Optional(var("cc"), "z".into()),
         ];
         let call = function_call(vec![arg!(i(1)), arg!(id("cc").spanned(7, 7), i(7))]);
         let mut ctxt = prepare_ctxt();

@@ -9,7 +9,7 @@ var foo = function(a, b, c:77) {
   return 42
 }
 
-function foo(a: 1*2) {
+function foo(a: 2*3) {
    return 42
 }
 
@@ -62,7 +62,7 @@ Program { [
             params: [
                 a,
                 b,
-                c: Literal(77),
+                c: 77,
             ],
             body: Block {[
                 Return { Literal(42) },
@@ -72,10 +72,7 @@ Program { [
     FunctionDef {
         name: foo,
         params: [
-            a: multiplication {
-                lhs: Literal(1),
-                rhs: Literal(2),
-            },
+            a: 6,
         ],
         body: Block {[
             Return { Literal(42) },

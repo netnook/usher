@@ -87,6 +87,8 @@ pub enum InternalProgramError {
     FunctionCallParamAlreadySet { name: String, span: Span },
     #[error("Missing argument for parameter '{name}' ")]
     FunctionCallMissingRequiredArgument { name: String, span: Span },
+    #[error("Unknown variable '{name}'")]
+    UndeclaredVariable { name: String, span: Span },
 }
 
 #[derive(Debug, PartialEq)]
@@ -197,6 +199,7 @@ impl InternalProgramError {
             InternalProgramError::FunctionCallNoSuchParameter { name: _, span } => span,
             InternalProgramError::FunctionCallParamAlreadySet { name: _, span } => span,
             InternalProgramError::FunctionCallMissingRequiredArgument { name: _, span } => span,
+            InternalProgramError::UndeclaredVariable { name: _, span } => span,
         }
     }
 
