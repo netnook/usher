@@ -11,7 +11,7 @@ aaa = 1
 Evaluation error in tests/run/vars.usher at line 2, char 1:
   |
 2 | aaa = 1
-  | ^^^ Unknown variable 'aaa'
+  | ^^^ Unknown variable 'aaa'.
 **************************************
 # test 3
 aaa
@@ -19,4 +19,4 @@ aaa
 Evaluation error in tests/run/vars.usher at line 2, char 1:
   |
 2 | aaa
-  | ^^^ Unknown variable 'aaa'
+  | ^^^ Unknown variable 'aaa'.

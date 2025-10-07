@@ -17,7 +17,7 @@ mod stmt;
 mod string;
 mod validation;
 
-use crate::{lang::Program, parser::validation::Validator};
+use crate::lang::Program;
 use error::ParseError;
 pub use error::SyntaxError;
 pub use position::SourceRef;
@@ -43,13 +43,13 @@ pub fn parse<'a>(filename: &'a str, input: &'a str) -> Result<Program<'a>, Parse
         }
     };
 
-    if let Err(err) = Validator::validate(&program) {
-        return Err(ParseError {
-            file: filename,
-            source: input,
-            cause: err.into(),
-        });
-    }
+    // if let Err(err) = Validator::validate(&program) {
+    //     return Err(ParseError {
+    //         file: filename,
+    //         source: input,
+    //         cause: err.into(),
+    //     });
+    // }
 
     Ok(program)
 }

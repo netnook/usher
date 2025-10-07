@@ -33,7 +33,7 @@ one("111")
 Evaluation error in tests/run/function_args.usher at line 5, char 1:
   |
 5 | one("111")
-  | ^^^^^^^^^^ Missing argument for parameter 'bb'
+  | ^^^^^^^^^^ Missing argument for parameter 'bb'.
 *****************************************************
 # test 4
 function one(aa, bb, cc: "-C-", dd: "-D-") {
@@ -44,7 +44,7 @@ one("111", "bbb", aa:"foo")
 Evaluation error in tests/run/function_args.usher at line 5, char 19:
   |
 5 | one("111", "bbb", aa:"foo")
-  |                   ^^ Parameter 'aa' already set by previous argument
+  |                   ^^ Parameter 'aa' already set by previous argument.
 *****************************************************
 # test 5
 var a = 1
@@ -53,8 +53,7 @@ function one(aa: aa+2) {}
 Syntax error in tests/run/function_args.usher at line 3, char 18:
   |
 3 | function one(aa: aa+2) {}
-  |                  ^^ Error in constant expression: Unknown variable 'aa'
-
+  |                  ^^ Error in constant expression: Unknown variable 'aa'.
 *****************************************************
 # test 6 - test default list/dict does not get modified
 function f(l:[], d:dict(a:[])) {

@@ -252,8 +252,16 @@ impl Eval for FunctionCall {
                     v @ Ok(_) => v,
                     e @ Err(EvalStop::Error(_)) => e,
                     Err(EvalStop::Return(value)) => Ok(value),
-                    Err(EvalStop::Break) => todo!(),
-                    Err(EvalStop::Continue) => todo!(),
+                    Err(EvalStop::Break(span)) => {
+                        Err(EvalStop::Error(InternalProgramError::BreakWithoutLoop {
+                            span,
+                        }))
+                    }
+                    Err(EvalStop::Continue(span)) => {
+                        Err(EvalStop::Error(InternalProgramError::ContinueWithoutLoop {
+                            span,
+                        }))
+                    }
                     Err(EvalStop::Throw) => todo!(),
                 }
             }
@@ -372,8 +380,8 @@ impl FunctionCall {
             v @ Ok(_) => v,
             e @ Err(EvalStop::Error(_)) => e,
             Err(EvalStop::Return(value)) => Ok(value),
-            Err(EvalStop::Break) => todo!(),
-            Err(EvalStop::Continue) => todo!(),
+            Err(EvalStop::Break(_span)) => todo!(),
+            Err(EvalStop::Continue(_span)) => todo!(),
             Err(EvalStop::Throw) => todo!(),
         }
     }

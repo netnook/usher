@@ -156,7 +156,7 @@ fn next_section<'a>(src: &'a str) -> (&'a str, &'a str, &'a str) {
 
     let body_start = find_after(src, key_end, |c| c == '\n')
         .map(|i| i + 1)
-        .expect("'\\n' char should be avaiable in src");
+        .unwrap_or_else(|| src.len());
 
     let body_end = find_str_after(src, body_start, "\n---")
         .map(|i| i + 1)

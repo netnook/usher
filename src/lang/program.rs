@@ -1,4 +1,4 @@
-use crate::lang::{AstNode, Context, EvalError, EvalStop, Value};
+use crate::lang::{AstNode, Context, EvalError, EvalStop, InternalProgramError, Value};
 
 #[derive(PartialEq, Clone)]
 pub struct Program<'a> {
@@ -49,7 +49,15 @@ impl<'a> Program<'a> {
     fn do_internal_eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
         let mut res = Value::Nil;
         for stmt in &self.stmts {
-            res = stmt.eval(ctxt)?;
+            res = stmt.eval(ctxt).map_err(|e| match e {
+                EvalStop::Break(span) => {
+                    EvalStop::Error(InternalProgramError::BreakWithoutLoop { span })
+                }
+                EvalStop::Continue(span) => {
+                    EvalStop::Error(InternalProgramError::ContinueWithoutLoop { span })
+                }
+                e => e,
+            })?;
         }
         Ok(res)
     }

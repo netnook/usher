@@ -51,8 +51,8 @@ impl Eval for For {
                     self.loop_item.declare(&mut child_ctxt, val);
                     result = match self.block.eval_with_context(&mut child_ctxt) {
                         Ok(v) => v,
-                        Err(EvalStop::Break) => return Ok(Value::Nil),
-                        Err(EvalStop::Continue) => Value::Nil,
+                        Err(EvalStop::Break(_)) => return Ok(Value::Nil),
+                        Err(EvalStop::Continue(_)) => Value::Nil,
                         other @ Err(_) => return other,
                     };
                 }
@@ -66,8 +66,8 @@ impl Eval for For {
                     self.loop_item.declare(&mut child_ctxt, loop_val);
                     result = match self.block.eval_with_context(&mut child_ctxt) {
                         Ok(v) => v,
-                        Err(EvalStop::Break) => return Ok(Value::Nil),
-                        Err(EvalStop::Continue) => Value::Nil,
+                        Err(EvalStop::Break(_)) => return Ok(Value::Nil),
+                        Err(EvalStop::Continue(_)) => Value::Nil,
                         other @ Err(_) => return other,
                     };
                 }
@@ -112,7 +112,7 @@ impl Break {
 
 impl Eval for Break {
     fn eval(&self, _: &mut Context) -> Result<Value, EvalStop> {
-        Err(EvalStop::Break)
+        Err(EvalStop::Break(self.span))
     }
 }
 
@@ -144,7 +144,7 @@ impl Continue {
 
 impl Eval for Continue {
     fn eval(&self, _: &mut Context) -> Result<Value, EvalStop> {
-        Err(EvalStop::Continue)
+        Err(EvalStop::Continue(self.span))
     }
 }
 

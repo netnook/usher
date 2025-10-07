@@ -46,6 +46,24 @@ impl BinaryOpCode {
             BinaryOpCode::Or => "logical-or",
         }
     }
+
+    pub fn capitalized_op_name(&self) -> &'static str {
+        match self {
+            BinaryOpCode::Add => "Addition",
+            BinaryOpCode::Sub => "Subtraction",
+            BinaryOpCode::Mul => "Multiplication",
+            BinaryOpCode::Div => "Division",
+            BinaryOpCode::Mod => "Modulo",
+            BinaryOpCode::Equal => "Equal-to",
+            BinaryOpCode::NotEqual => "Not-equal-to",
+            BinaryOpCode::Greater => "Greater-than",
+            BinaryOpCode::GreaterOrEqual => "Greater-or-equal-to",
+            BinaryOpCode::LessOrEqual => "Less-or-equal-to",
+            BinaryOpCode::Less => "Less-than",
+            BinaryOpCode::And => "Logical-and",
+            BinaryOpCode::Or => "Logical-or",
+        }
+    }
 }
 
 #[derive(PartialEq, Clone)]

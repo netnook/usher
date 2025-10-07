@@ -24,7 +24,7 @@ impl<'a> EvalError<'a> {
 
 #[derive(Error, PartialEq, Debug)]
 pub enum InternalProgramError {
-    #[error("Expected function but got {got}")]
+    #[error("Expected function but got {got}.")]
     ExpectedFunction { got: ValueType, span: Span },
     #[error("No such method '{name}' on {from}.")]
     NoSuchMethod {
@@ -32,13 +32,13 @@ pub enum InternalProgramError {
         from: ValueType,
         span: Span,
     },
-    #[error("Method '{name}' not applicable to type {to}")]
+    #[error("Method '{name}' not applicable to type {to}.")]
     MethodNotApplicable {
         name: String,
         to: ValueType,
         span: Span,
     },
-    #[error("'{op}' operator cannot be applied to a {got}")]
+    #[error("'{op}' operator cannot be applied to a {got}.")]
     SuffixOperatorDoesNotSupportOperand {
         op: &'static str,
         got: ValueType,
@@ -50,14 +50,14 @@ pub enum InternalProgramError {
         actual: ValueType,
         span: Span,
     },
-    #[error("Operator {op} expected {expected} but got {actual}.")]
+    #[error("{op} operator expected {expected} but got {actual}.")]
     BadValueTypeOp {
         op: &'static str,
         expected: ValueType,
         actual: ValueType,
         span: Span,
     },
-    #[error("Index out of range.  Got {index}, length: {len}")]
+    #[error("Index out of range.  Got {index}, length: {len}.")]
     IndexOutOfRange {
         index: isize,
         len: usize,
@@ -81,14 +81,18 @@ pub enum InternalProgramError {
     FunctionCallTooManyArgs { span: Span },
     #[error("Positional arguments must come before named arguments.")]
     FunctionCallPositionalArgAfterNamedArg { span: Span },
-    #[error("Function does not have parameter named '{name}'")]
+    #[error("Function does not have parameter named '{name}'.")]
     FunctionCallNoSuchParameter { name: String, span: Span },
-    #[error("Parameter '{name}' already set by previous argument")]
+    #[error("Parameter '{name}' already set by previous argument.")]
     FunctionCallParamAlreadySet { name: String, span: Span },
-    #[error("Missing argument for parameter '{name}' ")]
+    #[error("Missing argument for parameter '{name}'.")]
     FunctionCallMissingRequiredArgument { name: String, span: Span },
-    #[error("Unknown variable '{name}'")]
+    #[error("Unknown variable '{name}'.")]
     UndeclaredVariable { name: String, span: Span },
+    #[error("Break without for.")]
+    BreakWithoutLoop { span: Span },
+    #[error("Continue without for.")]
+    ContinueWithoutLoop { span: Span },
 }
 
 #[derive(Debug, PartialEq)]
@@ -122,7 +126,7 @@ impl Display for PropertyList {
 macro_rules! bad_type_error_op {
     ($op:expr, LHS, $expected:expr, $actual:expr) => {
         InternalProgramError::BadValueTypeOp {
-            op: $op.op.op_name(),
+            op: $op.op.capitalized_op_name(),
             expected: $expected,
             actual: $actual,
             span: $op.lhs.span().clone(),
@@ -131,7 +135,7 @@ macro_rules! bad_type_error_op {
     };
     ($op:expr, RHS, $expected:expr, $actual:expr) => {
         InternalProgramError::BadValueTypeOp {
-            op: $op.op.op_name(),
+            op: $op.op.capitalized_op_name(),
             expected: $expected,
             actual: $actual,
             span: $op.rhs.span().clone(),
@@ -140,7 +144,7 @@ macro_rules! bad_type_error_op {
     };
     ($op:expr, $expected:expr, $actual:expr) => {
         InternalProgramError::BadValueTypeOp {
-            op: $op.op.op_name(),
+            op: $op.op.capitalized_op_name(),
             expected: $expected,
             actual: $actual,
             span: $op.span().clone(),
@@ -200,6 +204,8 @@ impl InternalProgramError {
             InternalProgramError::FunctionCallParamAlreadySet { name: _, span } => span,
             InternalProgramError::FunctionCallMissingRequiredArgument { name: _, span } => span,
             InternalProgramError::UndeclaredVariable { name: _, span } => span,
+            InternalProgramError::BreakWithoutLoop { span } => span,
+            InternalProgramError::ContinueWithoutLoop { span } => span,
         }
     }
 

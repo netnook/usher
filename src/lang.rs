@@ -53,8 +53,8 @@ trait Eval {
 pub enum EvalStop {
     Error(InternalProgramError),
     Return(Value),
-    Break,
-    Continue,
+    Break(Span),
+    Continue(Span),
     Throw,
 }
 

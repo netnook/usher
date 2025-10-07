@@ -53,8 +53,8 @@ impl<'a> Parser<'a> {
                     let value = value.eval(&mut ctxt).map_err(|e| match e {
                         EvalStop::Error(err) => SyntaxError::ConstantEvalError { cause: err },
                         EvalStop::Return(_) => todo!(),
-                        EvalStop::Break => todo!(),
-                        EvalStop::Continue => todo!(),
+                        EvalStop::Break(_) => todo!(),
+                        EvalStop::Continue(_) => todo!(),
                         EvalStop::Throw => todo!(),
                     })?;
                     params.push(Param::Optional(Var::new(key), value));

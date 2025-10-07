@@ -23,6 +23,12 @@ impl UnaryOpCode {
             UnaryOpCode::Negative => "negative",
         }
     }
+    pub fn capitalized_op_name(&self) -> &'static str {
+        match self {
+            UnaryOpCode::Not => "Not",
+            UnaryOpCode::Negative => "Negative",
+        }
+    }
 }
 
 #[derive(PartialEq, Clone)]

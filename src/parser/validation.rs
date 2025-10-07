@@ -5,6 +5,7 @@ use crate::{
 use std::{collections::VecDeque, rc::Rc};
 
 #[derive(Default)]
+#[allow(dead_code)]
 pub(crate) struct Validator {
     errors: VecDeque<SemanticError>,
     stack: Vec<ValidationContext>,
@@ -16,8 +17,10 @@ struct ValidationContext {
     for_loop_depth: usize,
 }
 
+#[allow(dead_code)]
 type ValidationResult = Result<(), SemanticError>;
 
+#[allow(dead_code)]
 impl Validator {
     pub(crate) fn validate(prog: &Program) -> ValidationResult {
         let mut validator = Validator::default();

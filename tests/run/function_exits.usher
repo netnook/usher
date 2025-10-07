@@ -1,0 +1,59 @@
+# test 1 - last expression
+function aaa() {
+    41
+    42
+}
+aaa()
+---result---
+42
+*****************************************************
+# test - function error
+function aaa() {
+    var a = 1 + true
+}
+aaa()
+---stderr---
+Evaluation error in tests/run/function_exits.usher at line 3, char 17:
+  |
+3 |     var a = 1 + true
+  |                 ^^^^ Addition operator expected number but got boolean.
+*****************************************************
+# test 3 - return
+function aaa() {
+    return 41
+    42
+}
+aaa()
+---result---
+41
+*****************************************************
+# test 4 - break without loop
+function aaa() {
+    break
+}
+aaa()
+---stderr---
+Evaluation error in tests/run/function_exits.usher at line 3, char 5:
+  |
+3 |     break
+  |     ^^^^^ Break without for.
+*****************************************************
+# test 5 - continue without loop
+function aaa() {
+    continue
+}
+aaa()
+---stderr---
+Evaluation error in tests/run/function_exits.usher at line 3, char 5:
+  |
+3 |     continue
+  |     ^^^^^^^^ Continue without for.
+*****************************************************
+# test 6 - error
+function aaa() {
+	# FIXME: error not implemented yet
+    # error "foo"
+}
+aaa()
+---stdout---
+
