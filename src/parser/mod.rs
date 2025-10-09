@@ -301,6 +301,7 @@ pub mod tests {
         Declaration {
             var,
             value: value.into().into(),
+            span: Span::new(999, 9999),
         }
     }
     pub(crate) fn assign(lhs: impl Into<AstNode>, rhs: impl Into<AstNode>) -> Assignment {
@@ -723,4 +724,5 @@ pub mod tests {
     with_span!(InterpolatedStr);
     with_span!(IfElse);
     with_span!(For);
+    with_span!(Declaration);
 }

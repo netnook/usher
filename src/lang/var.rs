@@ -115,6 +115,7 @@ impl Setter for Var {
 pub struct Declaration {
     pub(crate) var: Var,
     pub(crate) value: Box<AstNode>,
+    pub(crate) span: Span,
 }
 
 impl core::fmt::Debug for Declaration {
@@ -129,6 +130,7 @@ impl core::fmt::Debug for Declaration {
             f.debug_struct("Declaration")
                 .field("var", &self.var)
                 .field("value", &self.value)
+                .field("span", &self.span)
                 .finish()
         }
     }

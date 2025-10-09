@@ -177,7 +177,7 @@ impl AstNode {
             AstNode::Block(v) => v.span,
             AstNode::IfElse(v) => v.span,
             AstNode::For(v) => v.span,
-            AstNode::Declaration(_) => todo!(),
+            AstNode::Declaration(v) => v.span,
             AstNode::FunctionDef(_) => todo!(),
             AstNode::FunctionCall(v) => v.span,
             AstNode::ReturnStmt(_) => todo!(),

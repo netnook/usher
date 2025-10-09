@@ -17,7 +17,7 @@ impl<'a> Parser<'a> {
                     return Ok(Some(self.for_stmt(span)?));
                 }
                 "var" => {
-                    return Ok(Some(self.var_stmt()?));
+                    return Ok(Some(self.var_stmt(span)?));
                 }
                 "break" => {
                     return Ok(Some(Break::new(span).into()));

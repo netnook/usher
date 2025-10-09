@@ -1,9 +1,9 @@
 use super::{ParseResult, Parser, SyntaxError};
-use crate::lang::{AstNode, Declaration};
+use crate::lang::{AstNode, Declaration, Span};
 
 impl<'a> Parser<'a> {
     // "var" identifier = expr
-    pub(super) fn var_stmt(&mut self) -> ParseResult<AstNode> {
+    pub(super) fn var_stmt(&mut self, span: Span) -> ParseResult<AstNode> {
         // already passed "var" when called
 
         self.req_whitespace_comments()?;
@@ -30,6 +30,7 @@ impl<'a> Parser<'a> {
         Ok(AstNode::Declaration(Declaration {
             var,
             value: value.into(),
+            span: span.extended(self.pos),
         }))
     }
 }

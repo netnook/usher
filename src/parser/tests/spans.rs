@@ -85,6 +85,7 @@ fn test_stmt_spanneds() {
             var(id("a").spanned(5, 1)),
             greater_equal(var(id("xx").spanned(7, 2)), i(2).spanned(11, 1)).spanned(9, 2),
         )
+        .spanned(1, 11)
         .into(),
         -1,
     );
@@ -95,6 +96,7 @@ fn test_stmt_spanneds() {
             var(id("a").spanned(17, 1)),
             add(var(id("xyz").spanned(33, 3)), i(23).spanned(39, 2)).spanned(37, 1),
         )
+        .spanned(1, 40)
         .into(),
         -1,
     );
@@ -110,6 +112,7 @@ fn test_stmt_spanneds() {
             .spanned(13, 2))
             .spanned(9, 1),
         )
+        .spanned(1, 16)
         .into(),
         -1,
     );
@@ -268,6 +271,18 @@ fn test_continue_spans() {
         Parser::stmt,
         r#" continue "#,
         _continue().spanned(1, 8).into(),
+        -1,
+    );
+}
+
+#[test]
+fn test_declaration_spans() {
+    do_test_parser_exact(
+        Parser::stmt,
+        r#" var a = 1 "#,
+        decl(var(id("a").spanned(5, 1)), i(1).spanned(9, 1))
+            .spanned(1, 9)
+            .into(),
         -1,
     );
 }
