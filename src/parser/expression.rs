@@ -78,7 +78,6 @@ impl<'a> Parser<'a> {
 
         self.linespace();
 
-        let opcode_start = self.pos;
         let op = if self.tag(b"==") {
             BinaryOpCode::Equal
         } else if self.tag(b"!=") {
@@ -95,7 +94,6 @@ impl<'a> Parser<'a> {
             self.pos = savepoint;
             return Ok(Some(lhs));
         };
-        let opcode_end = self.pos;
 
         self.whitespace_comments();
 
@@ -163,11 +161,9 @@ impl<'a> Parser<'a> {
 
             self.linespace();
 
-            let opcode_start = self.pos;
             let Some(op) = operator_fn(self) else {
                 break savepoint;
             };
-            let opcode_end = self.pos;
 
             self.whitespace_comments();
 
@@ -357,7 +353,9 @@ impl<'a> Parser<'a> {
                     ))));
                 }
                 "function" => {
-                    return Ok(Some(AstNode::FunctionDef(Rc::new(self.function_def()?))));
+                    return Ok(Some(AstNode::FunctionDef(Rc::new(
+                        self.function_def(span)?,
+                    ))));
                 }
                 id => {
                     // FIXME: where is the ident checked to make sure that it is valid/permitted ?

@@ -11,6 +11,7 @@ pub struct FunctionDef {
     pub(crate) name: Option<Var>,
     pub(crate) params: Vec<Param>,
     pub(crate) body: Block,
+    pub(crate) span: Span,
 }
 
 impl core::fmt::Debug for FunctionDef {
@@ -31,6 +32,7 @@ impl core::fmt::Debug for FunctionDef {
                 .field("name", &self.name)
                 .field("params", &self.params)
                 .field("body", &self.body)
+                .field("span", &self.span)
                 .finish()
         }
     }

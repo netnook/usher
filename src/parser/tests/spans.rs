@@ -357,3 +357,18 @@ fn test_return_spans() {
         0,
     );
 }
+
+#[test]
+fn test_functiondef_spans() {
+    do_test_parser_exact(
+        Parser::stmt,
+        " function foo() { 1 } ",
+        _func!(
+            name(id("foo").spanned(10, 3)),
+            _block![i(1).spanned(18, 1)].spanned(16, 5)
+        )
+        .spanned(1, 20)
+        .into(),
+        -1,
+    );
+}

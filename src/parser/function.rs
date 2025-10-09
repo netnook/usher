@@ -1,12 +1,13 @@
 use super::{ParseResult, Parser, SyntaxError};
 use crate::lang::{
-    AstNode, Context, EvalStop, FunctionDef, InternalProgramError, KeyValueBuilder, Param, Var,
+    AstNode, Context, EvalStop, FunctionDef, InternalProgramError, KeyValueBuilder, Param, Span,
+    Var,
 };
 
 impl<'a> Parser<'a> {
     // "function" name? "(" param,* ")"
     /// Already passed "function" when called
-    pub(super) fn function_def(&mut self) -> ParseResult<FunctionDef> {
+    pub(super) fn function_def(&mut self, span: Span) -> ParseResult<FunctionDef> {
         self.linespace();
 
         let name = self.declaration_identifier()?;
@@ -22,7 +23,12 @@ impl<'a> Parser<'a> {
             return Err(SyntaxError::FunctionExpectedBody { pos: self.pos });
         };
 
-        Ok(FunctionDef { name, params, body })
+        Ok(FunctionDef {
+            name,
+            params,
+            body,
+            span: span.extended(self.pos),
+        })
     }
 
     fn function_params(&mut self) -> ParseResult<Vec<Param>> {

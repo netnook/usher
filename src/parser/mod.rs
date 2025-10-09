@@ -85,9 +85,9 @@ pub mod tests {
     use crate::{
         lang::{
             Assignment, AstNode, BinaryOp, BinaryOpCode, Block, Break, ChainCatch, Continue,
-            Declaration, Dict, DictBuilder, End, For, FunctionCall, Identifier, IfElse, IndexOf,
-            InterpolatedStr, KeyValue, KeyValueBuilder, List, ListBuilder, Literal, PropertyOf,
-            ReturnStmt, Span, This, UnaryOp, UnaryOpCode, Value, Var,
+            Declaration, Dict, DictBuilder, End, For, FunctionCall, FunctionDef, Identifier,
+            IfElse, IndexOf, InterpolatedStr, KeyValue, KeyValueBuilder, List, ListBuilder,
+            Literal, PropertyOf, ReturnStmt, Span, This, UnaryOp, UnaryOpCode, Value, Var,
         },
         parser::{Parser, SyntaxError},
     };
@@ -442,10 +442,12 @@ pub mod tests {
         }};
         ($body:expr) => {{
             use crate::lang::FunctionDef;
+            use crate::lang::Span;
             FunctionDef {
                 name: None,
                 params: Vec::new(),
                 body: $body,
+                span: Span::new(999, 9999),
             }
         }};
     }
@@ -734,4 +736,5 @@ pub mod tests {
     with_span!(For);
     with_span!(Declaration);
     with_span!(ReturnStmt);
+    with_span!(FunctionDef);
 }
