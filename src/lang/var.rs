@@ -152,6 +152,12 @@ pub struct Assignment {
     pub(crate) rhs: Box<AstNode>,
 }
 
+impl Assignment {
+    pub(crate) fn span(&self) -> Span {
+        Span::merge(self.lhs.span(), self.rhs.span())
+    }
+}
+
 impl Eval for Assignment {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
         let rhs = self.rhs.eval(ctxt)?;

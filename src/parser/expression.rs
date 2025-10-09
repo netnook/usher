@@ -102,7 +102,6 @@ impl<'a> Parser<'a> {
         };
 
         lhs = AstNode::BinaryOp(BinaryOp {
-            span: Span::merge(lhs.span(), rhs.span()),
             op,
             lhs: lhs.into(),
             rhs: rhs.into(),
@@ -172,7 +171,6 @@ impl<'a> Parser<'a> {
             };
 
             lhs = AstNode::BinaryOp(BinaryOp {
-                span: Span::merge(lhs.span(), rhs.span()),
                 op,
                 lhs: lhs.into(),
                 rhs: rhs.into(),

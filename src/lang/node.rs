@@ -181,8 +181,8 @@ impl AstNode {
             AstNode::FunctionDef(v) => v.span,
             AstNode::FunctionCall(v) => v.span,
             AstNode::ReturnStmt(v) => v.span,
-            AstNode::Assignment(_) => todo!(),
-            AstNode::KeyValue(_) => todo!(),
+            AstNode::Assignment(v) => v.span(),
+            AstNode::KeyValue(v) => v.span(),
         }
     }
 }

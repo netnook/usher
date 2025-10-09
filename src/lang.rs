@@ -183,6 +183,12 @@ pub struct KeyValueBuilder {
     pub(crate) value: Box<AstNode>,
 }
 
+impl KeyValueBuilder {
+    pub(crate) fn span(&self) -> Span {
+        Span::merge(self.key.span, self.value.span())
+    }
+}
+
 impl Eval for KeyValueBuilder {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
         Ok(KeyValue::new(self.key.key.clone(), self.value.eval(ctxt)?).into())

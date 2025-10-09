@@ -39,7 +39,7 @@ fn test_string_spans() {
         r#"_"ab{ foo -45 }cde{ 35 }"_"#,
         _interp![
             s("ab").spanned(2, 2),
-            sub(var(id("foo").spanned(6, 3)), i(45).spanned(11, 2)).spanned(6, 7),
+            sub(var(id("foo").spanned(6, 3)), i(45).spanned(11, 2)),
             s("cde").spanned(15, 3),
             i(35).spanned(20, 2)
         ]
@@ -83,7 +83,7 @@ fn test_stmt_spanneds() {
         " var a=xx>=2 ",
         decl(
             var(id("a").spanned(5, 1)),
-            greater_equal(var(id("xx").spanned(7, 2)), i(2).spanned(11, 1)).spanned(7, 5),
+            greater_equal(var(id("xx").spanned(7, 2)), i(2).spanned(11, 1)),
         )
         .spanned(1, 11)
         .into(),
@@ -94,7 +94,7 @@ fn test_stmt_spanneds() {
         " var # comment \n a = # comment \n xyz + 23 ",
         decl(
             var(id("a").spanned(17, 1)),
-            add(var(id("xyz").spanned(33, 3)), i(23).spanned(39, 2)).spanned(33, 8),
+            add(var(id("xyz").spanned(33, 3)), i(23).spanned(39, 2)),
         )
         .spanned(1, 40)
         .into(),
@@ -108,8 +108,7 @@ fn test_stmt_spanneds() {
             not(equal(
                 neg(var(id("b").spanned(12, 1))).spanned(11, 1),
                 var(id("c").spanned(15, 1)),
-            )
-            .spanned(11, 5))
+            ))
             .spanned(9, 1),
         )
         .spanned(1, 16)
@@ -351,7 +350,7 @@ fn test_return_spans() {
     do_test_parser_exact(
         Parser::stmt,
         " return 2+22",
-        _ret!(add(i(2).spanned(8, 1), i(22).spanned(10, 2)).spanned(8, 4))
+        _ret!(add(i(2).spanned(8, 1), i(22).spanned(10, 2)))
             .spanned(1, 11)
             .into(),
         0,

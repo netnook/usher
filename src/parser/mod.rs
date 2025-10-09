@@ -293,7 +293,6 @@ pub mod tests {
             op,
             lhs: lhs.into().into(),
             rhs: rhs.into().into(),
-            span: Span::new(999, 9999),
         }
     }
 
@@ -717,7 +716,6 @@ pub mod tests {
         };
     }
 
-    with_span!(BinaryOp);
     with_span!(UnaryOp);
     with_span!(Literal);
     with_span!(Identifier);

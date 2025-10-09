@@ -71,7 +71,6 @@ pub struct BinaryOp {
     pub(crate) op: BinaryOpCode,
     pub(crate) lhs: Box<AstNode>,
     pub(crate) rhs: Box<AstNode>,
-    pub(crate) span: Span,
 }
 
 impl core::fmt::Debug for BinaryOp {
@@ -87,7 +86,6 @@ impl core::fmt::Debug for BinaryOp {
                 .field("op", &self.op)
                 .field("lhs", &self.lhs)
                 .field("rhs", &self.rhs)
-                .field("span", &self.span)
                 .finish()
         }
     }
