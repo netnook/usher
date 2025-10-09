@@ -29,7 +29,7 @@ impl<'a> Parser<'a> {
                     return Ok(Some(Continue::new(span).into()));
                 }
                 "return" => {
-                    return Ok(Some(self.return_stmt()?));
+                    return Ok(Some(self.return_stmt(span)?));
                 }
                 _ => {
                     self.pos = start;

@@ -87,7 +87,7 @@ pub mod tests {
             Assignment, AstNode, BinaryOp, BinaryOpCode, Block, Break, ChainCatch, Continue,
             Declaration, Dict, DictBuilder, End, For, FunctionCall, Identifier, IfElse, IndexOf,
             InterpolatedStr, KeyValue, KeyValueBuilder, List, ListBuilder, Literal, PropertyOf,
-            Span, This, UnaryOp, UnaryOpCode, Value, Var,
+            ReturnStmt, Span, This, UnaryOp, UnaryOpCode, Value, Var,
         },
         parser::{Parser, SyntaxError},
     };
@@ -336,11 +336,19 @@ pub mod tests {
 
     macro_rules! _ret {
         ($val:expr) => {{
-            AstNode::ReturnStmt(ReturnStmt {
+            use crate::lang::Span;
+            ReturnStmt {
                 value: Some(Box::new($val.into())),
-            })
+                span: Span::new(999, 9999),
+            }
         }};
-        () => {{ AstNode::ReturnStmt(ReturnStmt { value: None }) }};
+        () => {{
+            use crate::lang::Span;
+            ReturnStmt {
+                value: None,
+                span: Span::new(999, 9999),
+            }
+        }};
     }
     pub(crate) use _ret;
 
@@ -725,4 +733,5 @@ pub mod tests {
     with_span!(IfElse);
     with_span!(For);
     with_span!(Declaration);
+    with_span!(ReturnStmt);
 }

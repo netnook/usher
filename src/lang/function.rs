@@ -490,6 +490,7 @@ impl Arg {
 #[derive(PartialEq, Clone)]
 pub struct ReturnStmt {
     pub(crate) value: Option<Box<AstNode>>,
+    pub(crate) span: Span,
 }
 
 impl core::fmt::Debug for ReturnStmt {

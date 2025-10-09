@@ -1,0 +1,19 @@
+print(45+22)
+print(1<1)
+print(1<=1)
+print(1>1)
+print(1>=1)
+---stderr---
+---stdout---
+67
+false
+true
+false
+true
+***************************
+45+true
+---stderr---
+Evaluation error in tests/run/expressions.usher at line 1, char 4:
+  |
+1 | 45+true
+  |    ^^^^ Addition operator expected number but got boolean.

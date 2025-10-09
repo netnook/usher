@@ -154,15 +154,17 @@ fn next_section<'a>(src: &'a str) -> (&'a str, &'a str, &'a str) {
         panic!("missing key");
     }
 
-    let body_start = find_after(src, key_end, |c| c == '\n')
-        .map(|i| i + 1)
-        .unwrap_or_else(|| src.len());
+    let body_start = find_after(src, key_end, |c| c == '\n').unwrap_or_else(|| src.len());
 
     let body_end = find_str_after(src, body_start, "\n---")
         .map(|i| i + 1)
         .unwrap_or(src.len());
 
-    let body = &src[body_start..body_end];
+    let body = if body_start == body_end {
+        &src[body_start..body_end]
+    } else {
+        &src[body_start + 1..body_end]
+    };
 
     (key, body, &src[body_end..])
 }

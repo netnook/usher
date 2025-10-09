@@ -1,8 +1,8 @@
 use super::{ParseResult, Parser, SyntaxError};
-use crate::lang::{AstNode, ReturnStmt};
+use crate::lang::{AstNode, ReturnStmt, Span};
 
 impl<'a> Parser<'a> {
-    pub(super) fn return_stmt(&mut self) -> ParseResult<AstNode> {
+    pub(super) fn return_stmt(&mut self, span: Span) -> ParseResult<AstNode> {
         // already passed "return" when called
 
         let start = self.pos;
@@ -10,18 +10,18 @@ impl<'a> Parser<'a> {
         let linespace_count = self.linespace();
 
         if linespace_count == 0 {
-            return Ok(AstNode::ReturnStmt(ReturnStmt { value: None }));
+            return Ok(AstNode::ReturnStmt(ReturnStmt { value: None, span }));
         }
 
         if self.is_eoi() {
             self.pos = start;
-            return Ok(AstNode::ReturnStmt(ReturnStmt { value: None }));
+            return Ok(AstNode::ReturnStmt(ReturnStmt { value: None, span }));
         }
 
         let peek = self.peek();
         if peek == b'\n' || peek == b'\r' || peek == b'#' {
             self.pos = start;
-            return Ok(AstNode::ReturnStmt(ReturnStmt { value: None }));
+            return Ok(AstNode::ReturnStmt(ReturnStmt { value: None, span }));
         }
 
         let Some(expr) = self.expression()? else {
@@ -29,6 +29,7 @@ impl<'a> Parser<'a> {
         };
 
         Ok(AstNode::ReturnStmt(ReturnStmt {
+            span: Span::merge(span, expr.span()),
             value: Some(expr.into()),
         }))
     }
@@ -51,10 +52,10 @@ mod tests {
 
     #[test]
     fn test_return() {
-        do_test_return_ok(r" return ", _ret!(), -1);
-        do_test_return_ok(" return 42 ", _ret!(i(42)), -1);
-        do_test_return_ok(" return 42 + 3 ", _ret!(add(i(42), i(3))), -1);
-        do_test_return_ok(" return 42 \n +3 ", _ret!(i(42)), 10);
+        do_test_return_ok(r" return ", _ret!().into(), -1);
+        do_test_return_ok(" return 42 ", _ret!(i(42)).into(), -1);
+        do_test_return_ok(" return 42 + 3 ", _ret!(add(i(42), i(3))).into(), -1);
+        do_test_return_ok(" return 42 \n +3 ", _ret!(i(42)).into(), 10);
         do_test_return_err(" return { 42 } ", SyntaxError::ExpectsExpression { pos: 8 });
     }
 }
