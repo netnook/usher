@@ -56,7 +56,6 @@ last
 var dat = dict(a:1, b:2, c:3)
 var last = nil
 for kv in dat {
-  print(kv)
   last = kv
   if kv.key == "b" {
     break

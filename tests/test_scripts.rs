@@ -75,6 +75,9 @@ fn run_script(path: &Path, src: String) -> datatest_stable::Result<()> {
             rest = r;
         }
 
+        let expected_stdout = expected_stdout.unwrap_or("");
+        let expected_stderr = expected_stderr.unwrap_or("");
+
         let prog = usher::parse(path.to_str().unwrap(), input); //.expect("script to parse ok");
 
         let stdout_buf = Rc::new(RefCell::new(Vec::new()));
@@ -112,30 +115,25 @@ fn run_script(path: &Path, src: String) -> datatest_stable::Result<()> {
         // println!("actual out: {actual_stdout}");
         // println!("actual err: {actual_stderr}");
 
+        assert_eq!(
+            actual_stderr.trim(),
+            expected_stderr.trim(),
+            "stderr did not match expectation for >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> '{}'",
+            src.lines().next().unwrap()
+        );
+
+        assert_eq!(
+            actual_stdout.trim(),
+            expected_stdout.trim(),
+            "stdout did not match expectation for >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> '{}'",
+            src.lines().next().unwrap()
+        );
+
         if let Some(expected_result) = expected_result {
             assert_eq!(
                 actual_result.trim(),
                 expected_result.trim(),
                 "result output did not match expectation for >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> '{}'",
-                src.lines().next().unwrap()
-            );
-        }
-        //
-
-        if let Some(expected_stdout) = expected_stdout {
-            assert_eq!(
-                actual_stdout.trim(),
-                expected_stdout.trim(),
-                "stdout did not match expectation for >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> '{}'",
-                src.lines().next().unwrap()
-            );
-        }
-
-        if let Some(expected_stderr) = expected_stderr {
-            assert_eq!(
-                actual_stderr.trim(),
-                expected_stderr.trim(),
-                "stderr did not match expectation for >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> '{}'",
                 src.lines().next().unwrap()
             );
         }
