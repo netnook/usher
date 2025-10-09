@@ -271,6 +271,11 @@ fn test_continue_spans() {
 }
 
 #[test]
+fn test_this_spans() {
+    do_test_parser_exact(Parser::stmt, r#" this "#, this().spanned(1, 4).into(), -1);
+}
+
+#[test]
 fn test_end_spans() {
     do_test_parser_exact(Parser::stmt, r#" end "#, _end().spanned(1, 3).into(), -1);
 }

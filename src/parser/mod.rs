@@ -160,8 +160,8 @@ pub mod tests {
     }
     pub(crate) use dict;
 
-    pub(crate) fn this() -> AstNode {
-        AstNode::This(This::new())
+    pub(crate) fn this() -> This {
+        This::new(Span::new(999, 9999))
     }
     pub fn id(val: &str) -> Identifier {
         Identifier::new(val.to_string(), Span::new(999, 9999))
@@ -714,4 +714,5 @@ pub mod tests {
     with_span!(Break);
     with_span!(Continue);
     with_span!(End);
+    with_span!(This);
 }

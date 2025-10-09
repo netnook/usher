@@ -167,7 +167,7 @@ impl AstNode {
             AstNode::Break(v) => v.span,
             AstNode::Continue(v) => v.span,
             AstNode::End(v) => v.span,
-            AstNode::This(_) => todo!(),
+            AstNode::This(v) => v.span,
             AstNode::InterpolatedStr(_) => todo!(),
             AstNode::ListBuilder(_) => todo!(),
             AstNode::DictBuilder(_) => todo!(),
@@ -285,6 +285,11 @@ impl From<Continue> for AstNode {
 impl From<End> for AstNode {
     fn from(value: End) -> Self {
         Self::End(value)
+    }
+}
+impl From<This> for AstNode {
+    fn from(value: This) -> Self {
+        Self::This(value)
     }
 }
 

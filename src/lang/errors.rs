@@ -70,7 +70,7 @@ pub enum InternalProgramError {
     #[error("Cannot iterate on {got}.")]
     CannotLoopOnValue { got: ValueType, span: Span },
     #[error("This not available in current scope.")]
-    ThisNotAvailable,
+    ThisNotAvailable { span: Span },
     #[error("Property '{prop}' not found. The following properties are available: {available}", prop = prop.key, available = from)]
     NoSuchProperty {
         prop: Identifier,
@@ -192,7 +192,7 @@ impl InternalProgramError {
             InternalProgramError::CannotAssignToLHS { span } => span,
             InternalProgramError::CannotConvertToString { typ: _, span } => span,
             InternalProgramError::CannotLoopOnValue { got: _, span } => span,
-            InternalProgramError::ThisNotAvailable => todo!(),
+            InternalProgramError::ThisNotAvailable { span } => span,
             InternalProgramError::NoSuchProperty {
                 prop: _,
                 from: _,

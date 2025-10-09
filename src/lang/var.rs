@@ -5,12 +5,25 @@ use crate::lang::{
     Setter, Span, THIS, Value, Visitor, VisitorResult, accept_default,
 };
 
-#[derive(PartialEq, Debug, Clone)]
-pub struct This {}
+#[derive(PartialEq, Clone)]
+pub struct This {
+    pub(crate) span: Span,
+}
+
+impl core::fmt::Debug for This {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let minimal = f.sign_minus();
+        if minimal {
+            write!(f, "This")
+        } else {
+            f.debug_struct("This").field("span", &self.span).finish()
+        }
+    }
+}
 
 impl This {
-    pub(crate) fn new() -> Self {
-        Self {}
+    pub(crate) fn new(span: Span) -> Self {
+        Self { span }
     }
 
     pub(crate) fn key() -> Key {
@@ -25,7 +38,9 @@ impl Eval for This {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
         match ctxt.get_this() {
             Some(this) => Ok(this),
-            None => Err(EvalStop::Error(InternalProgramError::ThisNotAvailable)),
+            None => Err(EvalStop::Error(InternalProgramError::ThisNotAvailable {
+                span: self.span,
+            })),
         }
     }
 }

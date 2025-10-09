@@ -333,7 +333,7 @@ impl<'a> Parser<'a> {
         if let Some(UncheckedIdentifier(name, span)) = self.unchecked_identifier() {
             match name {
                 "this" => {
-                    return Ok(Some(AstNode::This(This::new())));
+                    return Ok(Some(AstNode::This(This::new(span))));
                 }
                 "nil" => {
                     return Ok(Some(AstNode::Literal(Literal::new(Value::Nil, span))));
