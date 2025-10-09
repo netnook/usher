@@ -1,5 +1,7 @@
 use super::{ParseResult, Parser, SyntaxError};
-use crate::lang::{AstNode, Context, EvalStop, FunctionDef, KeyValueBuilder, Param, Var};
+use crate::lang::{
+    AstNode, Context, EvalStop, FunctionDef, InternalProgramError, KeyValueBuilder, Param, Var,
+};
 
 impl<'a> Parser<'a> {
     // "function" name? "(" param,* ")"
@@ -48,15 +50,21 @@ impl<'a> Parser<'a> {
                 }
                 AstNode::KeyValue(KeyValueBuilder { key, value }) => {
                     // FIXME: check value tree to see that it only contains constant "compatible" expressions
-                    // FIXME: check that lists as default values do not end of modified when used and modified within funcion
                     let mut ctxt = Context::default();
-                    let value = value.eval(&mut ctxt).map_err(|e| match e {
-                        EvalStop::Error(err) => SyntaxError::ConstantEvalError { cause: err },
-                        EvalStop::Return(_) => todo!(),
-                        EvalStop::Break(_) => todo!(),
-                        EvalStop::Continue(_) => todo!(),
-                        EvalStop::Throw => todo!(),
-                    })?;
+                    let value = match value.eval(&mut ctxt) {
+                        Ok(val) => Ok(val),
+                        Err(EvalStop::Return(val)) => Ok(val),
+                        Err(EvalStop::Error(err)) => {
+                            Err(SyntaxError::ConstantEvalError { cause: err })
+                        }
+                        Err(EvalStop::Break(span)) => Err(SyntaxError::ConstantEvalError {
+                            cause: InternalProgramError::BreakWithoutLoop { span },
+                        }),
+                        Err(EvalStop::Continue(span)) => Err(SyntaxError::ConstantEvalError {
+                            cause: InternalProgramError::ContinueWithoutLoop { span },
+                        }),
+                        Err(EvalStop::Throw) => todo!(),
+                    }?;
                     params.push(Param::Optional(Var::new(key), value));
                 }
                 _ => {
