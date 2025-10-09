@@ -1,6 +1,6 @@
 use super::{ParseResult, Parser, SyntaxError};
 use crate::{
-    lang::{AstNode, ConditionalBlock, IfElse},
+    lang::{AstNode, ConditionalBlock, IfElse, Span},
     parser::identifier::UncheckedIdentifier,
 };
 
@@ -8,7 +8,7 @@ impl<'a> Parser<'a> {
     // if_expr = { "if" ~ expr ~ block ~ if_else_if* ~ if_else? }
     // if_else_if = { "else" ~ "if" ~ expr ~ block }
     // if_else    = { "else" ~ block }
-    pub(super) fn if_stmt(&mut self) -> ParseResult<AstNode> {
+    pub(super) fn if_stmt(&mut self, span: Span) -> ParseResult<AstNode> {
         // already passed "if" when called
 
         self.req_whitespace_comments()?;
@@ -49,6 +49,7 @@ impl<'a> Parser<'a> {
         Ok(AstNode::IfElse(IfElse {
             conditional_blocks,
             else_block,
+            span: span.extended(self.pos),
         }))
     }
 

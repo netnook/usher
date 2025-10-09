@@ -85,7 +85,7 @@ pub mod tests {
     use crate::{
         lang::{
             Assignment, AstNode, BinaryOp, BinaryOpCode, Block, Break, ChainCatch, Continue,
-            Declaration, Dict, DictBuilder, End, For, FunctionCall, Identifier, IndexOf,
+            Declaration, Dict, DictBuilder, End, For, FunctionCall, Identifier, IfElse, IndexOf,
             InterpolatedStr, KeyValue, KeyValueBuilder, List, ListBuilder, Literal, PropertyOf,
             Span, This, UnaryOp, UnaryOpCode, Value, Var,
         },
@@ -346,6 +346,7 @@ pub mod tests {
         ($(cond($cond:expr => $block:expr)),+) => {{
             use crate::lang::ConditionalBlock;
             use crate::lang::IfElse;
+            use crate::lang::Span;
             let conditional_blocks = vec![
                 $(
                     ConditionalBlock {
@@ -357,14 +358,17 @@ pub mod tests {
             IfElse {
                 conditional_blocks,
                 else_block: None,
+                span: Span::new(999,9999),
             }
         }};
         ($(cond($cond:expr => $block:expr)),+ , else($else_block:expr)) => {{
             use crate::lang::IfElse;
+            use crate::lang::Span;
             let stmt =_if!($(cond($cond => $block)),*);
             IfElse {
                 conditional_blocks : stmt.conditional_blocks ,
                 else_block: $else_block.into(),
+                span: Span::new(999,9999),
             }
         }};
     }
@@ -716,4 +720,5 @@ pub mod tests {
     with_span!(End);
     with_span!(This);
     with_span!(InterpolatedStr);
+    with_span!(IfElse);
 }

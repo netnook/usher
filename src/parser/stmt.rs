@@ -11,7 +11,7 @@ impl<'a> Parser<'a> {
         if let Some(UncheckedIdentifier(id, span)) = self.unchecked_identifier() {
             match id {
                 "if" => {
-                    return Ok(Some(self.if_stmt()?));
+                    return Ok(Some(self.if_stmt(span)?));
                 }
                 "for" => {
                     return Ok(Some(self.for_stmt()?));

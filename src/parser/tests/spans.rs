@@ -281,3 +281,29 @@ fn test_this_spans() {
 fn test_end_spans() {
     do_test_parser_exact(Parser::stmt, r#" end "#, _end().spanned(1, 3).into(), -1);
 }
+
+#[test]
+fn test_ifelse_spans() {
+    do_test_parser_exact(
+        Parser::stmt,
+        r#" if a { 1 } else if b { 2 } else { 3 } "#,
+        _if!(
+            cond(var(id("a").spanned(4, 1)) => _block![i(1).spanned(8, 1)].spanned(6, 5)),
+            cond(var(id("b").spanned(20, 1)) => _block![i(2).spanned(24, 1)].spanned(22, 5)),
+            else(_block![i(3).spanned(35, 1)].spanned(33, 5))
+        )
+        .spanned(1, 37)
+        .into(),
+        -1,
+    );
+    do_test_parser_exact(
+        Parser::stmt,
+        r#" if a { 1 } "#,
+        _if!(
+            cond(var(id("a").spanned(4, 1)) => _block![i(1).spanned(8, 1)].spanned(6, 5))
+        )
+        .spanned(1, 10)
+        .into(),
+        -1,
+    );
+}

@@ -1,5 +1,5 @@
 use crate::lang::{
-    AstNode, Block, Context, Eval, EvalStop, InternalProgramError, Value, accept_default,
+    AstNode, Block, Context, Eval, EvalStop, InternalProgramError, Span, Value, accept_default,
     value::ValueType,
     visitor::{Accept, Visitor, VisitorResult},
 };
@@ -8,6 +8,7 @@ use crate::lang::{
 pub struct IfElse {
     pub(crate) conditional_blocks: Vec<ConditionalBlock>,
     pub(crate) else_block: Option<Block>,
+    pub(crate) span: Span,
 }
 
 impl core::fmt::Debug for IfElse {
@@ -26,6 +27,7 @@ impl core::fmt::Debug for IfElse {
             f.debug_struct("IfElse")
                 .field("conditional_blocks", &self.conditional_blocks)
                 .field("else_block", &self.else_block)
+                .field("span", &self.span)
                 .finish()
         }
     }
