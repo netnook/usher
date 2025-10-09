@@ -1,11 +1,12 @@
 use crate::lang::{
-    Accept, AstNode, Context, Eval, EvalStop, Value, Visitor, VisitorResult, accept_default,
+    Accept, AstNode, Context, Eval, EvalStop, Span, Value, Visitor, VisitorResult, accept_default,
 };
 use std::rc::Rc;
 
 #[derive(PartialEq, Clone)]
 pub struct InterpolatedStr {
     pub(crate) parts: Vec<AstNode>,
+    pub(crate) span: Span,
 }
 
 impl core::fmt::Debug for InterpolatedStr {
@@ -18,6 +19,7 @@ impl core::fmt::Debug for InterpolatedStr {
         } else {
             f.debug_struct("InterpolatedStr")
                 .field("parts", &self.parts)
+                .field("span", &self.span)
                 .finish()
         }
     }

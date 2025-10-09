@@ -42,7 +42,9 @@ fn test_string_spans() {
             sub(var(id("foo").spanned(6, 3)), i(45).spanned(11, 2)).spanned(10, 1),
             s("cde").spanned(15, 3),
             i(35).spanned(20, 2)
-        ],
+        ]
+        .spanned(1, 24)
+        .into(),
         -1,
     );
 }

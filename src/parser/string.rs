@@ -69,6 +69,7 @@ impl<'a> Parser<'a> {
                     }
                     return Ok(Some(AstNode::InterpolatedStr(InterpolatedStr {
                         parts: interpolator_result,
+                        span: Span::start_end(start, self.pos),
                     })));
                 }
             }

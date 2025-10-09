@@ -85,9 +85,9 @@ pub mod tests {
     use crate::{
         lang::{
             Assignment, AstNode, BinaryOp, BinaryOpCode, Block, Break, ChainCatch, Continue,
-            Declaration, Dict, DictBuilder, End, For, FunctionCall, Identifier, IndexOf, KeyValue,
-            KeyValueBuilder, List, ListBuilder, Literal, PropertyOf, Span, This, UnaryOp,
-            UnaryOpCode, Value, Var,
+            Declaration, Dict, DictBuilder, End, For, FunctionCall, Identifier, IndexOf,
+            InterpolatedStr, KeyValue, KeyValueBuilder, List, ListBuilder, Literal, PropertyOf,
+            Span, This, UnaryOp, UnaryOpCode, Value, Var,
         },
         parser::{Parser, SyntaxError},
     };
@@ -388,7 +388,7 @@ pub mod tests {
             let parts= vec![
                 $($v.into()),+
             ];
-            AstNode::InterpolatedStr(InterpolatedStr{parts})
+            InterpolatedStr{parts, span: Span::new(999,9999)}
         }};
     }
     pub(crate) use _interp;
@@ -715,4 +715,5 @@ pub mod tests {
     with_span!(Continue);
     with_span!(End);
     with_span!(This);
+    with_span!(InterpolatedStr);
 }
