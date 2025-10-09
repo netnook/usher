@@ -1,13 +1,13 @@
 use super::{ParseResult, Parser, SyntaxError};
 use crate::{
-    lang::{AstNode, For},
+    lang::{AstNode, For, Span},
     parser::identifier::UncheckedIdentifier,
 };
 
 impl<'a> Parser<'a> {
     // "for" ident "in" expr block
     // "for" ident, ident "in" expr block
-    pub(super) fn for_stmt(&mut self) -> ParseResult<AstNode> {
+    pub(super) fn for_stmt(&mut self, span: Span) -> ParseResult<AstNode> {
         // already passed "for" when called
 
         self.req_whitespace_comments()?;
@@ -52,6 +52,7 @@ impl<'a> Parser<'a> {
             loop_item,
             loop_info,
             block,
+            span: span.extended(self.pos),
         }))
     }
 }

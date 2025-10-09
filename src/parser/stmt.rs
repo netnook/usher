@@ -14,7 +14,7 @@ impl<'a> Parser<'a> {
                     return Ok(Some(self.if_stmt(span)?));
                 }
                 "for" => {
-                    return Ok(Some(self.for_stmt()?));
+                    return Ok(Some(self.for_stmt(span)?));
                 }
                 "var" => {
                     return Ok(Some(self.var_stmt()?));

@@ -10,6 +10,7 @@ pub struct For {
     pub(crate) loop_item: Var,
     pub(crate) loop_info: Option<Var>,
     pub(crate) block: Block,
+    pub(crate) span: Span,
 }
 
 impl core::fmt::Debug for For {
@@ -30,6 +31,7 @@ impl core::fmt::Debug for For {
                 .field("loop_item", &self.loop_item)
                 .field("loop_info", &self.loop_info)
                 .field("block", &self.block)
+                .field("span", &self.span)
                 .finish()
         }
     }

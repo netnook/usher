@@ -307,3 +307,20 @@ fn test_ifelse_spans() {
         -1,
     );
 }
+
+#[test]
+fn test_for_spans() {
+    do_test_parser_exact(
+        Parser::stmt,
+        r#" for a in b { 1 } "#,
+        _for(
+            var(id("a").spanned(5, 1)),
+            None,
+            var(id("b").spanned(10, 1)),
+            _block![i(1).spanned(14, 1)].spanned(12, 5),
+        )
+        .spanned(1, 16)
+        .into(),
+        -1,
+    );
+}

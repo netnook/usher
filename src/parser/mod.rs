@@ -320,6 +320,7 @@ pub mod tests {
             loop_info,
             iterable: iterable.into().into(),
             block,
+            span: Span::new(999, 9999),
         }
     }
     pub(crate) fn _break() -> Break {
@@ -721,4 +722,5 @@ pub mod tests {
     with_span!(This);
     with_span!(InterpolatedStr);
     with_span!(IfElse);
+    with_span!(For);
 }
