@@ -1,0 +1,16 @@
+# test 1
+var x = a:22
+print(x.key)
+print(x.value)
+---stdout---
+a
+22
+*****************************************************
+# test 2
+var x = a:22
+print(x.foo)
+---stderr---
+Evaluation error in tests/run/keyvalue.usher at line 3, char 9:
+  |
+3 | print(x.foo)
+  |         ^^^ Property 'foo' not found. The following properties are available: key, value
