@@ -1,5 +1,8 @@
 use super::{BuiltInFunc, FunctionDef, InternalProgramError, Span};
-use crate::lang::{EvalStop, Key};
+use crate::lang::{
+    Context, EvalStop, FunctionCall, Key,
+    function::{MethodResolver, MethodType},
+};
 use std::{
     borrow::Cow,
     cell::RefCell,
@@ -299,6 +302,7 @@ pub enum Func {
     BuiltInFunc(BuiltInFunc),
 }
 
+// FIXME: get rid of this ? but what happen if I try to assign an existing builtin to a new name it a dict, for example ?
 impl From<BuiltInFunc> for Func {
     fn from(value: BuiltInFunc) -> Self {
         Self::BuiltInFunc(value)
@@ -306,6 +310,74 @@ impl From<BuiltInFunc> for Func {
 }
 
 pub type StringCell = Rc<String>;
+
+impl MethodResolver for StringCell {
+    fn resolve_method(&self, key: &str) -> Option<MethodType<Self>> {
+        match key {
+            "len" => Some(str_len),
+            "split" => Some(str_split),
+            _ => None,
+        }
+    }
+}
+
+fn str_len(call: &FunctionCall, this: StringCell, _ctxt: &mut Context) -> Result<Value, EvalStop> {
+    if let Some(arg) = call.args.first() {
+        return Err(
+            InternalProgramError::FunctionCallUnexpectedArgument { span: arg.span() }.into(),
+        );
+    }
+    Ok(Value::Integer(this.len() as isize))
+}
+
+fn str_split(call: &FunctionCall, this: StringCell, ctxt: &mut Context) -> Result<Value, EvalStop> {
+    let mut on = None;
+    for (idx, arg) in call.args.iter().enumerate() {
+        match idx {
+            0 => {
+                // FIXME: refactor this argument handling into a common utility
+                let Some(on_arg) = call.args.first() else {
+                    return Err(InternalProgramError::FunctionCallMissingRequiredArgument {
+                        name: "on".to_string(),
+                        span: call.span,
+                    }
+                    .into());
+                };
+                let on_val = on_arg.eval(ctxt)?;
+                let Value::Str(on_val) = on_val else {
+                    return Err(InternalProgramError::FunctionCallBadArgType {
+                        name: "on".to_string(),
+                        expected: ValueType::String,
+                        actual: on_val.value_type(),
+                        span: on_arg.span(),
+                    }
+                    .into());
+                };
+                on = Some(on_val);
+            }
+            _ => {
+                return Err(InternalProgramError::FunctionCallUnexpectedArgument {
+                    span: arg.span(),
+                }
+                .into());
+            }
+        }
+    }
+
+    let Some(on) = on else {
+        return Err(InternalProgramError::FunctionCallMissingRequiredArgument {
+            name: "on".to_string(),
+            span: call.span,
+        }
+        .into());
+    };
+
+    let mut result = Vec::new();
+    for part in this.split(on.as_str()) {
+        result.push(part.into());
+    }
+    Ok(result.into())
+}
 
 impl From<Dict> for DictCell {
     fn from(value: Dict) -> Self {
@@ -328,6 +400,11 @@ impl From<List> for ListCell {
 impl From<List> for Value {
     fn from(value: List) -> Self {
         Self::List(value.into())
+    }
+}
+impl From<Vec<Value>> for Value {
+    fn from(value: Vec<Value>) -> Self {
+        Self::List(Rc::new(RefCell::new(value.into())))
     }
 }
 
@@ -390,14 +467,6 @@ impl List {
         }
     }
 
-    pub(crate) fn built_in_func(name: &Key) -> Option<Func> {
-        let name: &str = &name.0;
-        match name {
-            "add" => Some(BuiltInFunc::Add.into()),
-            _ => None,
-        }
-    }
-
     pub(crate) fn shallow_clone(&self) -> Self {
         let mut result = Self::new();
         for e in &self.content {
@@ -412,6 +481,12 @@ impl List {
             result.add(e.deep_clone());
         }
         result
+    }
+}
+
+impl From<Vec<Value>> for List {
+    fn from(value: Vec<Value>) -> Self {
+        Self { content: value }
     }
 }
 
@@ -466,14 +541,6 @@ impl Dict {
 
     pub fn keys(&'_ self) -> Keys<'_, Key, Value> {
         self.content.keys()
-    }
-
-    pub(crate) fn built_in_func(name: &Key) -> Option<Func> {
-        let name: &str = &name.0;
-        match name {
-            "replace" => todo!(),
-            _ => None,
-        }
     }
 
     pub(crate) fn shallow_clone(&self) -> Self {

@@ -1,10 +1,10 @@
 use crate::lang::{
-    AstNode, Block, Context, Dict, Eval, EvalStop, Identifier, InternalProgramError, Key, KeyValue,
-    List, Span, Value, Var, accept_default,
-    value::Func,
+    AstNode, Block, Context, Eval, EvalStop, Identifier, InternalProgramError, Key, KeyValue, List,
+    Span, Value, Var, accept_default,
+    value::{DictCell, Func, ListCell},
     visitor::{Accept, Visitor, VisitorResult},
 };
-use std::rc::Rc;
+use std::{cell::RefCell, rc::Rc};
 
 #[derive(PartialEq)]
 pub struct FunctionDef {
@@ -137,11 +137,53 @@ impl FunctionDef {
 pub enum BuiltInFunc {
     Print,
     EPrint,
-    Add,
 }
 
+pub(crate) type MethodType<T> =
+    fn(call: &FunctionCall, this: T, ctxt: &mut Context) -> Result<Value, EvalStop>;
+
+pub(crate) trait MethodResolver: Sized {
+    fn resolve_method(&self, key: &str) -> Option<MethodType<Self>>;
+}
+
+impl MethodResolver for ListCell {
+    fn resolve_method(&self, key: &str) -> Option<MethodType<Self>> {
+        match key {
+            "add" => Some(list_add),
+            _ => None,
+        }
+    }
+}
+
+fn list_add(
+    call: &FunctionCall,
+    this: Rc<RefCell<List>>,
+    ctxt: &mut Context,
+) -> Result<Value, EvalStop> {
+    let mut list = this.borrow_mut();
+
+    let args = call
+        .args
+        .iter()
+        .map(|a| a.eval(ctxt))
+        .collect::<Result<Vec<Value>, EvalStop>>()?;
+
+    for arg in args {
+        list.add(arg);
+    }
+
+    Ok(Value::Nil)
+}
+
+impl MethodResolver for DictCell {
+    // FIXME: change this to take key of type Key instead on &str
+    fn resolve_method(&self, _key: &str) -> Option<MethodType<Self>> {
+        None
+    }
+}
+
+// FIXME: git rid of this
 impl BuiltInFunc {
-    // FIXME: git rid of this
     pub fn by_name(key: &Key) -> Option<BuiltInFunc> {
         let key = key.0.as_str();
         match key {
@@ -155,7 +197,7 @@ impl BuiltInFunc {
         &self,
         ctxt: &mut Context,
         args: Vec<Value>,
-        span: &Span,
+        _span: &Span,
     ) -> Result<Value, EvalStop> {
         match self {
             BuiltInFunc::Print => {
@@ -183,25 +225,6 @@ impl BuiltInFunc {
                 }
                 ctxt.stderr("\n");
                 Ok(Value::Nil)
-            }
-            BuiltInFunc::Add => {
-                let this = ctxt.get_this().unwrap_or(Value::Nil);
-                match this {
-                    Value::List(list) => {
-                        let mut list = list.borrow_mut();
-                        for arg in args {
-                            list.add(arg);
-                        }
-                        Ok(Value::Nil)
-                    }
-                    // FIXME: panic - this should not be reachable - can this be ensured programattically
-                    _ => InternalProgramError::MethodNotApplicable {
-                        name: "add".to_string(),
-                        to: this.value_type(),
-                        span: *span,
-                    }
-                    .into(),
-                }
             }
         }
     }
@@ -241,33 +264,118 @@ impl core::fmt::Debug for FunctionCall {
 
 impl Eval for FunctionCall {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
-        let (this, func) = self.resolve(ctxt)?;
+        let on = self.on.eval(ctxt)?;
 
-        match func {
-            Func::Func(func) => {
-                // build the function call context
-                // FIXME: normal function call should have a new context, but what about closures ?
-                let mut call_context =
-                    self.build_call_context(ctxt, func.params(), this, &self.span)?;
+        if let Some(method) = &self.method {
+            let on_value_type = on.value_type();
+            match on {
+                Value::Dict(dict) => {
+                    let r = dict.borrow().get(&method.key);
+                    match r {
+                        Some(Value::Func(func)) => {
+                            // let this = self;
+                            match func {
+                                Func::Func(func) => {
+                                    // build the function call context
+                                    // FIXME: normal function call should have a new context, but what about closures ?
+                                    let mut call_context = self.build_call_context(
+                                        ctxt,
+                                        func.params(),
+                                        Some(Value::Dict(dict)),
+                                        &self.span,
+                                    )?;
 
-                match func.call(&mut call_context) {
-                    v @ Ok(_) => v,
-                    e @ Err(EvalStop::Error(_)) => e,
-                    Err(EvalStop::Return(value)) => Ok(value),
-                    Err(EvalStop::Break(span)) => {
-                        Err(EvalStop::Error(InternalProgramError::BreakWithoutLoop {
-                            span,
-                        }))
+                                    return match func.call(&mut call_context) {
+                                        v @ Ok(_) => v,
+                                        e @ Err(EvalStop::Error(_)) => e,
+                                        Err(EvalStop::Return(value)) => Ok(value),
+                                        Err(EvalStop::Break(span)) => Err(EvalStop::Error(
+                                            InternalProgramError::BreakWithoutLoop { span },
+                                        )),
+                                        Err(EvalStop::Continue(span)) => Err(EvalStop::Error(
+                                            InternalProgramError::ContinueWithoutLoop { span },
+                                        )),
+                                        Err(EvalStop::Throw) => todo!(),
+                                    };
+                                }
+                                Func::BuiltInFunc(func) => {
+                                    return self.eval_builtin(
+                                        ctxt,
+                                        &func,
+                                        Some(Value::Dict(dict)),
+                                        &self.span,
+                                    );
+                                }
+                            }
+                        }
+                        Some(v) => {
+                            return Err(InternalProgramError::ExpectedFunction {
+                                got: v.value_type(),
+                                span: method.span,
+                            }
+                            .into_stop());
+                        }
+                        None => {}
                     }
-                    Err(EvalStop::Continue(span)) => {
-                        Err(EvalStop::Error(InternalProgramError::ContinueWithoutLoop {
-                            span,
-                        }))
+                    if let Some(func) = dict.resolve_method(method.key.as_str()) {
+                        //  FIXME fix child context ?
+                        return func(self, dict, ctxt);
                     }
-                    Err(EvalStop::Throw) => todo!(),
                 }
+                Value::List(list) => {
+                    if let Some(func) = list.resolve_method(method.key.as_str()) {
+                        // FIXME fix child context ?
+                        return func(self, list, ctxt);
+                    }
+                }
+                Value::Str(string) => {
+                    if let Some(func) = string.resolve_method(method.key.as_str()) {
+                        // FIXME fix child context ?
+                        return func(self, string.clone(), ctxt);
+                    }
+                }
+                _ => {}
             }
-            Func::BuiltInFunc(func) => self.eval_builtin(ctxt, &func, this, &self.span),
+            // FIXME: better error - list all methods ?
+            Err(InternalProgramError::NoSuchMethod {
+                name: method.as_string(),
+                from: on_value_type,
+                span: method.span,
+            }
+            .into_stop())
+        } else if let Value::Func(func) = on {
+            match func {
+                Func::Func(func) => {
+                    // FIXME: normal function call should have a new context, but what about closures ?
+                    let mut call_context =
+                        self.build_call_context(ctxt, func.params(), None, &self.span)?;
+
+                    match func.call(&mut call_context) {
+                        v @ Ok(_) => v,
+                        e @ Err(EvalStop::Error(_)) => e,
+                        Err(EvalStop::Return(value)) => Ok(value),
+                        Err(EvalStop::Break(span)) => {
+                            Err(EvalStop::Error(InternalProgramError::BreakWithoutLoop {
+                                span,
+                            }))
+                        }
+                        Err(EvalStop::Continue(span)) => {
+                            Err(EvalStop::Error(InternalProgramError::ContinueWithoutLoop {
+                                span,
+                            }))
+                        }
+                        Err(EvalStop::Throw) => todo!(),
+                    }
+                }
+                Func::BuiltInFunc(func) => self.eval_builtin(ctxt, &func, None, &self.span),
+            }
+            // Ok((None, func))
+        } else {
+            Err(InternalProgramError::ExpectedFunction {
+                got: on.value_type(),
+                span: self.on.span(),
+            }
+            .into_stop())
         }
     }
 }
@@ -290,9 +398,10 @@ impl FunctionCall {
         for (i, arg) in self.args.iter().enumerate() {
             if positional_mode {
                 let Some(param) = params.get(i) else {
-                    return Err(
-                        InternalProgramError::FunctionCallTooManyArgs { span: arg.span() }.into(),
-                    );
+                    return Err(InternalProgramError::FunctionCallUnexpectedArgument {
+                        span: arg.span(),
+                    }
+                    .into());
                 };
 
                 if arg.name.is_some() {
@@ -387,54 +496,6 @@ impl FunctionCall {
             Err(EvalStop::Throw) => todo!(),
         }
     }
-
-    fn resolve(&self, ctxt: &mut Context) -> Result<(Option<Value>, Func), EvalStop> {
-        let on = self.on.eval(ctxt)?;
-
-        if let Some(method) = &self.method {
-            match &on {
-                Value::Dict(dict) => {
-                    let maybe_func = dict.borrow().get(&method.key);
-                    if let Some(maybe_func) = maybe_func {
-                        if let Value::Func(func) = maybe_func {
-                            return Ok((Some(on), func));
-                        } else {
-                            return Err(InternalProgramError::ExpectedFunction {
-                                got: maybe_func.value_type(),
-                                span: method.span,
-                            }
-                            .into_stop());
-                        }
-                    };
-                    if let Some(func) = Dict::built_in_func(&method.key) {
-                        return Ok((Some(on), func));
-                    }
-                }
-                Value::List(_) => {
-                    if let Some(func) = List::built_in_func(&method.key) {
-                        return Ok((Some(on), func));
-                    }
-                }
-                _ => {}
-            }
-
-            // FIXME: better error - list all methods ?
-            Err(InternalProgramError::NoSuchMethod {
-                name: method.as_string(),
-                from: on.value_type(),
-                span: method.span,
-            }
-            .into_stop())
-        } else if let Value::Func(func) = on {
-            Ok((None, func))
-        } else {
-            Err(InternalProgramError::ExpectedFunction {
-                got: on.value_type(),
-                span: self.on.span(),
-            }
-            .into_stop())
-        }
-    }
 }
 
 accept_default!(FunctionCall, on:node, args:vec:arg,);
@@ -480,7 +541,7 @@ impl Arg {
         }
     }
 
-    fn span(&self) -> Span {
+    pub(crate) fn span(&self) -> Span {
         let span = self.value.span();
         match &self.name {
             Some(n) => Span::merge(span, n.span),
@@ -691,7 +752,8 @@ mod tests {
             .err()
             .expect("expect error");
 
-        let EvalStop::Error(InternalProgramError::FunctionCallTooManyArgs { span }) = err else {
+        let EvalStop::Error(InternalProgramError::FunctionCallUnexpectedArgument { span }) = err
+        else {
             panic!("unexpected error: {err:#?}");
         };
 

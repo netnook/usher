@@ -11,4 +11,33 @@ lst.add(dict(b:2,a:1,c:3))
 lst
 ---result---
 [123,12.3,"abc",true,false,nil,end,[1,2,3],dict(a:1,b:2,c:3)]
+**************************
+"foo".len()
+---result---
+3
+**************************
+"foo".len("a")
+---stderr---
+Evaluation error in tests/run/values.usher at line 1, char 11:
+  |
+1 | "foo".len("a")
+  |           ^^^ Unexpected argument provided in funcition call.
+**************************
+"foo:bar:baz".split(":")
+---result---
+["foo","bar","baz"]
+**************************
+"foo:bar:baz".split()
+---stderr---
+Evaluation error in tests/run/values.usher at line 1, char 14:
+  |
+1 | "foo:bar:baz".split()
+  |              ^^^^^^^^ Missing argument for parameter 'on'.
+**************************
+"foo:bar:baz".split(42)
+---stderr---
+Evaluation error in tests/run/values.usher at line 1, char 21:
+  |
+1 | "foo:bar:baz".split(42)
+  |                     ^^ Wrong type for argument 'on'.  Expected string but found integer.
 

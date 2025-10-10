@@ -77,8 +77,8 @@ pub enum InternalProgramError {
         from: PropertyList,
         span: Span,
     },
-    #[error("Too many arguments provided in funcition call.")]
-    FunctionCallTooManyArgs { span: Span },
+    #[error("Unexpected argument provided in funcition call.")]
+    FunctionCallUnexpectedArgument { span: Span },
     #[error("Positional arguments must come before named arguments.")]
     FunctionCallPositionalArgAfterNamedArg { span: Span },
     #[error("Function does not have parameter named '{name}'.")]
@@ -89,6 +89,13 @@ pub enum InternalProgramError {
     FunctionCallMissingRequiredArgument { name: String, span: Span },
     #[error("Unknown variable '{name}'.")]
     UndeclaredVariable { name: String, span: Span },
+    #[error("Wrong type for argument '{name}'.  Expected {expected} but found {actual}.")]
+    FunctionCallBadArgType {
+        name: String,
+        expected: ValueType,
+        actual: ValueType,
+        span: Span,
+    },
     #[error("Break without for.")]
     BreakWithoutLoop { span: Span },
     #[error("Continue without for.")]
@@ -198,11 +205,17 @@ impl InternalProgramError {
                 from: _,
                 span,
             } => span,
-            InternalProgramError::FunctionCallTooManyArgs { span } => span,
+            InternalProgramError::FunctionCallUnexpectedArgument { span } => span,
             InternalProgramError::FunctionCallPositionalArgAfterNamedArg { span } => span,
             InternalProgramError::FunctionCallNoSuchParameter { name: _, span } => span,
             InternalProgramError::FunctionCallParamAlreadySet { name: _, span } => span,
             InternalProgramError::FunctionCallMissingRequiredArgument { name: _, span } => span,
+            InternalProgramError::FunctionCallBadArgType {
+                name: _,
+                expected: _,
+                actual: _,
+                span,
+            } => span,
             InternalProgramError::UndeclaredVariable { name: _, span } => span,
             InternalProgramError::BreakWithoutLoop { span } => span,
             InternalProgramError::ContinueWithoutLoop { span } => span,
