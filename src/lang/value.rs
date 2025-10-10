@@ -312,8 +312,8 @@ impl From<BuiltInFunc> for Func {
 pub type StringCell = Rc<String>;
 
 impl MethodResolver for StringCell {
-    fn resolve_method(&self, key: &str) -> Option<MethodType<Self>> {
-        match key {
+    fn resolve_method(&self, key: &Key) -> Option<MethodType<Self>> {
+        match key.as_str() {
             "len" => Some(str_len),
             "split" => Some(str_split),
             _ => None,
