@@ -1,7 +1,7 @@
-use super::{BuiltInFunc, FunctionDef, InternalProgramError, Span};
+use super::{FunctionDef, InternalProgramError, Span};
 use crate::lang::{
     Context, EvalStop, FunctionCall, Key,
-    function::{MethodResolver, MethodType},
+    function::{FunctionType, MethodResolver, MethodType},
 };
 use std::{
     borrow::Cow,
@@ -296,16 +296,18 @@ impl Value {
     }
 }
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub enum Func {
-    Func(Rc<FunctionDef>),
-    BuiltInFunc(BuiltInFunc),
+    FuncDef(Rc<FunctionDef>),
+    BuiltIn(FunctionType),
 }
 
-// FIXME: get rid of this ? but what happen if I try to assign an existing builtin to a new name it a dict, for example ?
-impl From<BuiltInFunc> for Func {
-    fn from(value: BuiltInFunc) -> Self {
-        Self::BuiltInFunc(value)
+impl PartialEq for Func {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::FuncDef(left), Self::FuncDef(right)) => left == right,
+            _ => false,
+        }
     }
 }
 
@@ -588,24 +590,18 @@ impl KeyValue {
     }
 }
 
-impl From<BuiltInFunc> for Value {
-    fn from(value: BuiltInFunc) -> Self {
-        Self::Func(Func::BuiltInFunc(value))
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::lang::BuiltInFunc;
     use crate::lang::Value;
-    use crate::parser::tests::ToValue;
+    use crate::lang::function::resolve_function;
+    use crate::parser::tests::{_block, _func, ToValue};
 
     #[test]
     fn test_ref_clone() {
         assert_eq!(
-            Value::Func(Func::BuiltInFunc(BuiltInFunc::Print)).ref_clone(),
-            Value::Func(Func::BuiltInFunc(BuiltInFunc::Print))
+            Value::Func(Func::FuncDef(Rc::new(_func!(_block![])))).ref_clone(),
+            Value::Func(Func::FuncDef(Rc::new(_func!(_block![]))))
         );
 
         {
@@ -726,8 +722,8 @@ mod tests {
     #[test]
     fn test_shallow_clone() {
         assert_eq!(
-            Value::Func(Func::BuiltInFunc(BuiltInFunc::Print)).shallow_clone(),
-            Value::Func(Func::BuiltInFunc(BuiltInFunc::Print))
+            Value::Func(Func::FuncDef(Rc::new(_func!(_block![])))).shallow_clone(),
+            Value::Func(Func::FuncDef(Rc::new(_func!(_block![]))))
         );
 
         {
@@ -832,8 +828,8 @@ mod tests {
     #[test]
     fn test_deep_clone() {
         assert_eq!(
-            Value::Func(Func::BuiltInFunc(BuiltInFunc::Print)).deep_clone(),
-            Value::Func(Func::BuiltInFunc(BuiltInFunc::Print))
+            Value::Func(Func::FuncDef(Rc::new(_func!(_block![])))).deep_clone(),
+            Value::Func(Func::FuncDef(Rc::new(_func!(_block![]))))
         );
 
         {
@@ -985,7 +981,7 @@ mod tests {
         do_test_as_string(Value::End, "end");
 
         assert!(
-            Value::Func(Func::BuiltInFunc(BuiltInFunc::Print))
+            Value::Func(Func::BuiltIn(resolve_function(&"print".into()).unwrap()))
                 .as_string()
                 .is_err()
         );

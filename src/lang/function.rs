@@ -1,10 +1,10 @@
 use crate::lang::{
     AstNode, Block, Context, Eval, EvalStop, Identifier, InternalProgramError, Key, KeyValue, List,
-    Span, Value, Var, accept_default,
+    Output, Span, Value, Var, accept_default,
     value::{DictCell, Func, ListCell},
     visitor::{Accept, Visitor, VisitorResult},
 };
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, io::Write, rc::Rc};
 
 #[derive(PartialEq)]
 pub struct FunctionDef {
@@ -115,7 +115,7 @@ impl<T> Accept<T> for Param {
 
 impl Eval for Rc<FunctionDef> {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
-        let f = Value::Func(Func::Func(Rc::clone(self)));
+        let f = Value::Func(Func::FuncDef(Rc::clone(self)));
         if let Some(name) = &self.name {
             ctxt.set(&name.ident.key, f.ref_clone());
         };
@@ -175,58 +175,53 @@ impl MethodResolver for DictCell {
     }
 }
 
-#[derive(PartialEq, Debug, Clone)]
-pub enum BuiltInFunc {
-    Print,
-    EPrint,
+pub(crate) type FunctionType =
+    fn(call: &FunctionCall, ctxt: &mut Context) -> Result<Value, EvalStop>;
+
+pub fn resolve_function(key: &Key) -> Option<FunctionType> {
+    match key.as_str() {
+        "print" => Some(builtin_print),
+        "eprint" => Some(builtin_eprint),
+        _ => None,
+    }
 }
 
-// FIXME: git rid of this
-impl BuiltInFunc {
-    pub fn by_name(key: &Key) -> Option<BuiltInFunc> {
-        let key = key.0.as_str();
-        match key {
-            "print" => Some(BuiltInFunc::Print),
-            "eprint" => Some(BuiltInFunc::EPrint),
-            _ => None,
+fn builtin_print(call: &FunctionCall, ctxt: &mut Context) -> Result<Value, EvalStop> {
+    let output = ctxt.get_stdout();
+    builtin_do_print(call, ctxt, output)
+}
+
+fn builtin_eprint(call: &FunctionCall, ctxt: &mut Context) -> Result<Value, EvalStop> {
+    let output = ctxt.get_stderr();
+    builtin_do_print(call, ctxt, output)
+}
+
+fn builtin_do_print(
+    call: &FunctionCall,
+    ctxt: &mut Context,
+    mut output: Output,
+) -> Result<Value, EvalStop> {
+    let mut first = true;
+
+    let args = call
+        .args
+        .iter()
+        .map(|a| a.eval(ctxt))
+        .collect::<Result<Vec<Value>, EvalStop>>()?;
+
+    for arg in args {
+        if first {
+            first = false;
+        } else {
+            // FIXME: default should be no separator, and have a named arg "sep=', '" for nicer formatting
+            output.write_all(b", ").expect("FIXME")
         }
+        let arg = arg.as_string()?;
+        output.write_all(arg.as_bytes()).expect("FIXME")
     }
 
-    pub fn call(
-        &self,
-        ctxt: &mut Context,
-        args: Vec<Value>,
-        _span: &Span,
-    ) -> Result<Value, EvalStop> {
-        match self {
-            BuiltInFunc::Print => {
-                let mut first = true;
-                for arg in args {
-                    if first {
-                        first = false;
-                    } else {
-                        ctxt.stdout(", ");
-                    }
-                    ctxt.stdout(arg.as_string()?.as_ref());
-                }
-                ctxt.stdout("\n");
-                Ok(Value::Nil)
-            }
-            BuiltInFunc::EPrint => {
-                let mut first = true;
-                for arg in args {
-                    if first {
-                        first = false;
-                    } else {
-                        ctxt.stderr(", ");
-                    }
-                    ctxt.stderr(arg.as_string()?.as_ref());
-                }
-                ctxt.stderr("\n");
-                Ok(Value::Nil)
-            }
-        }
-    }
+    output.write_all(b"\n").expect("FIXME");
+    Ok(Value::Nil)
 }
 
 #[derive(PartialEq, Clone)]
@@ -326,7 +321,7 @@ impl FunctionCall {
         this: Option<Value>,
     ) -> Result<Value, EvalStop> {
         match func {
-            Func::Func(func) => {
+            Func::FuncDef(func) => {
                 // FIXME: normal function call should have a new context, but what about closures ?
                 // self.call_function_def(&func, ctxt, this)
                 // build the function call context
@@ -351,7 +346,7 @@ impl FunctionCall {
                     Err(EvalStop::Throw) => todo!(),
                 }
             }
-            Func::BuiltInFunc(func) => self.eval_builtin(ctxt, &func, this, &self.span),
+            Func::BuiltIn(func) => self.eval_builtin(ctxt, &func),
         }
     }
 
@@ -440,28 +435,8 @@ impl FunctionCall {
         Ok(call_context)
     }
 
-    fn eval_builtin(
-        &self,
-        ctxt: &mut Context,
-        func: &BuiltInFunc,
-        this: Option<Value>,
-        span: &Span,
-    ) -> Result<Value, EvalStop> {
-        // build the function call context
-        // FIXME: normal function call should have a new context, but what about closures ?
-        let mut call_context = ctxt.new_function_call_ctxt();
-
-        if let Some(this) = this {
-            call_context.declare_this(this);
-        }
-
-        // evaluate the args
-        let mut args = Vec::with_capacity(self.args.len());
-        for arg_def in &self.args {
-            args.push(arg_def.eval(ctxt)?);
-        }
-
-        match func.call(&mut call_context, args, span) {
+    fn eval_builtin(&self, ctxt: &mut Context, func: &FunctionType) -> Result<Value, EvalStop> {
+        match func(self, ctxt) {
             v @ Ok(_) => v,
             e @ Err(EvalStop::Error(_)) => e,
             Err(EvalStop::Return(value)) => Ok(value),

@@ -65,6 +65,12 @@ impl Context {
     pub fn set_stderr(&mut self, out: Output) {
         self.inner.borrow_mut().set_stderr(out);
     }
+    pub fn get_stdout(&mut self) -> Output {
+        self.inner.borrow_mut().stdout.clone()
+    }
+    pub fn get_stderr(&mut self) -> Output {
+        self.inner.borrow_mut().stderr.clone()
+    }
 
     pub fn stdout(&mut self, str: &str) {
         self.inner.borrow_mut().stdout(str);

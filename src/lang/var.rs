@@ -1,8 +1,8 @@
 use std::cell::LazyCell;
 
 use crate::lang::{
-    Accept, AstNode, BuiltInFunc, Context, Eval, EvalStop, Identifier, InternalProgramError, Key,
-    Setter, Span, THIS, Value, Visitor, VisitorResult, accept_default,
+    Accept, AstNode, Context, Eval, EvalStop, Identifier, InternalProgramError, Key, Setter, Span,
+    THIS, Value, Visitor, VisitorResult, accept_default, function::resolve_function, value::Func,
 };
 
 #[derive(PartialEq, Clone)]
@@ -79,19 +79,17 @@ impl Var {
 
 impl Eval for Var {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
-        let Some(value) = ctxt
-            .get(&self.ident.key)
-            .or_else(|| BuiltInFunc::by_name(&self.ident.key).map(|f| f.into()))
-        else {
-            return Err(InternalProgramError::UndeclaredVariable {
-                name: self.ident.key.as_string(),
-                span: self.span(),
-            }
-            .into());
-        };
-
-        // .unwrap_or(Value::Nil);
-        Ok(value)
+        if let Some(value) = ctxt.get(&self.ident.key) {
+            return Ok(value);
+        }
+        if let Some(func) = resolve_function(&self.ident.key) {
+            return Ok(Value::Func(Func::BuiltIn(func)));
+        }
+        Err(InternalProgramError::UndeclaredVariable {
+            name: self.ident.key.as_string(),
+            span: self.span(),
+        }
+        .into())
     }
 }
 

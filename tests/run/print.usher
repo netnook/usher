@@ -1,0 +1,9 @@
+print("aa", "bb")
+---stdout---
+aa, bb
+---stderr---
+**************************************************
+eprint("aa", "bb")
+---stdout---
+---stderr---
+aa, bb
