@@ -2,7 +2,8 @@ use std::cell::LazyCell;
 
 use crate::lang::{
     Accept, AstNode, Context, Eval, EvalStop, Identifier, InternalProgramError, Key, Setter, Span,
-    THIS, Value, Visitor, VisitorResult, accept_default, function::resolve_function, value::Func,
+    THIS, Value, Visitor, VisitorResult, accept_default, builtin_functions::resolve_function,
+    value::Func,
 };
 
 #[derive(PartialEq, Clone)]

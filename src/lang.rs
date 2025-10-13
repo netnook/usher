@@ -1,5 +1,6 @@
 mod binary_op;
 mod block;
+mod builtin_functions;
 mod catch;
 mod context;
 mod dict;

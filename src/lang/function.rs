@@ -1,10 +1,10 @@
 use crate::lang::{
-    AstNode, Block, Context, Eval, EvalStop, Identifier, InternalProgramError, Key, KeyValue, List,
-    Output, Span, Value, Var, accept_default,
-    value::{DictCell, Func, ListCell},
+    AstNode, Block, Context, Eval, EvalStop, Identifier, InternalProgramError, Key, KeyValue, Span,
+    Value, Var, accept_default,
+    value::Func,
     visitor::{Accept, Visitor, VisitorResult},
 };
-use std::{cell::RefCell, io::Write, rc::Rc};
+use std::rc::Rc;
 
 #[derive(PartialEq)]
 pub struct FunctionDef {
@@ -133,95 +133,14 @@ impl FunctionDef {
     }
 }
 
+pub(crate) type FunctionType =
+    fn(call: &FunctionCall, ctxt: &mut Context) -> Result<Value, EvalStop>;
+
 pub(crate) type MethodType<T> =
     fn(call: &FunctionCall, this: T, ctxt: &mut Context) -> Result<Value, EvalStop>;
 
 pub(crate) trait MethodResolver: Sized {
     fn resolve_method(&self, key: &Key) -> Option<MethodType<Self>>;
-}
-
-impl MethodResolver for ListCell {
-    fn resolve_method(&self, key: &Key) -> Option<MethodType<Self>> {
-        match key.as_str() {
-            "add" => Some(list_add),
-            _ => None,
-        }
-    }
-}
-
-fn list_add(
-    call: &FunctionCall,
-    this: Rc<RefCell<List>>,
-    ctxt: &mut Context,
-) -> Result<Value, EvalStop> {
-    let mut list = this.borrow_mut();
-
-    let args = call
-        .args
-        .iter()
-        .map(|a| a.eval(ctxt))
-        .collect::<Result<Vec<Value>, EvalStop>>()?;
-
-    for arg in args {
-        list.add(arg);
-    }
-
-    Ok(Value::Nil)
-}
-
-impl MethodResolver for DictCell {
-    fn resolve_method(&self, _key: &Key) -> Option<MethodType<Self>> {
-        None
-    }
-}
-
-pub(crate) type FunctionType =
-    fn(call: &FunctionCall, ctxt: &mut Context) -> Result<Value, EvalStop>;
-
-pub fn resolve_function(key: &Key) -> Option<FunctionType> {
-    match key.as_str() {
-        "print" => Some(builtin_print),
-        "eprint" => Some(builtin_eprint),
-        _ => None,
-    }
-}
-
-fn builtin_print(call: &FunctionCall, ctxt: &mut Context) -> Result<Value, EvalStop> {
-    let output = ctxt.get_stdout();
-    builtin_do_print(call, ctxt, output)
-}
-
-fn builtin_eprint(call: &FunctionCall, ctxt: &mut Context) -> Result<Value, EvalStop> {
-    let output = ctxt.get_stderr();
-    builtin_do_print(call, ctxt, output)
-}
-
-fn builtin_do_print(
-    call: &FunctionCall,
-    ctxt: &mut Context,
-    mut output: Output,
-) -> Result<Value, EvalStop> {
-    let mut first = true;
-
-    let args = call
-        .args
-        .iter()
-        .map(|a| a.eval(ctxt))
-        .collect::<Result<Vec<Value>, EvalStop>>()?;
-
-    for arg in args {
-        if first {
-            first = false;
-        } else {
-            // FIXME: default should be no separator, and have a named arg "sep=', '" for nicer formatting
-            output.write_all(b", ").expect("FIXME")
-        }
-        let arg = arg.as_string()?;
-        output.write_all(arg.as_bytes()).expect("FIXME")
-    }
-
-    output.write_all(b"\n").expect("FIXME");
-    Ok(Value::Nil)
 }
 
 #[derive(PartialEq, Clone)]

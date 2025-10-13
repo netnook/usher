@@ -1,18 +1,18 @@
+mod dict;
+mod list;
+mod string;
+
 use super::{FunctionDef, InternalProgramError, Span};
-use crate::lang::{
-    Context, EvalStop, FunctionCall, Key,
-    function::{FunctionType, MethodResolver, MethodType},
-};
+use crate::lang::{EvalStop, Key, function::FunctionType};
+pub use dict::{Dict, DictCell};
+pub use list::{List, ListCell};
 use std::{
     borrow::Cow,
     cell::RefCell,
-    collections::{
-        HashMap,
-        hash_map::{Iter, Keys},
-    },
     fmt::{Display, Write},
     rc::Rc,
 };
+pub use string::StringCell;
 
 #[derive(PartialEq, Debug, Clone, Eq)]
 pub enum ValueType {
@@ -296,117 +296,20 @@ impl Value {
     }
 }
 
-#[derive(Debug, Clone)]
-pub enum Func {
-    FuncDef(Rc<FunctionDef>),
-    BuiltIn(FunctionType),
-}
-
-impl PartialEq for Func {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Self::FuncDef(left), Self::FuncDef(right)) => left == right,
-            _ => false,
-        }
-    }
-}
-
-pub type StringCell = Rc<String>;
-
-impl MethodResolver for StringCell {
-    fn resolve_method(&self, key: &Key) -> Option<MethodType<Self>> {
-        match key.as_str() {
-            "len" => Some(str_len),
-            "split" => Some(str_split),
-            _ => None,
-        }
-    }
-}
-
-fn str_len(call: &FunctionCall, this: StringCell, _ctxt: &mut Context) -> Result<Value, EvalStop> {
-    if let Some(arg) = call.args.first() {
-        return Err(
-            InternalProgramError::FunctionCallUnexpectedArgument { span: arg.span() }.into(),
-        );
-    }
-    Ok(Value::Integer(this.len() as isize))
-}
-
-fn str_split(call: &FunctionCall, this: StringCell, ctxt: &mut Context) -> Result<Value, EvalStop> {
-    let mut on = None;
-    for (idx, arg) in call.args.iter().enumerate() {
-        match idx {
-            0 => {
-                // FIXME: refactor this argument handling into a common utility
-                let Some(on_arg) = call.args.first() else {
-                    return Err(InternalProgramError::FunctionCallMissingRequiredArgument {
-                        name: "on".to_string(),
-                        span: call.span,
-                    }
-                    .into());
-                };
-                let on_val = on_arg.eval(ctxt)?;
-                let Value::Str(on_val) = on_val else {
-                    return Err(InternalProgramError::FunctionCallBadArgType {
-                        name: "on".to_string(),
-                        expected: ValueType::String,
-                        actual: on_val.value_type(),
-                        span: on_arg.span(),
-                    }
-                    .into());
-                };
-                on = Some(on_val);
-            }
-            _ => {
-                return Err(InternalProgramError::FunctionCallUnexpectedArgument {
-                    span: arg.span(),
-                }
-                .into());
-            }
-        }
-    }
-
-    let Some(on) = on else {
-        return Err(InternalProgramError::FunctionCallMissingRequiredArgument {
-            name: "on".to_string(),
-            span: call.span,
-        }
-        .into());
-    };
-
-    let mut result = Vec::new();
-    for part in this.split(on.as_str()) {
-        result.push(part.into());
-    }
-    Ok(result.into())
-}
-
-impl From<Dict> for DictCell {
-    fn from(value: Dict) -> Self {
-        Rc::new(RefCell::new(value))
-    }
-}
-
 impl From<Dict> for Value {
     fn from(value: Dict) -> Self {
         Self::Dict(value.into())
     }
 }
 
-impl From<List> for ListCell {
-    fn from(value: List) -> Self {
-        Rc::new(RefCell::new(value))
-    }
-}
-
-impl From<List> for Value {
-    fn from(value: List) -> Self {
-        Self::List(value.into())
-    }
-}
 impl From<Vec<Value>> for Value {
     fn from(value: Vec<Value>) -> Self {
         Self::List(Rc::new(RefCell::new(value.into())))
+    }
+}
+impl From<List> for Value {
+    fn from(value: List) -> Self {
+        Self::List(value.into())
     }
 }
 
@@ -428,137 +331,18 @@ impl From<isize> for Value {
     }
 }
 
-pub type ListCell = Rc<RefCell<List>>;
-
-#[derive(Debug, Clone, PartialEq, Default)]
-pub struct List {
-    pub content: Vec<Value>,
+#[derive(Debug, Clone)]
+pub enum Func {
+    FuncDef(Rc<FunctionDef>),
+    BuiltIn(FunctionType),
 }
 
-impl List {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn get(&self, index: usize) -> Option<Value> {
-        self.content.get(index).cloned()
-    }
-
-    pub fn set(&mut self, index: usize, value: Value) {
-        // should there be an error if index out of range, or grow automatically
-        self.content[index] = value;
-    }
-
-    pub fn add(&mut self, value: Value) {
-        self.content.push(value);
-    }
-
-    pub fn len(&self) -> usize {
-        self.content.len()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.content.is_empty()
-    }
-
-    // FIXME: why my own Iter implementation rather that collection::Iter ..
-    pub fn iter<'a>(&'a self) -> ListIter<'a> {
-        ListIter {
-            list: self,
-            next: 0,
+impl PartialEq for Func {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::FuncDef(left), Self::FuncDef(right)) => left == right,
+            _ => false,
         }
-    }
-
-    pub(crate) fn shallow_clone(&self) -> Self {
-        let mut result = Self::new();
-        for e in &self.content {
-            result.add(e.ref_clone());
-        }
-        result
-    }
-
-    pub(crate) fn deep_clone(&self) -> Self {
-        let mut result = Self::new();
-        for e in &self.content {
-            result.add(e.deep_clone());
-        }
-        result
-    }
-}
-
-impl From<Vec<Value>> for List {
-    fn from(value: Vec<Value>) -> Self {
-        Self { content: value }
-    }
-}
-
-#[derive(Debug)]
-pub struct ListIter<'a> {
-    list: &'a List,
-    next: usize,
-}
-
-impl<'a> Iterator for ListIter<'a> {
-    type Item = Value;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.next >= self.list.len() {
-            return Option::None;
-        }
-
-        let r = self.list.get(self.next);
-        self.next += 1;
-        Some(r.unwrap_or(Value::Nil))
-    }
-}
-
-pub type DictCell = Rc<RefCell<Dict>>;
-
-#[derive(Debug, Clone, PartialEq, Default)]
-pub struct Dict {
-    pub content: HashMap<Key, Value>,
-}
-
-impl Dict {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn get(&self, key: &Key) -> Option<Value> {
-        self.content.get(key).cloned()
-    }
-
-    pub fn set(&mut self, key: Key, value: Value) {
-        self.content.insert(key, value);
-    }
-
-    #[allow(dead_code)] // FIXME: remove later
-    pub fn remove(&mut self, key: &Key) -> Option<Value> {
-        self.content.remove(key)
-    }
-
-    pub fn iter(&self) -> Iter<'_, Key, Value> {
-        self.content.iter()
-    }
-
-    pub fn keys(&'_ self) -> Keys<'_, Key, Value> {
-        self.content.keys()
-    }
-
-    pub(crate) fn shallow_clone(&self) -> Self {
-        let mut result = Self::new();
-        for (k, v) in &self.content {
-            result.set(k.clone(), v.ref_clone());
-        }
-        result
-    }
-
-    pub(crate) fn deep_clone(&self) -> Self {
-        let mut result = Self::new();
-        for (k, v) in &self.content {
-            result.set(k.clone(), v.deep_clone());
-        }
-        result
     }
 }
 
@@ -591,10 +375,10 @@ impl KeyValue {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use super::*;
     use crate::lang::Value;
-    use crate::lang::function::resolve_function;
+    use crate::lang::builtin_functions::resolve_function;
     use crate::parser::tests::{_block, _func, ToValue};
 
     #[test]
@@ -640,66 +424,6 @@ mod tests {
             let Value::Bool(v) = &mut a else { panic!() };
             *v = false;
             assert_ne!(a, b);
-        }
-        {
-            let mut l = List::new();
-            l.add(42.into());
-            l.add(43.into());
-            let mut a = Value::List(l.into());
-            let b = a.ref_clone();
-            assert_eq!(a, b);
-
-            let Value::List(l) = &mut a else { panic!() };
-            l.borrow_mut().add(45.into());
-            assert_eq!(a, b);
-        }
-        {
-            let mut sub = List::new();
-            sub.add(42.to_value());
-            sub.add(43.to_value());
-            let mut l = List::new();
-            l.add(44.to_value());
-            l.add(sub.into());
-            let mut a = Value::List(l.into());
-            let b = a.ref_clone();
-            assert_eq!(a, b);
-
-            let Value::List(l) = &mut a else { panic!() };
-            let Value::List(sub) = &mut l.borrow().get(1).unwrap() else {
-                panic!()
-            };
-            sub.borrow_mut().add(45.into());
-            assert_eq!(a, b); // a and b still differ after sub list modified
-        }
-        {
-            let mut d = Dict::new();
-            d.set("a".into(), 42.into());
-            d.set("b".into(), 43.into());
-            let mut a = Value::Dict(d.into());
-            let b = a.ref_clone();
-            assert_eq!(a, b);
-
-            let Value::Dict(l) = &mut a else { panic!() };
-            l.borrow_mut().set("c".into(), 45.into());
-            assert_eq!(a, b);
-        }
-        {
-            let mut sub = Dict::new();
-            sub.set("a".into(), 42.to_value());
-            sub.set("b".into(), 43.to_value());
-            let mut l = Dict::new();
-            l.set("c".into(), 44.to_value());
-            l.set("d".into(), sub.into());
-            let mut a = Value::Dict(l.into());
-            let b = a.ref_clone();
-            assert_eq!(a, b);
-
-            let Value::Dict(l) = &mut a else { panic!() };
-            let Value::Dict(sub) = &mut l.borrow().get(&"d".into()).unwrap() else {
-                panic!()
-            };
-            sub.borrow_mut().set("e".into(), 45.into());
-            assert_eq!(a, b); // a and b still differ after sub list modified
         }
         {
             let a = KeyValue::new("k".into(), "v".into());
@@ -761,50 +485,6 @@ mod tests {
 
             let Value::Bool(v) = &mut a else { panic!() };
             *v = false;
-            assert_ne!(a, b);
-        }
-        {
-            let mut sub = List::new();
-            sub.add(42.to_value());
-            sub.add(43.to_value());
-            let mut l = List::new();
-            l.add(44.to_value());
-            l.add(sub.into());
-            let mut a = Value::List(l.into());
-            let b = a.shallow_clone();
-            assert_eq!(a, b);
-
-            let Value::List(l) = &mut a else { panic!() };
-            let Value::List(sub) = &mut l.borrow().get(1).unwrap() else {
-                panic!()
-            };
-            sub.borrow_mut().add(45.into());
-            assert_eq!(a, b); // a and b still same after sub list modified (shallow copy only)
-
-            let Value::List(l) = &mut a else { panic!() };
-            l.borrow_mut().add(46.into());
-            assert_ne!(a, b); // and and b differ after top list modified
-        }
-        {
-            let mut sub = Dict::new();
-            sub.set("a".into(), 42.to_value());
-            sub.set("b".into(), 43.to_value());
-            let mut l = Dict::new();
-            l.set("c".into(), 44.to_value());
-            l.set("d".into(), sub.into());
-            let mut a = Value::Dict(l.into());
-            let b = a.shallow_clone();
-            assert_eq!(a, b);
-
-            let Value::Dict(l) = &mut a else { panic!() };
-            let Value::Dict(sub) = &mut l.borrow().get(&"d".into()).unwrap() else {
-                panic!()
-            };
-            sub.borrow_mut().set("e".into(), 45.into());
-            assert_eq!(a, b); // a and b still differ after sub list modified
-
-            let Value::Dict(l) = &mut a else { panic!() };
-            l.borrow_mut().set("c".into(), 45.into());
             assert_ne!(a, b);
         }
         {
@@ -870,66 +550,6 @@ mod tests {
             assert_ne!(a, b);
         }
         {
-            let mut l = List::new();
-            l.add(42.into());
-            l.add(43.into());
-            let mut a = Value::List(l.into());
-            let b = a.deep_clone();
-            assert_eq!(a, b);
-
-            let Value::List(l) = &mut a else { panic!() };
-            l.borrow_mut().add(45.into());
-            assert_ne!(a, b);
-        }
-        {
-            let mut sub = List::new();
-            sub.add(42.to_value());
-            sub.add(43.to_value());
-            let mut l = List::new();
-            l.add(44.to_value());
-            l.add(sub.into());
-            let mut a = Value::List(l.into());
-            let b = a.deep_clone();
-            assert_eq!(a, b);
-
-            let Value::List(l) = &mut a else { panic!() };
-            let Value::List(sub) = &mut l.borrow().get(1).unwrap() else {
-                panic!()
-            };
-            sub.borrow_mut().add(45.into());
-            assert_ne!(a, b);
-        }
-        {
-            let mut d = Dict::new();
-            d.set("a".into(), 42.into());
-            d.set("b".into(), 43.into());
-            let mut a = Value::Dict(d.into());
-            let b = a.deep_clone();
-            assert_eq!(a, b);
-
-            let Value::Dict(l) = &mut a else { panic!() };
-            l.borrow_mut().set("c".into(), 45.into());
-            assert_ne!(a, b);
-        }
-        {
-            let mut sub = Dict::new();
-            sub.set("a".into(), 42.to_value());
-            sub.set("b".into(), 43.to_value());
-            let mut l = Dict::new();
-            l.set("c".into(), 44.to_value());
-            l.set("d".into(), sub.into());
-            let mut a = Value::Dict(l.into());
-            let b = a.deep_clone();
-            assert_eq!(a, b);
-
-            let Value::Dict(l) = &mut a else { panic!() };
-            let Value::Dict(sub) = &mut l.borrow().get(&"d".into()).unwrap() else {
-                panic!()
-            };
-            sub.borrow_mut().set("e".into(), 45.into());
-            assert_ne!(a, b);
-        }
-        {
             let a = KeyValue::new("k".into(), "v".into());
             let a = Value::KeyValue(Rc::new(a));
             let b = a.deep_clone();
@@ -945,11 +565,6 @@ mod tests {
             let b = a.deep_clone();
             assert_eq!(a, b);
         }
-    }
-
-    #[track_caller]
-    fn do_test_as_string(val: Value, expected: &str) {
-        assert_eq!(format!("{}", val.as_string().unwrap()), expected);
     }
 
     #[test]
@@ -985,91 +600,8 @@ mod tests {
                 .as_string()
                 .is_err()
         );
-
-        {
-            let mut list = List::new();
-            list.add(Value::Integer(1));
-            list.add(Value::Nil);
-            let list_a = List::new();
-            list.add(list_a.into());
-            let mut list_b = List::new();
-            list_b.add("bar".to_value());
-            list.add(list_b.into());
-
-            let str = format!("{}", Value::List(list.into()).as_string().unwrap());
-            assert_eq!(str, r#"[1,nil,[],["bar"]]"#);
-        }
-        do_test_as_string(Value::Dict(Dict::new().into()), "dict()");
-
-        {
-            let mut dict = Dict::new();
-            dict.set("one".into(), Value::Integer(1));
-            dict.set("nil".into(), Value::Nil);
-            let dict_a = Dict::new();
-            dict.set("dict_a".into(), dict_a.into());
-            let mut dict_b = Dict::new();
-            dict_b.set("foo".into(), "bar".to_value());
-            dict.set("dict_b".into(), dict_b.into());
-
-            let str = format!("{}", Value::Dict(dict.into()).as_string().unwrap());
-            assert!(str.starts_with("dict("));
-            assert!(str.ends_with(")"));
-            assert!(str.contains(r#""one":1"#));
-            assert!(str.contains(r#""nil":nil"#));
-            assert!(str.contains(r#""dict_a":dict()"#));
-            assert!(str.contains(r#""dict_b":dict("foo":"bar")"#));
-            assert_eq!(str.chars().filter(|c| *c == ',').count(), 3);
-            assert_eq!(
-                str.len(),
-                r#"dict("one":1,"nil":nil,"dict_a":dict(),"dict_b":dict("foo":"bar"))"#.len()
-            );
-        }
-        do_test_as_string(Value::Dict(Dict::new().into()), "dict()");
     }
 
-    #[test]
-    fn test_dict() {
-        let mut d = Dict::new();
-
-        let key = "foo".into();
-
-        assert_eq!(d.get(&key), None);
-
-        d.set(key.clone(), 42.to_value());
-        assert_eq!(d.get(&key), Some(42.to_value()));
-
-        d.set(key.clone(), "aaa".to_value());
-        assert_eq!(d.get(&key), Some("aaa".to_value()));
-
-        assert_eq!(d.remove(&key), Some("aaa".to_value()));
-        assert_eq!(d.get(&key), None);
-    }
-
-    #[test]
-    fn test_list() {
-        let mut l = List::new();
-
-        assert_eq!(l.get(0), None);
-        assert_eq!(l.get(1), None);
-        assert_eq!(l.len(), 0);
-
-        l.add(42.to_value());
-        assert_eq!(l.get(0), Some(42.to_value()));
-        assert_eq!(l.get(1), None);
-        assert_eq!(l.len(), 1);
-
-        l.add("aaa".to_value());
-        assert_eq!(l.get(0), Some(42.to_value()));
-        assert_eq!(l.get(1), Some("aaa".to_value()));
-        assert_eq!(l.len(), 2);
-    }
-
-    #[track_caller]
-    fn do_test_debug_str(val: impl Into<Value>, expected: &str) {
-        let val = val.into();
-        let actual = format!("{val:?}");
-        assert_eq!(actual, expected);
-    }
     #[test]
     fn test_debug_str() {
         // strings
@@ -1084,36 +616,17 @@ mod tests {
             KeyValue::new("a".into(), 123.to_value()).to_value(),
             r#"(a:123)"#,
         );
-        {
-            let mut list = List::new();
-            list.add(1.to_value());
-            list.add(Value::Nil);
-            do_test_debug_str(list.to_value(), r#"[1,nil]"#);
-        }
+    }
 
-        {
-            let mut dict = Dict::new();
-            dict.set("one".into(), 1.to_value());
-            dict.set("two".into(), Value::Nil);
-            do_test_debug_str(dict.to_value(), r#"dict(one:1,two:nil)"#);
-        }
-        {
-            let mut dict = Dict::new();
-            dict.set("one".into(), Value::Integer(1));
-            dict.set("nil".into(), Value::Nil);
-            let dict_a = Dict::new();
-            dict.set("dict_a".into(), dict_a.into());
-            let mut dict_b = Dict::new();
-            dict_b.set("foo".into(), "bar".to_value());
-            dict.set("dict_b".into(), dict_b.into());
-            let mut list_a = List::new();
-            list_a.add(42.to_value());
-            list_a.add(43.to_value());
-            dict.set("list_a".into(), list_a.into());
-            do_test_debug_str(
-                dict.to_value(),
-                r#"dict(dict_a:dict(),dict_b:dict(foo:"bar"),list_a:[42,43],nil:nil,one:1)"#,
-            );
-        }
+    #[track_caller]
+    pub fn do_test_as_string(val: Value, expected: &str) {
+        assert_eq!(format!("{}", val.as_string().unwrap()), expected);
+    }
+
+    #[track_caller]
+    pub fn do_test_debug_str(val: impl Into<Value>, expected: &str) {
+        let val = val.into();
+        let actual = format!("{val:?}");
+        assert_eq!(actual, expected);
     }
 }
