@@ -242,30 +242,35 @@ impl FunctionCall {
         match func {
             Func::FuncDef(func) => {
                 // FIXME: normal function call should have a new context, but what about closures ?
-                // self.call_function_def(&func, ctxt, this)
-                // build the function call context
-                // FIXME: normal function call should have a new context, but what about closures ?
                 let mut call_context =
                     self.build_call_context(ctxt, func.params(), this, &self.span)?;
 
-                match func.call(&mut call_context) {
-                    v @ Ok(_) => v,
-                    e @ Err(EvalStop::Error(_)) => e,
-                    Err(EvalStop::Return(value)) => Ok(value),
-                    Err(EvalStop::Break(span)) => {
-                        Err(EvalStop::Error(InternalProgramError::BreakWithoutLoop {
-                            span,
-                        }))
-                    }
-                    Err(EvalStop::Continue(span)) => {
-                        Err(EvalStop::Error(InternalProgramError::ContinueWithoutLoop {
-                            span,
-                        }))
-                    }
-                    Err(EvalStop::Throw) => todo!(),
-                }
+                let result = func.call(&mut call_context);
+                Self::map_function_call_result(result)
             }
-            Func::BuiltIn(func) => self.eval_builtin(ctxt, &func),
+            Func::BuiltIn(func) => {
+                let result = func(self, ctxt);
+                Self::map_function_call_result(result)
+            }
+        }
+    }
+
+    fn map_function_call_result(value: Result<Value, EvalStop>) -> Result<Value, EvalStop> {
+        match value {
+            v @ Ok(_) => v,
+            e @ Err(EvalStop::Error(_)) => e,
+            Err(EvalStop::Return(value)) => Ok(value),
+            Err(EvalStop::Break(span)) => {
+                Err(EvalStop::Error(InternalProgramError::BreakWithoutLoop {
+                    span,
+                }))
+            }
+            Err(EvalStop::Continue(span)) => {
+                Err(EvalStop::Error(InternalProgramError::ContinueWithoutLoop {
+                    span,
+                }))
+            }
+            Err(EvalStop::Throw) => todo!(),
         }
     }
 
@@ -352,17 +357,6 @@ impl FunctionCall {
         }
 
         Ok(call_context)
-    }
-
-    fn eval_builtin(&self, ctxt: &mut Context, func: &FunctionType) -> Result<Value, EvalStop> {
-        match func(self, ctxt) {
-            v @ Ok(_) => v,
-            e @ Err(EvalStop::Error(_)) => e,
-            Err(EvalStop::Return(value)) => Ok(value),
-            Err(EvalStop::Break(_span)) => todo!(),
-            Err(EvalStop::Continue(_span)) => todo!(),
-            Err(EvalStop::Throw) => todo!(),
-        }
     }
 }
 
