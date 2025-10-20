@@ -68,7 +68,7 @@ impl core::fmt::Debug for Param {
                 Param::Optional(var, default_value) => {
                     var.ident.key.fmt(f)?;
                     f.write_str(": ")?;
-                    default_value.fmt(f)
+                    write!(f, "{default_value}")
                 }
                 Param::OtherPositional(var) => {
                     f.write_str("*")?;

@@ -30,11 +30,12 @@ impl Eval for InterpolatedStr {
         if self.parts.len() == 1 {
             self.parts.first().expect("should be there").eval(ctxt)
         } else {
+            // FIXME: change to writer/display format
             let mut res = String::new();
             for p in &self.parts {
                 let val = p.eval(ctxt)?;
-                let s = val.as_string()?;
-                res.push_str(&format!("{s}"));
+                let s = val.as_string();
+                res.push_str(s.as_str());
             }
             Ok(Value::Str(Rc::new(res)))
         }

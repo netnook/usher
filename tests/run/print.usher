@@ -1,9 +1,21 @@
-print("aa", "bb")
+print(42)
+print(42.42)
+print(true)
+print(false)
+print("a-string")
+print(["a", "list", 42])
+print(dict(a:"aaa", b:42, c:"ccc"))
+print(dict(a:"aaa", b:42, c:["sub", dict(x:"list", y:[])]))
+print([dict(a:"aaa", b:42), ["sub", dict(x:"list", y:[])]])
+print(42, 42.42, true, false, "a", "string", [], dict())
 ---stdout---
-aa, bb
----stderr---
-**************************************************
-eprint("aa", "bb")
----stdout---
----stderr---
-aa, bb
+42
+42.42
+true
+false
+a-string
+["a","list",42]
+dict("a":"aaa","b":42,"c":"ccc")
+dict("a":"aaa","b":42,"c":["sub",dict("x":"list","y":[])])
+[dict("a":"aaa","b":42),["sub",dict("x":"list","y":[])]]
+42, 42.42, true, false, a, string, [], dict()

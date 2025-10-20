@@ -39,7 +39,7 @@ fn builtin_do_print(
             // FIXME: default should be no separator, and have a named arg "sep=', '" for nicer formatting
             output.write_all(b", ").expect("FIXME")
         }
-        let arg = arg.as_string()?;
+        let arg = arg.as_string();
         output.write_all(arg.as_bytes()).expect("FIXME")
     }
 

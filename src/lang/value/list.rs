@@ -2,7 +2,11 @@ use crate::lang::{
     Context, EvalStop, FunctionCall, Key, Value,
     function::{MethodResolver, MethodType},
 };
-use std::{cell::RefCell, rc::Rc};
+use std::{
+    cell::RefCell,
+    fmt::{Display, Write},
+    rc::Rc,
+};
 
 pub type ListCell = Rc<RefCell<List>>;
 
@@ -67,9 +71,30 @@ impl From<Vec<Value>> for List {
         Self { content: value }
     }
 }
+
 impl From<List> for ListCell {
     fn from(value: List) -> Self {
         Rc::new(RefCell::new(value))
+    }
+}
+
+impl Display for List {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
+        fmt.write_char('[')?;
+
+        let mut first = true;
+        for v in &self.content {
+            if !first {
+                fmt.write_char(',')?;
+            } else {
+                first = false;
+            }
+            v.fmt(fmt)?;
+        }
+
+        fmt.write_char(']')?;
+
+        Ok(())
     }
 }
 
@@ -126,7 +151,6 @@ fn list_add(
 mod tests {
     use super::*;
     use crate::lang::Value;
-    use crate::lang::value::tests::do_test_as_string;
     use crate::parser::tests::ToValue;
 
     #[test]
@@ -224,24 +248,6 @@ mod tests {
     }
 
     #[test]
-    fn test_value_display() {
-        do_test_as_string(Value::List(List::new().into()), "[]");
-        {
-            let mut list = List::new();
-            list.add(Value::Integer(1));
-            list.add(Value::Nil);
-            let list_a = List::new();
-            list.add(list_a.into());
-            let mut list_b = List::new();
-            list_b.add("bar".to_value());
-            list.add(list_b.into());
-
-            let str = format!("{}", Value::List(list.into()).as_string().unwrap());
-            assert_eq!(str, r#"[1,nil,[],["bar"]]"#);
-        }
-    }
-
-    #[test]
     fn test_list() {
         let mut l = List::new();
 
@@ -260,20 +266,29 @@ mod tests {
         assert_eq!(l.len(), 2);
     }
 
-    #[track_caller]
-    fn do_test_debug_str(val: impl Into<Value>, expected: &str) {
-        let val = val.into();
-        let actual = format!("{val:?}");
-        assert_eq!(actual, expected);
-    }
-
     #[test]
-    fn test_debug_str() {
+    fn test_display() {
+        {
+            let val = Value::List(List::new().into());
+            let expected = "[]";
+            assert_eq!(format!("{val}"), expected);
+            assert_eq!(val.as_string(), expected);
+        };
         {
             let mut list = List::new();
-            list.add(1.to_value());
+            list.add(Value::Integer(1));
             list.add(Value::Nil);
-            do_test_debug_str(list.to_value(), r#"[1,nil]"#);
+            let list_a = List::new();
+            list.add(list_a.into());
+            let mut list_b = List::new();
+            list_b.add("bar".to_value());
+            list.add(list_b.into());
+
+            let val = Value::List(list.into());
+            let expected = r#"[1,nil,[],["bar"]]"#;
+
+            assert_eq!(format!("{val}"), expected);
+            assert_eq!(val.as_string(), expected);
         }
     }
 }

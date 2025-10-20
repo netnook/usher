@@ -95,7 +95,7 @@ fn run_script(path: &Path, src: String) -> datatest_stable::Result<()> {
                 let result = prog.eval_with_context(&mut ctxt);
 
                 let actual_result = match result {
-                    Ok(ok) => format!("{ok:#?}"),
+                    Ok(ok) => format!("{ok}"),
                     Err(e) => {
                         printer::print_eval_error(&mut stderr, e)?;
                         "".to_string()

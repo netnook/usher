@@ -12,7 +12,7 @@ impl core::fmt::Debug for Literal {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let minimal = f.sign_minus();
         if minimal {
-            write!(f, "Literal({:-#?})", self.val)
+            write!(f, "Literal({})", self.val)
         } else {
             f.debug_struct("Literal")
                 .field("val", &self.val)

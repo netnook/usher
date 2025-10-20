@@ -8,6 +8,7 @@ use std::{
         HashMap,
         hash_map::{Iter, Keys},
     },
+    fmt::{Display, Write},
     rc::Rc,
 };
 
@@ -73,12 +74,40 @@ impl MethodResolver for DictCell {
     }
 }
 
+impl Display for Dict {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
+        fmt.write_str("dict(")?;
+
+        // make the output sortable for testing
+        let mut keys: Vec<&Key> = self.content.keys().collect();
+        keys.sort();
+
+        let mut first = true;
+        for k in keys {
+            match first {
+                true => first = false,
+                false => fmt.write_char(',')?,
+            }
+            fmt.write_char('"')?;
+            fmt.write_str(k.as_str())?;
+            fmt.write_str("\":")?;
+
+            match self.get(k) {
+                Some(v) => Display::fmt(&v, fmt)?,
+                None => fmt.write_str("?none?")?,
+            }
+        }
+
+        fmt.write_char(')')?;
+
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::lang::Value;
-    use crate::lang::value::list::List;
-    use crate::lang::value::tests::{do_test_as_string, do_test_debug_str};
     use crate::parser::tests::ToValue;
 
     #[test]
@@ -176,34 +205,6 @@ mod tests {
     }
 
     #[test]
-    fn test_value_display() {
-        do_test_as_string(Value::Dict(Dict::new().into()), "dict()");
-        {
-            let mut dict = Dict::new();
-            dict.set("one".into(), Value::Integer(1));
-            dict.set("nil".into(), Value::Nil);
-            let dict_a = Dict::new();
-            dict.set("dict_a".into(), dict_a.into());
-            let mut dict_b = Dict::new();
-            dict_b.set("foo".into(), "bar".to_value());
-            dict.set("dict_b".into(), dict_b.into());
-
-            let str = format!("{}", Value::Dict(dict.into()).as_string().unwrap());
-            assert!(str.starts_with("dict("));
-            assert!(str.ends_with(")"));
-            assert!(str.contains(r#""one":1"#));
-            assert!(str.contains(r#""nil":nil"#));
-            assert!(str.contains(r#""dict_a":dict()"#));
-            assert!(str.contains(r#""dict_b":dict("foo":"bar")"#));
-            assert_eq!(str.chars().filter(|c| *c == ',').count(), 3);
-            assert_eq!(
-                str.len(),
-                r#"dict("one":1,"nil":nil,"dict_a":dict(),"dict_b":dict("foo":"bar"))"#.len()
-            );
-        }
-    }
-
-    #[test]
     fn test_dict() {
         let mut d = Dict::new();
 
@@ -222,13 +223,13 @@ mod tests {
     }
 
     #[test]
-    fn test_debug_str() {
+    fn test_display() {
         {
-            let mut dict = Dict::new();
-            dict.set("one".into(), 1.to_value());
-            dict.set("two".into(), Value::Nil);
-            do_test_debug_str(dict.to_value(), r#"dict(one:1,two:nil)"#);
-        }
+            let val = Value::Dict(Dict::new().into());
+            let expected = "dict()";
+            assert_eq!(format!("{val}"), expected);
+            assert_eq!(val.as_string(), expected);
+        };
         {
             let mut dict = Dict::new();
             dict.set("one".into(), Value::Integer(1));
@@ -238,14 +239,11 @@ mod tests {
             let mut dict_b = Dict::new();
             dict_b.set("foo".into(), "bar".to_value());
             dict.set("dict_b".into(), dict_b.into());
-            let mut list_a = List::new();
-            list_a.add(42.to_value());
-            list_a.add(43.to_value());
-            dict.set("list_a".into(), list_a.into());
-            do_test_debug_str(
-                dict.to_value(),
-                r#"dict(dict_a:dict(),dict_b:dict(foo:"bar"),list_a:[42,43],nil:nil,one:1)"#,
-            );
+
+            let expected = r#"dict("dict_a":dict(),"dict_b":dict("foo":"bar"),"nil":nil,"one":1)"#;
+            let val = Value::Dict(dict.into());
+            assert_eq!(format!("{val}"), expected);
+            assert_eq!(val.as_string(), expected);
         }
     }
 }

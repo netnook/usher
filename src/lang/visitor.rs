@@ -242,7 +242,7 @@ mod tests {
                 v.accept(self)
             }
             fn visit_literal(&mut self, v: &Literal) -> VisitorResult<()> {
-                self.push(format!("Literal {:?}", v.val));
+                self.push(format!("Literal {}", v.val));
                 v.accept(self)
             }
             fn visit_interpolated_str(&mut self, v: &InterpolatedStr) -> VisitorResult<()> {

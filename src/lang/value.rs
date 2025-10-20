@@ -2,12 +2,11 @@ mod dict;
 mod list;
 mod string;
 
-use super::{FunctionDef, InternalProgramError, Span};
-use crate::lang::{EvalStop, Key, function::FunctionType};
+use super::{FunctionDef, InternalProgramError};
+use crate::lang::{Key, function::FunctionType};
 pub use dict::{Dict, DictCell};
 pub use list::{List, ListCell};
 use std::{
-    borrow::Cow,
     cell::RefCell,
     fmt::{Display, Write},
     rc::Rc,
@@ -54,7 +53,7 @@ impl ValueType {
     }
 }
 
-#[derive(PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 #[allow(clippy::enum_variant_names)]
 pub enum Value {
     Func(Func),
@@ -69,66 +68,44 @@ pub enum Value {
     End,
 }
 
-// FIXME: debug vs display vs .as_string -> merge into 1 if possible
-impl core::fmt::Debug for Value {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl Value {
+    pub(crate) fn as_string(&'_ self) -> String {
         match self {
-            Value::Func(_) => todo!(),
-            Value::Str(v) => {
-                f.write_char('"')?;
-                f.write_str(v)?;
-                f.write_char('"')?;
-            }
-            Value::Integer(v) => write!(f, "{v}")?,
-            Value::Float(v) => write!(f, "{v}")?,
-            Value::Bool(v) => write!(f, "{v}")?,
-            Value::List(v) => {
-                f.write_char('[')?;
-                let mut first = true;
-                for v in &v.borrow().content {
-                    match first {
-                        true => first = false,
-                        false => f.write_char(',')?,
-                    }
-                    v.fmt(f)?;
-                }
-                f.write_char(']')?;
-            }
-            Value::Dict(v) => {
-                f.write_str("dict(")?;
-
-                // make the output sortable for testing
-                let v = v.borrow();
-                let mut keys: Vec<&Key> = v.content.keys().collect();
-                keys.sort();
-
-                let mut first = true;
-                for k in keys {
-                    match first {
-                        true => first = false,
-                        false => f.write_char(',')?,
-                    }
-                    f.write_str(k.as_str())?;
-                    f.write_char(':')?;
-                    match v.get(k) {
-                        Some(v) => v.fmt(f)?,
-                        None => f.write_str("?none?")?,
-                    }
-                }
-
-                f.write_char(')')?;
-            }
-            Value::KeyValue(kv) => {
-                f.write_str("(")?;
-                f.write_str(kv.key.as_str())?;
-                f.write_char(':')?;
-                kv.value.fmt(f)?;
-                f.write_str(")")?;
-            }
-            Value::Nil => f.write_str("nil")?,
-            Value::End => f.write_str("end")?,
+            Value::Func(v) => format!("{v}"),
+            Value::Str(v) => format!("{v}"),
+            Value::Integer(v) => format!("{v}"),
+            Value::Float(v) => format!("{v}"),
+            Value::Bool(v) => format!("{v}"),
+            Value::List(v) => format!("{v}", v = v.borrow()),
+            Value::Dict(v) => format!("{v}", v = v.borrow()),
+            Value::KeyValue(v) => format!("{v}"),
+            Value::Nil => "nil".to_string(),
+            Value::End => "end".to_string(),
         }
-        Ok(())
+    }
+}
+
+impl Display for Value {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Value::Func(v) => Display::fmt(v, fmt),
+            // Value::Str(v) => Display::fmt(v.as_ref(), into),
+            Value::Str(v) => {
+                fmt.write_char('"')?;
+                fmt.write_str(v)?;
+                fmt.write_char('"')?;
+                Ok(())
+                // format!(r#""{v}""#)
+            }
+            Value::Integer(v) => Display::fmt(v, fmt),
+            Value::Float(v) => Display::fmt(v, fmt),
+            Value::Bool(v) => Display::fmt(v, fmt),
+            Value::List(v) => Display::fmt(&*v.borrow(), fmt),
+            Value::Dict(v) => Display::fmt(&*v.borrow(), fmt),
+            Value::KeyValue(v) => Display::fmt(v.as_ref(), fmt),
+            Value::Nil => fmt.write_str("nil"),
+            Value::End => fmt.write_str("end"),
+        }
     }
 }
 
@@ -176,108 +153,6 @@ impl Value {
             Value::Nil => Value::Nil,
             Value::End => Value::End,
         }
-    }
-
-    pub fn as_string(&'_ self) -> Result<Cow<'_, str>, EvalStop> {
-        Ok(match self {
-            Value::Func(_) => {
-                let mut result = String::new();
-                self.write_to(&mut result)?;
-                Cow::Owned(result)
-            }
-            Value::Str(v) => Cow::Borrowed(v),
-            Value::Integer(v) => Cow::Owned(format!("{v}")),
-            Value::Float(v) => Cow::Owned(format!("{v}")),
-            Value::Bool(v) => match v {
-                true => Cow::Borrowed("true"),
-                false => Cow::Borrowed("false"),
-            },
-            Value::List(_) => {
-                let mut result = String::new();
-                self.write_to(&mut result)?;
-                Cow::Owned(result)
-            }
-            Value::Dict(_) => {
-                let mut result = String::new();
-                self.write_to(&mut result)?;
-                Cow::Owned(result)
-            }
-            Value::KeyValue(_) => {
-                let mut result = String::new();
-                self.write_to(&mut result)?;
-                Cow::Owned(result)
-            }
-            Value::Nil => Cow::Borrowed("nil"),
-            Value::End => Cow::Borrowed("end"),
-        })
-    }
-
-    fn write_to(&self, into: &mut String) -> Result<(), EvalStop> {
-        match self {
-            Value::Func(_) => {
-                return InternalProgramError::CannotConvertToString {
-                    typ: self.value_type(),
-                    span: Span::new(0, 0), // FIXME: correct pos
-                }
-                .into();
-            }
-            Value::Str(v) => {
-                // FIXME: in write_to, str is quoted.  In as_string above it is not.  Unify ?
-                into.push('"');
-                into.push_str(v);
-                into.push('"');
-            }
-            Value::Integer(v) => into.push_str(&format!("{v}")),
-            Value::Float(v) => into.push_str(&format!("{v}")),
-            Value::Bool(v) => match v {
-                true => into.push_str("true"),
-                false => into.push_str("false"),
-            },
-            Value::List(v) => {
-                into.push('[');
-
-                let mut first = true;
-                for v in &v.borrow().content {
-                    if !first {
-                        into.push(',');
-                    } else {
-                        first = false;
-                    }
-                    v.write_to(into)?;
-                }
-
-                into.push(']');
-            }
-            Value::Dict(v) => {
-                into.push_str("dict(");
-
-                let mut first = true;
-                for (k, v) in &v.borrow().content {
-                    if !first {
-                        into.push(',');
-                    } else {
-                        first = false;
-                    }
-                    into.push('"');
-                    into.push_str(k.as_str());
-                    into.push('"');
-                    into.push(':');
-                    v.write_to(into)?;
-                }
-
-                into.push(')');
-            }
-            Value::KeyValue(v) => {
-                into.push_str("(\"");
-                into.push_str(v.key.as_str());
-                into.push_str("\":");
-                v.value.write_to(into)?;
-                into.push(')');
-            }
-            Value::Nil => into.push_str("nil"),
-            Value::End => into.push_str("end"),
-        }
-        Ok(())
     }
 
     pub fn value_type(&self) -> ValueType {
@@ -346,6 +221,15 @@ impl PartialEq for Func {
     }
 }
 
+impl Display for Func {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Func::FuncDef(_) => fmt.write_str("<function-def>"),
+            Func::BuiltIn(_) => fmt.write_str("<builtin-function>"),
+        }
+    }
+}
+
 pub type KeyValueCell = Rc<KeyValue>;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -374,11 +258,21 @@ impl KeyValue {
     }
 }
 
+impl Display for KeyValue {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
+        fmt.write_str("(\"")?;
+        fmt.write_str(self.key.as_str())?;
+        fmt.write_str("\":")?;
+        self.value.fmt(fmt)?;
+        fmt.write_char(')')?;
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 pub mod tests {
     use super::*;
     use crate::lang::Value;
-    use crate::lang::builtin_functions::resolve_function;
     use crate::parser::tests::{_block, _func, ToValue};
 
     #[test]
@@ -569,64 +463,26 @@ pub mod tests {
 
     #[test]
     fn test_value_display() {
-        // strings
-        do_test_as_string("the-string".to_value(), "the-string");
-        do_test_as_string("the-s\"tring".to_value(), "the-s\"tring");
-
         // integers
-        do_test_as_string(000.to_value(), "0");
-        do_test_as_string(10000.to_value(), "10000");
-        do_test_as_string((-10000).to_value(), "-10000");
+        assert_eq!(format!("{}", 000.to_value()), "0");
+        assert_eq!(format!("{}", 10000.to_value()), "10000");
+        assert_eq!(format!("{}", (-10000).to_value()), "-10000");
 
         // floats
-        do_test_as_string(000.00.to_value(), "0");
-        do_test_as_string(10000.0.to_value(), "10000");
-        do_test_as_string((-10000.0).to_value(), "-10000");
-        do_test_as_string(10000.012340.to_value(), "10000.01234");
-        do_test_as_string((-10000.012340).to_value(), "-10000.01234");
+        assert_eq!(format!("{}", 000.00.to_value()), "0");
+        assert_eq!(format!("{}", 10000.0.to_value()), "10000");
+        assert_eq!(format!("{}", (-10000.0).to_value()), "-10000");
+        assert_eq!(format!("{}", 10000.012340.to_value()), "10000.01234");
+        assert_eq!(format!("{}", (-10000.012340).to_value()), "-10000.01234");
 
         // bool
-        do_test_as_string(true.to_value(), "true");
-        do_test_as_string(false.to_value(), "false");
+        assert_eq!(format!("{}", true.to_value()), "true");
+        assert_eq!(format!("{}", false.to_value()), "false");
 
         // nil
-        do_test_as_string(Value::Nil, "nil");
+        assert_eq!(format!("{}", Value::Nil), "nil");
 
         // end
-        do_test_as_string(Value::End, "end");
-
-        assert!(
-            Value::Func(Func::BuiltIn(resolve_function(&"print".into()).unwrap()))
-                .as_string()
-                .is_err()
-        );
-    }
-
-    #[test]
-    fn test_debug_str() {
-        // strings
-        do_test_debug_str("abc".to_value(), r#""abc""#);
-        do_test_debug_str(123.to_value(), r#"123"#);
-        do_test_debug_str(12.3.to_value(), r#"12.3"#);
-        do_test_debug_str(true.to_value(), r#"true"#);
-        do_test_debug_str(false.to_value(), r#"false"#);
-        do_test_debug_str(Value::Nil, r#"nil"#);
-        do_test_debug_str(Value::End, r#"end"#);
-        do_test_debug_str(
-            KeyValue::new("a".into(), 123.to_value()).to_value(),
-            r#"(a:123)"#,
-        );
-    }
-
-    #[track_caller]
-    pub fn do_test_as_string(val: Value, expected: &str) {
-        assert_eq!(format!("{}", val.as_string().unwrap()), expected);
-    }
-
-    #[track_caller]
-    pub fn do_test_debug_str(val: impl Into<Value>, expected: &str) {
-        let val = val.into();
-        let actual = format!("{val:?}");
-        assert_eq!(actual, expected);
+        assert_eq!(format!("{}", Value::End), "end");
     }
 }

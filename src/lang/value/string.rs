@@ -80,8 +80,6 @@ fn str_split(call: &FunctionCall, this: StringCell, ctxt: &mut Context) -> Resul
 pub mod tests {
     use super::*;
     use crate::lang::Value;
-    use crate::lang::value::tests::{do_test_as_string, do_test_debug_str};
-    use crate::parser::tests::ToValue;
 
     #[test]
     fn test_ref_clone() {
@@ -126,13 +124,20 @@ pub mod tests {
     }
 
     #[test]
-    fn test_value_display() {
-        do_test_as_string("the-string".to_value(), "the-string");
-        do_test_as_string("the-s\"tring".to_value(), "the-s\"tring");
-    }
-
-    #[test]
-    fn test_debug_str() {
-        do_test_debug_str("abc".to_value(), r#""abc""#);
+    fn test_display() {
+        {
+            let val: Value = "the-string".into();
+            let expected1 = "the-string";
+            let expected2 = "\"the-string\"";
+            assert_eq!(val.as_string(), expected1);
+            assert_eq!(format!("{val}"), expected2);
+        }
+        {
+            let val: Value = "the-s\"tring".into();
+            let expected1 = "the-s\"tring";
+            let expected2 = "\"the-s\"tring\"";
+            assert_eq!(val.as_string(), expected1);
+            assert_eq!(format!("{val}"), expected2);
+        }
     }
 }

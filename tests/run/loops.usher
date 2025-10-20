@@ -63,5 +63,5 @@ for kv in dat {
 }
 last
 ---result---
-(b:2)
+("b":2)
 

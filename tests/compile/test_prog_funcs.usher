@@ -54,7 +54,7 @@ Program { [
         name: foo,
         params: [
             a: 8,
-            b: dict(c:44,d:45),
+            b: dict("c":44,"d":45),
         ],
         body: Block {[
             Return { Literal(42) },
