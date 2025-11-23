@@ -103,6 +103,7 @@ mod tests {
         lang::Span,
         parser::{
             expression::tests::{do_test_expr_err, do_test_expr_ok},
+            stmt::tests::do_test_stmt_ok,
             tests::*,
         },
     };
@@ -167,22 +168,20 @@ mod tests {
             },
         );
 
-        // FIXME: validation - the following should not be allowed
-        // do_test_expr_err(" 3 + function() { true }", 5, "foo");
+        do_test_stmt_ok(
+            " var a = function() { true } ",
+            decl(var("a"), _func!(_block![b(true)])),
+            -1,
+        );
 
-        // do_test_stmt_ok(
-        //     " var a = function() { true } ",
-        //     _func!(
-        //         p = [_param!("a"), _param!("b"), _param!("cd")],
-        //         _block![i(1)]
-        //     )
-        //     .into(),
-        //     -1,
-        // );
+        // // FIXME: validation - the following should not be allowed
+
         // do_test_stmt_err(
         //     " var a = function named() { true }",
-        //     18,
-        //     "named not allowed in assingment",
+        //     SyntaxError::ReservedName {
+        //         got: "ad".to_string(),
+        //         span: Span::new(0, 0),
+        //     },
         // );
     }
 }

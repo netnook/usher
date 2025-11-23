@@ -93,6 +93,8 @@ pub enum InternalProgramError {
     FunctionCallMissingRequiredArgument { name: String, span: Span },
     #[error("Unknown variable '{name}'.")]
     UndeclaredVariable { name: String, span: Span },
+    #[error("'{name}' already declared.")]
+    NameAlreadyDeclared { name: String, span: Span },
     #[error("Wrong type for argument '{name}'.  Expected {expected} but found {actual}.")]
     FunctionCallBadArgType {
         name: String,
@@ -225,6 +227,7 @@ impl InternalProgramError {
             InternalProgramError::BreakWithoutLoop { span } => span,
             InternalProgramError::ContinueWithoutLoop { span } => span,
             InternalProgramError::NoSuchFunction { name: _, span } => span,
+            InternalProgramError::NameAlreadyDeclared { name: _, span } => span,
         }
     }
 

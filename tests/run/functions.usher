@@ -1,10 +1,43 @@
+# simple print
 print("a")
 ---stdout---
 a
 ********************************
+# error on non existent function
 non_existent("a")
 ---stderr---
-Evaluation error in tests/run/functions.usher at line 1, char 1:
+Evaluation error in tests/run/functions.usher at line 2, char 1:
   |
-1 | non_existent("a")
+2 | non_existent("a")
   | ^^^^^^^^^^^^ Unknown function 'non_existent'.
+********************************
+# declare named function and assign to var
+var fname1 = function fname2() {
+  print("called")
+}
+fname1()
+fname2()
+---stdout---
+called
+called
+********************************
+# error declaring function with existing name
+var fname = "x"
+function fname() {
+  print("called")
+}
+---stderr---
+Evaluation error in tests/run/functions.usher at line 3, char 10:
+  |
+3 | function fname() {
+  |          ^^^^^ 'fname' already declared.
+********************************
+# error declaring function with existing name - one-line
+var fname = function fname() {
+  print("called")
+}
+---stderr---
+Evaluation error in tests/run/functions.usher at line 2, char 5:
+  |
+2 | var fname = function fname() {
+  |     ^^^^^ 'fname' already declared.

@@ -72,13 +72,24 @@ impl Var {
         self.ident.span
     }
 
-    pub(crate) fn declare(&self, ctxt: &mut Context, value: Value) {
-        ctxt.declare(self.ident.key.clone(), value)
+    pub(crate) fn declare(&self, ctxt: &mut Context, value: Value) -> Result<(), EvalStop> {
+        match ctxt.declare(self.ident.key.clone(), value) {
+            true => Ok(()),
+            // FIXME: move the check to the ctxt with specialised methods and errors for
+            // .replace, .declare, ....
+            false => Err(InternalProgramError::NameAlreadyDeclared {
+                name: self.ident.key.to_string(),
+                span: self.ident.span,
+            }
+            .into()),
+        }
     }
 }
 
 impl Eval for Var {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
+        // FIXME: move the check to the ctxt with specialised methods and errors for
+        // .replace, .declare, ....
         if let Some(value) = ctxt.get(&self.ident.key) {
             return Ok(value);
         }
@@ -98,6 +109,8 @@ accept_default!(Var);
 
 impl Setter for Var {
     fn set(&self, ctxt: &mut Context, value: Value) -> Result<(), EvalStop> {
+        // FIXME: move the check to the ctxt with specialised methods and errors for
+        // .replace, .declare, ....
         if !ctxt.contains_key(&self.ident.key) {
             return Err(InternalProgramError::UndeclaredVariable {
                 name: self.ident.as_string(),
@@ -138,7 +151,7 @@ impl core::fmt::Debug for Declaration {
 impl Eval for Declaration {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
         let value = self.value.eval(ctxt)?;
-        self.var.declare(ctxt, value);
+        self.var.declare(ctxt, value)?;
         Ok(Value::Nil)
     }
 }

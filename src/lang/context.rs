@@ -35,11 +35,11 @@ impl Context {
         self.inner.borrow_mut().set(key, value);
     }
 
-    pub fn declare(&mut self, key: Key, value: Value) {
+    pub fn declare(&mut self, key: Key, value: Value) -> bool {
         if key.is_this() {
             panic!("should not be able to declare 'this'")
         }
-        self.inner.borrow_mut().declare(key, value);
+        self.inner.borrow_mut().declare(key, value)
     }
 
     pub(crate) fn get_this(&self) -> Option<Value> {
@@ -147,8 +147,8 @@ impl ContextInner {
         Some(value)
     }
 
-    fn declare(&mut self, key: Key, value: Value) {
-        self.vars.insert(key, value);
+    fn declare(&mut self, key: Key, value: Value) -> bool {
+        self.vars.insert(key, value).is_none()
     }
 
     fn len(&self) -> usize {

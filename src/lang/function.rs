@@ -118,7 +118,16 @@ impl Eval for Rc<FunctionDef> {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
         let f = Value::Func(Func::FuncDef(Rc::clone(self)));
         if let Some(name) = &self.name {
-            ctxt.set(&name.ident.key, f.ref_clone());
+            match ctxt.declare(name.ident.key.clone(), f.ref_clone()) {
+                true => (),
+                false => {
+                    return Err(InternalProgramError::NameAlreadyDeclared {
+                        name: name.ident.as_string(),
+                        span: name.ident.span,
+                    }
+                    .into());
+                }
+            }
         };
         Ok(f)
     }
@@ -235,7 +244,7 @@ impl Eval for FunctionCall {
                     _ => {}
                 }
 
-                // FIXME: better error - list all methods ?
+                // TODO: better error - list all methods ?
                 Err(InternalProgramError::NoSuchMethod {
                     name: function.as_string(),
                     from: on_value_type,

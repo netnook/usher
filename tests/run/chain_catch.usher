@@ -7,11 +7,11 @@ var a = dict(
   e: 1,
 )
 
-var a = a.x
+var r = a.x
 ---stderr---
 Evaluation error in tests/run/chain_catch.usher at line 10, char 11:
    |
-10 | var a = a.x
+10 | var r = a.x
    |           ^ Property 'x' not found. The following properties are available: b, e
 *******************************************
 # error variant 2
@@ -23,11 +23,11 @@ var a = dict(
   e: 1,
 )
 
-var a = a.b.xx
+var r = a.b.xx
 ---stderr---
 Evaluation error in tests/run/chain_catch.usher at line 10, char 13:
    |
-10 | var a = a.b.xx
+10 | var r = a.b.xx
    |             ^^ Property 'xx' not found. The following properties are available: c, d
 *******************************************
 # error variant 3
@@ -39,11 +39,11 @@ var a = dict(
   e: 1,
 )
 
-var a = a.xxx.b
+var r = a.xxx.b
 ---stderr---
 Evaluation error in tests/run/chain_catch.usher at line 10, char 11:
    |
-10 | var a = a.xxx.b
+10 | var r = a.xxx.b
    |           ^^^ Property 'xxx' not found. The following properties are available: b, e
 *******************************************
 # catch variant 1
@@ -55,7 +55,7 @@ var a = dict(
   e: 1,
 )
 
-var a = a.x?
+var r = a.x?
 ---result---
 nil
 *******************************************
@@ -68,7 +68,7 @@ var a = dict(
   e: 1,
 )
 
-var a = a.b.x?
+var r = a.b.x?
 ---result---
 nil
 *******************************************
@@ -81,6 +81,6 @@ var a = dict(
   e: 1,
 )
 
-var a = a.x?.b
+var r = a.x?.b
 ---result---
 nil

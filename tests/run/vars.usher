@@ -20,3 +20,12 @@ Evaluation error in tests/run/vars.usher at line 2, char 1:
   |
 2 | aaa
   | ^^^ Unknown variable 'aaa'.
+**************************************
+# test 4
+var aaa = 1
+var aaa = 2
+---stderr---
+Evaluation error in tests/run/vars.usher at line 3, char 5:
+  |
+3 | var aaa = 2
+  |     ^^^ 'aaa' already declared.
