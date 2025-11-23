@@ -38,9 +38,9 @@ Program { [
     FunctionCall {
         on: FunctionCall {
             on: Var("a"),
-            method: b,
+            function: b,
         },
-        method: foo,
+        function: foo,
         args: [
             Literal("22"),
             c: Literal("cc"),

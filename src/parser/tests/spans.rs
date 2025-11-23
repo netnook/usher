@@ -155,10 +155,10 @@ fn test_stmt_spanneds() {
     do_test_parser_exact(
         Parser::stmt,
         r#" aaa(123).bbb(456) "#,
-        _call!(
-            _call!(var(id("aaa").spanned(1, 3)), arg(i(123).spanned(5, 3)),).spanned(1, 8),
-            method(id("bbb").spanned(10, 3)),
-            arg(i(456).spanned(14, 3)),
+        _method_call!(
+            _function_call!(id("aaa").spanned(1, 3), arg!(i(123).spanned(5, 3))).spanned(1, 8),
+            id("bbb").spanned(10, 3),
+            arg!(i(456).spanned(14, 3))
         )
         .spanned(9, 9)
         .into(),

@@ -15,6 +15,7 @@ function foo(a: 2*3) {
 
 foo("22", c:"ccc")
 a.foo("22", c:"ccc")
+foo[1]("22", c:"ccc")
 ---
 Program { [
     Assignment {
@@ -79,7 +80,7 @@ Program { [
         ]},
     },
     FunctionCall {
-        on: Var("foo"),
+        function: foo,
         args: [
             Literal("22"),
             c: Literal("ccc"),
@@ -87,7 +88,17 @@ Program { [
     },
     FunctionCall {
         on: Var("a"),
-        method: foo,
+        function: foo,
+        args: [
+            Literal("22"),
+            c: Literal("ccc"),
+        ],
+    },
+    FunctionCall {
+        on: IndexOf {
+            of: Var("foo"),
+            index: Literal(1),
+        },
         args: [
             Literal("22"),
             c: Literal("ccc"),

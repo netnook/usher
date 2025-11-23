@@ -1,9 +1,9 @@
 use super::{ParseResult, Parser, SyntaxError, chars::is_digit};
 use crate::{
     lang::{
-        Accept, Arg, AstNode, BinaryOp, BinaryOpCode, ChainCatch, End, FunctionCall, Identifier,
-        IndexOf, KeyValueBuilder, Literal, PropertyOf, Span, This, UnaryOp, UnaryOpCode, Value,
-        Var, Visitor, VisitorResult,
+        Accept, Arg, AstNode, BinaryOp, BinaryOpCode, ChainCatch, End, FunctionCall,
+        FunctionCallVariant, Identifier, IndexOf, KeyValueBuilder, Literal, PropertyOf, Span, This,
+        UnaryOp, UnaryOpCode, Value, Var, Visitor, VisitorResult,
     },
     parser::identifier::UncheckedIdentifier,
 };
@@ -252,23 +252,23 @@ impl<'a> Parser<'a> {
                 node = match node {
                     // FIXME: what if property-of has the `throw_on_missing_prop` flag set !!!
                     AstNode::PropertyOf(node) => AstNode::FunctionCall(FunctionCall {
-                        on: node.of,
-                        method: Some(node.property),
+                        variant: FunctionCallVariant::MethodCall {
+                            on: node.of,
+                            function: node.property,
+                        },
                         args,
                         span: Span::merge(node.span, span),
                     }),
-                    AstNode::IndexOf(_) => todo!(),
                     AstNode::ChainCatch(_) => todo!(),
-                    AstNode::Var(ref var) => AstNode::FunctionCall(FunctionCall {
+                    AstNode::Var(var) => AstNode::FunctionCall(FunctionCall {
                         span: Span::merge(var.span(), span),
-                        on: node.into(),
-                        // FIXME: create a named function call type for this
-                        method: None,
+                        variant: FunctionCallVariant::FunctionCall {
+                            function: var.ident,
+                        },
                         args,
                     }),
                     _ => AstNode::FunctionCall(FunctionCall {
-                        on: node.into(),
-                        method: None,
+                        variant: FunctionCallVariant::AnonymousCall { on: node.into() },
                         args,
                         span,
                     }),
@@ -544,15 +544,15 @@ pub mod tests {
         do_test_expr_ok(" foo.bar ", prop_of(var("foo"), "bar"), -1);
         do_test_expr_ok(" foo[\"bar\"] ", index_of(var("foo"), s("bar")), -1);
         do_test_expr_ok(" foo[bar] ", index_of(var("foo"), var("bar")), -1);
-        do_test_expr_ok(" foo() ", _call!(var("foo"),), -1);
+        do_test_expr_ok(" foo() ", _function_call!("foo",), -1);
         do_test_expr_ok(
             r#" foo.bar(a,"33",c:7*2) "#,
-            _call!(
+            _method_call!(
                 var("foo"),
-                method("bar"),
-                arg(var("a")),
-                arg(s("33")),
-                arg(id("c"), mul(i(7), i(2)).into()),
+                "bar",
+                arg!(var("a")),
+                arg!(s("33")),
+                arg!(id("c"), mul(i(7), i(2)))
             ),
             -1,
         );
@@ -624,22 +624,30 @@ pub mod tests {
         do_test_expr_ok(" aa #comment\n ?  ", var("aa"), 3);
         do_test_expr_ok(
             " foo(#comment\n a#comment\n ,#comment\n 7#comment\n ,#comment\n c :#comment\n 7*2) ",
-            _call!(
-                var("foo"),
-                arg(var("a")),
-                arg(i(7)),
-                arg(id("c"), mul(i(7), i(2)).into()),
+            _function_call!(
+                "foo",
+                arg!(var("a")),
+                arg!(i(7)),
+                arg!(id("c"), mul(i(7), i(2)))
             ),
             -1,
         );
         do_test_expr_ok(
             " foo.bar().baz(#comment\n a#comment\n ,#comment\n 7#comment\n ,#comment\n c :#comment\n 7*2) ",
-            _call!(
-                _call!(var("foo"), method("bar"),),
-                method("baz"),
-                arg(var("a")),
-                arg(i(7)),
-                arg(id("c"), mul(i(7), i(2)).into()),
+            _method_call!(
+                _method_call!(var("foo"), "bar",),
+                "baz",
+                arg!(var("a")),
+                arg!(i(7)),
+                arg!(id("c"), mul(i(7), i(2)))
+            ),
+            -1,
+        );
+        do_test_expr_ok(
+            r#" foo.bar[1]()("x") "#,
+            _anon_call!(
+                _anon_call!(index_of(prop_of(var("foo"), "bar"), i(1)),),
+                arg!(s("x"))
             ),
             -1,
         );

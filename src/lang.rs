@@ -26,7 +26,7 @@ pub use context::{Context, Output};
 pub use dict::DictBuilder;
 pub(crate) use errors::bad_type_error_op;
 pub use errors::{EvalError, InternalProgramError};
-pub use function::{Arg, FunctionCall, FunctionDef, Param, ReturnStmt};
+pub use function::{Arg, FunctionCall, FunctionCallVariant, FunctionDef, Param, ReturnStmt};
 pub use if_else::{ConditionalBlock, IfElse};
 pub use list::ListBuilder;
 pub use literal::Literal;

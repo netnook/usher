@@ -452,51 +452,51 @@ pub mod tests {
     }
     pub(crate) use _func;
 
-    macro_rules! _call{
-        ($on:expr, $($rest:tt)*) => {{
+    macro_rules! _function_call{
+        ($function:expr, $($arg:expr),*) => {{
             use crate::lang::FunctionCall;
-            let c = _call!(@inner $($rest)*);
+            use crate::lang::FunctionCallVariant;
             FunctionCall {
-                on: Box::new($on.into()),
-                ..c
-            }
-        }};
-        (@inner method($name:expr), $($rest:tt)*) => {{
-            let mut c = _call!(@inner $($rest)*);
-            c.method = Some($name.into());
-            c
-        }};
-        (@inner arg($name:expr, $value:expr), $($rest:tt)*) => {{
-            use crate::lang::Arg;
-            let mut c = _call!(@inner $($rest)*);
-            c.args.insert(0, Arg{
-                name: Some($name),
-                value: $value,
-            });
-            c
-        }};
-        (@inner arg($value:expr), $($rest:tt)*) => {{
-            use crate::lang::Arg;
-            let mut c = _call!(@inner $($rest)*);
-            c.args.insert(0, Arg{
-                name: None,
-                value: $value.into(),
-            });
-            c
-        }};
-        (@inner) => {{
-            use crate::lang::FunctionCall;
-            use crate::lang::AstNode;
-            use crate::lang::Break;
-            FunctionCall{
-                 on: AstNode::Break(Break::new(Span::new(999,9998))).into(), // dummy value
-                 method: None,
-                 args: Vec::new(),
+                variant: FunctionCallVariant::FunctionCall {
+                    function: $function.into(),
+                },
+                args: vec![$($arg),*],
                 span: Span::new(999, 9999),
             }
         }};
     }
-    pub(crate) use _call;
+    pub(crate) use _function_call;
+
+    macro_rules! _method_call{
+        ($on:expr, $function:expr, $($arg:expr),*) => {{
+            use crate::lang::FunctionCall;
+            use crate::lang::FunctionCallVariant;
+            FunctionCall {
+                variant: FunctionCallVariant::MethodCall {
+                    on: Box::new($on.into()),
+                    function: $function.into(),
+                },
+                args: vec![$($arg),*],
+                span: Span::new(999, 9999),
+            }
+        }};
+    }
+    pub(crate) use _method_call;
+
+    macro_rules! _anon_call{
+        ($on:expr, $($arg:expr),*) => {{
+            use crate::lang::FunctionCall;
+            use crate::lang::FunctionCallVariant;
+            FunctionCall {
+                variant: FunctionCallVariant::AnonymousCall {
+                    on: Box::new($on.into()),
+                },
+                args: vec![$($arg),*],
+                span: Span::new(999, 9999),
+            }
+        }};
+    }
+    pub(crate) use _anon_call;
 
     macro_rules! arg {
         ($name:expr, $value:expr) => {{

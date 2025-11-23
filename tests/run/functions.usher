@@ -1,0 +1,10 @@
+print("a")
+---stdout---
+a
+********************************
+non_existent("a")
+---stderr---
+Evaluation error in tests/run/functions.usher at line 1, char 1:
+  |
+1 | non_existent("a")
+  | ^^^^^^^^^^^^ Unknown function 'non_existent'.

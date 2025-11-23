@@ -1,6 +1,7 @@
 use crate::lang::{
     AstNode, Block, Context, Eval, EvalStop, Identifier, InternalProgramError, Key, KeyValue, Span,
     Value, Var, accept_default,
+    builtin_functions::resolve_function,
     value::Func,
     visitor::{Accept, Visitor, VisitorResult},
 };
@@ -145,10 +146,23 @@ pub(crate) trait MethodResolver: Sized {
 
 #[derive(PartialEq, Clone)]
 pub struct FunctionCall {
-    pub(crate) on: Box<AstNode>,
-    pub(crate) method: Option<Identifier>,
+    pub(crate) variant: FunctionCallVariant,
     pub(crate) args: Vec<Arg>,
     pub(crate) span: Span,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum FunctionCallVariant {
+    MethodCall {
+        on: Box<AstNode>,
+        function: Identifier,
+    },
+    FunctionCall {
+        function: Identifier,
+    },
+    AnonymousCall {
+        on: Box<AstNode>,
+    },
 }
 
 impl core::fmt::Debug for FunctionCall {
@@ -156,9 +170,17 @@ impl core::fmt::Debug for FunctionCall {
         let minimal = f.sign_minus();
         if minimal {
             let mut w = f.debug_struct("FunctionCall");
-            w.field("on", &self.on);
-            if let Some(method) = &self.method {
-                w.field("method", &method.key);
+            match &self.variant {
+                FunctionCallVariant::MethodCall { on, function } => {
+                    w.field("on", on);
+                    w.field("function", &function.key);
+                }
+                FunctionCallVariant::FunctionCall { function } => {
+                    w.field("function", &function.key);
+                }
+                FunctionCallVariant::AnonymousCall { on } => {
+                    w.field("on", on);
+                }
             }
             if !self.args.is_empty() {
                 w.field("args", &self.args);
@@ -166,8 +188,7 @@ impl core::fmt::Debug for FunctionCall {
             w.finish()
         } else {
             f.debug_struct("FunctionCall")
-                .field("on", &self.on)
-                .field("method", &self.method)
+                .field("variant", &self.variant)
                 .field("args", &self.args)
                 .field("span", &self.span)
                 .finish()
@@ -177,57 +198,89 @@ impl core::fmt::Debug for FunctionCall {
 
 impl Eval for FunctionCall {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
-        let on = self.on.eval(ctxt)?;
-
-        if let Some(method) = &self.method {
-            let on_value_type = on.value_type();
-            match on {
-                Value::Dict(dict) => {
-                    let r = dict.borrow().get(&method.key);
-                    match r {
-                        Some(Value::Func(func)) => {
-                            return self.call_func(func, ctxt, Some(Value::Dict(dict)));
-                        }
-                        Some(v) => {
-                            return Err(InternalProgramError::ExpectedFunction {
-                                got: v.value_type(),
-                                span: method.span,
+        match &self.variant {
+            FunctionCallVariant::MethodCall { on, function } => {
+                let on = on.eval(ctxt)?;
+                let on_value_type = on.value_type();
+                match on {
+                    Value::Dict(dict) => {
+                        let r = dict.borrow().get(&function.key);
+                        match r {
+                            Some(Value::Func(func)) => {
+                                return self.call_func(func, ctxt, Some(Value::Dict(dict)));
                             }
-                            .into_stop());
+                            Some(v) => {
+                                return Err(InternalProgramError::ExpectedFunction {
+                                    got: v.value_type(),
+                                    span: function.span,
+                                }
+                                .into_stop());
+                            }
+                            None => {}
                         }
-                        None => {}
+                        if let Some(func) = dict.resolve_method(&function.key) {
+                            return func(self, dict, ctxt);
+                        }
                     }
-                    if let Some(func) = dict.resolve_method(&method.key) {
-                        return func(self, dict, ctxt);
+                    Value::List(list) => {
+                        if let Some(func) = list.resolve_method(&function.key) {
+                            return func(self, list, ctxt);
+                        }
                     }
+                    Value::Str(string) => {
+                        if let Some(func) = string.resolve_method(&function.key) {
+                            return func(self, string.clone(), ctxt);
+                        }
+                    }
+                    _ => {}
                 }
-                Value::List(list) => {
-                    if let Some(func) = list.resolve_method(&method.key) {
-                        return func(self, list, ctxt);
-                    }
+
+                // FIXME: better error - list all methods ?
+                Err(InternalProgramError::NoSuchMethod {
+                    name: function.as_string(),
+                    from: on_value_type,
+                    span: function.span,
                 }
-                Value::Str(string) => {
-                    if let Some(func) = string.resolve_method(&method.key) {
-                        return func(self, string.clone(), ctxt);
-                    }
+                .into_stop())
+            }
+
+            FunctionCallVariant::FunctionCall { function } => {
+                if let Some(maybe_func) = ctxt.get(&function.key) {
+                    let Value::Func(func) = maybe_func else {
+                        return Err(InternalProgramError::ExpectedFunction {
+                            got: maybe_func.value_type(),
+                            span: function.span,
+                        }
+                        .into_stop());
+                    };
+
+                    return self.call_func(func, ctxt, None);
+                };
+
+                if let Some(func) = resolve_function(&function.key) {
+                    let func = Func::BuiltIn(func);
+                    return self.call_func(func, ctxt, None);
                 }
-                _ => {}
+
+                Err(InternalProgramError::NoSuchFunction {
+                    name: function.as_string(),
+                    span: function.span,
+                }
+                .into_stop())
             }
-            // FIXME: better error - list all methods ?
-            Err(InternalProgramError::NoSuchMethod {
-                name: method.as_string(),
-                from: on_value_type,
-                span: method.span,
+            FunctionCallVariant::AnonymousCall { on } => {
+                let maybe_func = on.eval(ctxt)?;
+
+                let Value::Func(func) = maybe_func else {
+                    return Err(InternalProgramError::ExpectedCallable {
+                        got: maybe_func.value_type(),
+                        span: on.span(),
+                    }
+                    .into_stop());
+                };
+
+                self.call_func(func, ctxt, None)
             }
-            .into_stop())
-        } else if let Value::Func(func) = on {
-            self.call_func(func, ctxt, None)
-        } else {
-            Err(InternalProgramError::ExpectedFunction {
-                got: on.value_type(),
-                span: self.on.span(),
-            }
-            .into_stop())
         }
     }
 }
@@ -360,7 +413,28 @@ impl FunctionCall {
     }
 }
 
-accept_default!(FunctionCall, on:node, args:vec:arg,);
+impl<T> Accept<T> for FunctionCall {
+    fn accept(&self, visitor: &mut impl Visitor<T>) -> VisitorResult<T> {
+        match &self.variant {
+            FunctionCallVariant::MethodCall { on, function: _ } => match visitor.visit_node(on) {
+                v @ VisitorResult::Stop(_) => return v,
+                VisitorResult::Continue => {}
+            },
+            FunctionCallVariant::FunctionCall { function: _ } => {}
+            FunctionCallVariant::AnonymousCall { on } => match visitor.visit_node(on) {
+                v @ VisitorResult::Stop(_) => return v,
+                VisitorResult::Continue => {}
+            },
+        }
+        for arg in &self.args {
+            match visitor.visit_arg(arg) {
+                v @ VisitorResult::Stop(_) => return v,
+                VisitorResult::Continue => {}
+            }
+        }
+        VisitorResult::Continue
+    }
+}
 
 #[derive(PartialEq, Clone)]
 pub struct Arg {
@@ -456,7 +530,7 @@ mod tests {
     use super::*;
     use crate::{
         lang::Span,
-        parser::tests::{arg, i, id, nil, s, var},
+        parser::tests::{arg, i, id, nil, var},
     };
 
     #[test]
@@ -733,8 +807,9 @@ mod tests {
 
     fn function_call(args: Vec<Arg>) -> FunctionCall {
         FunctionCall {
-            on: Box::new(s("dummy").into()),
-            method: None,
+            variant: FunctionCallVariant::FunctionCall {
+                function: "dummy".into(),
+            },
             args,
             span: Span::new(999, 1),
         }

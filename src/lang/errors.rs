@@ -26,6 +26,8 @@ impl<'a> EvalError<'a> {
 pub enum InternalProgramError {
     #[error("Expected function but got {got}.")]
     ExpectedFunction { got: ValueType, span: Span },
+    #[error("Expected callable value but got {got}.")]
+    ExpectedCallable { got: ValueType, span: Span },
     #[error("No such method '{name}' on {from}.")]
     NoSuchMethod {
         name: String,
@@ -77,6 +79,8 @@ pub enum InternalProgramError {
         from: PropertyList,
         span: Span,
     },
+    #[error("Unknown function '{name}'.")]
+    NoSuchFunction { name: String, span: Span },
     #[error("Unexpected argument provided in funcition call.")]
     FunctionCallUnexpectedArgument { span: Span },
     #[error("Positional arguments must come before named arguments.")]
@@ -165,6 +169,7 @@ impl InternalProgramError {
     pub(crate) fn span(&self) -> &Span {
         match self {
             InternalProgramError::ExpectedFunction { got: _, span } => span,
+            InternalProgramError::ExpectedCallable { got: _, span } => span,
             InternalProgramError::NoSuchMethod {
                 name: _,
                 from: _,
@@ -219,6 +224,7 @@ impl InternalProgramError {
             InternalProgramError::UndeclaredVariable { name: _, span } => span,
             InternalProgramError::BreakWithoutLoop { span } => span,
             InternalProgramError::ContinueWithoutLoop { span } => span,
+            InternalProgramError::NoSuchFunction { name: _, span } => span,
         }
     }
 
