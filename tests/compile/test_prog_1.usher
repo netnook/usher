@@ -110,11 +110,11 @@ Program { [
     },
     Assignment {
         lhs: Var("str"),
-        rhs: ChainCatch { PropertyOf {
+        rhs: CatchMissingOptionalProperty { PropertyOf {
             of: PropertyOf {
                 of: This,
                 property: Ident("b"),
-                throw_on_missing_prop: true,
+                optional_property: true,
             },
             property: Ident("c"),
         } },

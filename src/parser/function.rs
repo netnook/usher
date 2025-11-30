@@ -69,7 +69,6 @@ impl<'a> Parser<'a> {
                         Err(EvalStop::Continue(span)) => Err(SyntaxError::ConstantEvalError {
                             cause: InternalProgramError::ContinueWithoutLoop { span },
                         }),
-                        Err(EvalStop::Throw) => todo!(),
                     }?;
                     params.push(Param::Optional(Var::new(key), value));
                 }

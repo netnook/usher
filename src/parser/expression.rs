@@ -1,9 +1,9 @@
 use super::{ParseResult, Parser, SyntaxError, chars::is_digit};
 use crate::{
     lang::{
-        Accept, Arg, AstNode, BinaryOp, BinaryOpCode, ChainCatch, End, FunctionCall,
-        FunctionCallVariant, Identifier, IndexOf, KeyValueBuilder, Literal, PropertyOf, Span, This,
-        UnaryOp, UnaryOpCode, Value, Var, Visitor, VisitorResult,
+        Accept, Arg, AstNode, BinaryOp, BinaryOpCode, CatchMissingOptionalProperty, End,
+        FunctionCall, FunctionCallVariant, Identifier, IndexOf, KeyValueBuilder, Literal,
+        PropertyOf, Span, This, UnaryOp, UnaryOpCode, Value, Var, Visitor, VisitorResult,
     },
     parser::identifier::UncheckedIdentifier,
 };
@@ -238,11 +238,11 @@ impl<'a> Parser<'a> {
             self.linespace();
 
             if let Some((index, span)) = self.index_of()? {
-                let throw_on_missing_prop = self.chain_catch();
+                let optional_property = self.optional_operator();
                 node = AstNode::IndexOf(IndexOf {
                     of: node.into(),
                     index: index.into(),
-                    throw_on_missing_prop,
+                    optional_property,
                     span: span.extended(self.pos),
                 });
                 continue;
@@ -259,7 +259,12 @@ impl<'a> Parser<'a> {
                         args,
                         span: Span::merge(node.span, span),
                     }),
-                    AstNode::ChainCatch(_) => todo!(),
+                    AstNode::CatchMissingOptionalProperty(_) => {
+                        return Err(SyntaxError::UnexpectedParseState {
+                            details: "Found expression chain with call on CatchMissingOptionalProperty - please report a bug!".to_string(),
+                            span,
+                        });
+                    }
                     AstNode::Var(var) => AstNode::FunctionCall(FunctionCall {
                         span: Span::merge(var.span(), span),
                         variant: FunctionCallVariant::FunctionCall {
@@ -279,12 +284,12 @@ impl<'a> Parser<'a> {
             // dot '.' operator can appear on new line
             self.whitespace_comments();
             if let Some((property, span)) = self.property_of()? {
-                let throw_on_missing_prop = self.chain_catch();
+                let optional_property = self.optional_operator();
                 node = AstNode::PropertyOf(PropertyOf {
                     of: node.into(),
                     property,
                     span: span.extended(self.pos),
-                    throw_on_missing_prop,
+                    optional_property,
                 });
                 continue;
             }
@@ -293,25 +298,27 @@ impl<'a> Parser<'a> {
             break;
         }
 
-        struct ContainsThrowOnMissing;
-        impl Visitor<bool> for ContainsThrowOnMissing {
+        struct ContainsOptionalProperty;
+        impl Visitor<bool> for ContainsOptionalProperty {
             fn visit_property_of(&mut self, v: &PropertyOf) -> VisitorResult<bool> {
-                if v.throw_on_missing_prop {
+                if v.optional_property {
                     return VisitorResult::Stop(true);
                 }
                 v.accept(self)
             }
             fn visit_index_of(&mut self, v: &IndexOf) -> VisitorResult<bool> {
-                if v.throw_on_missing_prop {
+                if v.optional_property {
                     return VisitorResult::Stop(true);
                 }
                 v.accept(self)
             }
         }
 
-        let contains_throw_on_missing = ContainsThrowOnMissing.go(&node).unwrap_or(false);
-        if contains_throw_on_missing {
-            node = AstNode::ChainCatch(ChainCatch { inner: node.into() });
+        let contains_optional_property = ContainsOptionalProperty.go(&node).unwrap_or(false);
+        if contains_optional_property {
+            node = AstNode::CatchMissingOptionalProperty(CatchMissingOptionalProperty {
+                inner: node.into(),
+            });
         }
 
         Ok(Some(node))
@@ -509,7 +516,7 @@ impl<'a> Parser<'a> {
         Ok(Some((args, Span::start_end(start, self.pos))))
     }
 
-    fn chain_catch(&mut self) -> bool {
+    fn optional_operator(&mut self) -> bool {
         self.char(b'?')
     }
 }
@@ -559,62 +566,66 @@ pub mod tests {
         do_test_expr_ok(" foo.map ", prop_of(var("foo"), "map"), -1);
         do_test_expr_ok(
             " foo.bar? ",
-            chain_catch(prop_of(var("foo"), "bar").with_throw_on_missing_prop(true)),
+            catch_missing_optional_property(
+                prop_of(var("foo"), "bar").with_missing_prop_to_nil(true),
+            ),
             -1,
         );
         do_test_expr_ok(
             " foo.bar?.baz ",
-            chain_catch(prop_of(
-                prop_of(var("foo"), "bar").with_throw_on_missing_prop(true),
+            catch_missing_optional_property(prop_of(
+                prop_of(var("foo"), "bar").with_missing_prop_to_nil(true),
                 "baz",
             )),
             -1,
         );
         do_test_expr_ok(
             " foo[0]? ",
-            chain_catch(index_of(var("foo"), i(0)).with_throw_on_missing_prop(true)),
+            catch_missing_optional_property(
+                index_of(var("foo"), i(0)).with_optional_property(true),
+            ),
             -1,
         );
         do_test_expr_ok(
             " foo[0]?[1] ",
-            chain_catch(index_of(
-                index_of(var("foo"), i(0)).with_throw_on_missing_prop(true),
+            catch_missing_optional_property(index_of(
+                index_of(var("foo"), i(0)).with_optional_property(true),
                 i(1),
             )),
             -1,
         );
         do_test_expr_ok(
             " aa.bb[cc].dd[\"ee\"]?[66] ",
-            chain_catch(index_of(
+            catch_missing_optional_property(index_of(
                 index_of(
                     prop_of(index_of(prop_of(var("aa"), "bb"), var("cc")), "dd"),
                     s("ee"),
                 )
-                .with_throw_on_missing_prop(true),
+                .with_optional_property(true),
                 i(66),
             )),
             -1,
         );
         do_test_expr_ok(
             " aa . bb [ cc ] . dd [ \"ee\" ]? [ 66 ]  ",
-            chain_catch(index_of(
+            catch_missing_optional_property(index_of(
                 index_of(
                     prop_of(index_of(prop_of(var("aa"), "bb"), var("cc")), "dd"),
                     s("ee"),
                 )
-                .with_throw_on_missing_prop(true),
+                .with_optional_property(true),
                 i(66),
             )),
             -2,
         );
         do_test_expr_ok(
             " aa . #comment\n bb [ #comment\n cc #comment\n ] . #comment\n dd [ \"ee\" ]? [ 66 ]  ",
-            chain_catch(index_of(
+            catch_missing_optional_property(index_of(
                 index_of(
                     prop_of(index_of(prop_of(var("aa"), "bb"), var("cc")), "dd"),
                     s("ee"),
                 )
-                .with_throw_on_missing_prop(true),
+                .with_optional_property(true),
                 i(66),
             )),
             -2,
@@ -743,8 +754,8 @@ pub mod tests {
             or(
                 greater_equal(
                     add(
-                        chain_catch(index_of(
-                            prop_of(var("foo"), "bar").with_throw_on_missing_prop(true),
+                        catch_missing_optional_property(index_of(
+                            prop_of(var("foo"), "bar").with_missing_prop_to_nil(true),
                             add(s("baz"), i(7)),
                         )),
                         mul(i(32), i(7)),

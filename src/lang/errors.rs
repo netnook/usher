@@ -5,6 +5,8 @@ use crate::{
 use std::{cell::RefCell, fmt::Display, rc::Rc};
 use thiserror::Error;
 
+const DUMMY_SPAN: Span = Span::new(0, 1);
+
 #[derive(PartialEq, Debug)]
 pub struct EvalError<'a> {
     pub file: &'a str,
@@ -106,6 +108,10 @@ pub enum InternalProgramError {
     BreakWithoutLoop { span: Span },
     #[error("Continue without for.")]
     ContinueWithoutLoop { span: Span },
+    #[error(
+        "missing-optional-property error. If you see this error then there is a bug in usher. Please report it."
+    )]
+    MissingOptionalProperty,
 }
 
 #[derive(Debug, PartialEq)]
@@ -228,6 +234,7 @@ impl InternalProgramError {
             InternalProgramError::ContinueWithoutLoop { span } => span,
             InternalProgramError::NoSuchFunction { name: _, span } => span,
             InternalProgramError::NameAlreadyDeclared { name: _, span } => span,
+            InternalProgramError::MissingOptionalProperty => &DUMMY_SPAN,
         }
     }
 

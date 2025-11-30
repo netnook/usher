@@ -140,14 +140,14 @@ fn test_stmt_spanneds() {
     do_test_parser_exact(
         Parser::stmt,
         r#" abc.def?[ghi]? "#,
-        chain_catch(
+        catch_missing_optional_property(
             index_of(
                 prop_of(var(id("abc").spanned(1, 3)), id("def").spanned(5, 3))
-                    .with_throw_on_missing_prop(true)
+                    .with_missing_prop_to_nil(true)
                     .spanned(4, 5),
                 var(id("ghi").spanned(10, 3)),
             )
-            .with_throw_on_missing_prop(true)
+            .with_optional_property(true)
             .spanned(9, 6),
         ),
         -1,

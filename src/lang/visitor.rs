@@ -1,8 +1,8 @@
 use crate::lang::{
-    Arg, Assignment, AstNode, BinaryOp, Block, Break, ChainCatch, ConditionalBlock, Continue,
-    Declaration, DictBuilder, End, For, FunctionCall, FunctionDef, IfElse, IndexOf,
-    InterpolatedStr, KeyValueBuilder, ListBuilder, Literal, Param, PropertyOf, ReturnStmt, This,
-    UnaryOp, Var,
+    Arg, Assignment, AstNode, BinaryOp, Block, Break, CatchMissingOptionalProperty,
+    ConditionalBlock, Continue, Declaration, DictBuilder, End, For, FunctionCall, FunctionDef,
+    IfElse, IndexOf, InterpolatedStr, KeyValueBuilder, ListBuilder, Literal, Param, PropertyOf,
+    ReturnStmt, This, UnaryOp, Var,
 };
 use std::rc::Rc;
 
@@ -39,7 +39,9 @@ pub(crate) trait Visitor<T>: Sized {
             AstNode::IndexOf(v) => self.visit_index_of(v),
             AstNode::UnaryOp(v) => self.visit_unary_op(v),
             AstNode::BinaryOp(v) => self.visit_binary_op(v),
-            AstNode::ChainCatch(v) => self.visit_chain_catch(v),
+            AstNode::CatchMissingOptionalProperty(v) => {
+                self.visit_catch_missing_optional_property(v)
+            }
             AstNode::Block(v) => self.visit_block(v),
             AstNode::IfElse(v) => self.visit_if_else(v),
             AstNode::For(v) => self.visit_for(v),
@@ -83,7 +85,10 @@ pub(crate) trait Visitor<T>: Sized {
     fn visit_binary_op(&mut self, v: &BinaryOp) -> VisitorResult<T> {
         v.accept(self)
     }
-    fn visit_chain_catch(&mut self, v: &ChainCatch) -> VisitorResult<T> {
+    fn visit_catch_missing_optional_property(
+        &mut self,
+        v: &CatchMissingOptionalProperty,
+    ) -> VisitorResult<T> {
         v.accept(self)
     }
     fn visit_block(&mut self, v: &Block) -> VisitorResult<T> {
@@ -273,7 +278,10 @@ mod tests {
                 self.push("BinaryOp");
                 v.accept(self)
             }
-            fn visit_chain_catch(&mut self, v: &ChainCatch) -> VisitorResult<()> {
+            fn visit_catch_missing_optional_property(
+                &mut self,
+                v: &CatchMissingOptionalProperty,
+            ) -> VisitorResult<()> {
                 self.push("ChainCatch");
                 v.accept(self)
             }

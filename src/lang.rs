@@ -21,7 +21,7 @@ mod visitor;
 
 pub use binary_op::{BinaryOp, BinaryOpCode};
 pub use block::Block;
-pub use catch::ChainCatch;
+pub use catch::CatchMissingOptionalProperty;
 pub use context::{Context, Output};
 pub use dict::DictBuilder;
 pub(crate) use errors::bad_type_error_op;
@@ -56,7 +56,6 @@ pub enum EvalStop {
     Return(Value),
     Break(Span),
     Continue(Span),
-    Throw,
 }
 
 impl From<InternalProgramError> for EvalStop {
@@ -81,7 +80,7 @@ pub struct Span {
 }
 
 impl Span {
-    pub(crate) fn new(start: usize, len: usize) -> Self {
+    pub(crate) const fn new(start: usize, len: usize) -> Self {
         Self { start, len }
     }
     pub(crate) fn start_end(start: usize, end: usize) -> Self {

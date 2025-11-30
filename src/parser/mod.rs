@@ -84,10 +84,11 @@ pub mod tests {
 
     use crate::{
         lang::{
-            Assignment, AstNode, BinaryOp, BinaryOpCode, Block, Break, ChainCatch, Continue,
-            Declaration, Dict, DictBuilder, End, For, FunctionCall, FunctionDef, Identifier,
-            IfElse, IndexOf, InterpolatedStr, KeyValue, KeyValueBuilder, List, ListBuilder,
-            Literal, PropertyOf, ReturnStmt, Span, This, UnaryOp, UnaryOpCode, Value, Var,
+            Assignment, AstNode, BinaryOp, BinaryOpCode, Block, Break,
+            CatchMissingOptionalProperty, Continue, Declaration, Dict, DictBuilder, End, For,
+            FunctionCall, FunctionDef, Identifier, IfElse, IndexOf, InterpolatedStr, KeyValue,
+            KeyValueBuilder, List, ListBuilder, Literal, PropertyOf, ReturnStmt, Span, This,
+            UnaryOp, UnaryOpCode, Value, Var,
         },
         parser::{Parser, SyntaxError},
     };
@@ -199,13 +200,13 @@ pub mod tests {
             of: of.into().into(),
             property: prop.into(),
             span: Span::new(999, 9999),
-            throw_on_missing_prop: false,
+            optional_property: false,
         }
     }
 
     impl PropertyOf {
-        pub(crate) fn with_throw_on_missing_prop(mut self, v: bool) -> PropertyOf {
-            self.throw_on_missing_prop = v;
+        pub(crate) fn with_missing_prop_to_nil(mut self, v: bool) -> PropertyOf {
+            self.optional_property = v;
             self
         }
     }
@@ -214,20 +215,20 @@ pub mod tests {
         IndexOf {
             of: of.into().into(),
             index: index.into().into(),
-            throw_on_missing_prop: false,
+            optional_property: false,
             span: Span::new(999, 9999),
         }
     }
 
     impl IndexOf {
-        pub(crate) fn with_throw_on_missing_prop(mut self, v: bool) -> IndexOf {
-            self.throw_on_missing_prop = v;
+        pub(crate) fn with_optional_property(mut self, v: bool) -> IndexOf {
+            self.optional_property = v;
             self
         }
     }
 
-    pub(crate) fn chain_catch(from: impl Into<AstNode>) -> AstNode {
-        AstNode::ChainCatch(ChainCatch {
+    pub(crate) fn catch_missing_optional_property(from: impl Into<AstNode>) -> AstNode {
+        AstNode::CatchMissingOptionalProperty(CatchMissingOptionalProperty {
             inner: from.into().into(),
         })
     }

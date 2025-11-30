@@ -155,6 +155,8 @@ pub enum SyntaxError {
     FunctionExpectedCommaOrCloseParens { pos: usize },
     #[error("Error in constant expression: {cause}")]
     ConstantEvalError { cause: InternalProgramError },
+    #[error("Unexpected parse state: {details}")]
+    UnexpectedParseState { details: String, span: Span },
 }
 
 impl SyntaxError {
@@ -200,6 +202,7 @@ impl SyntaxError {
             SyntaxError::FunctionExpectedParamIdent { pos } => Span::new(*pos, 1),
             SyntaxError::FunctionExpectedCommaOrCloseParens { pos } => Span::new(*pos, 1),
             SyntaxError::ConstantEvalError { cause } => *cause.span(),
+            SyntaxError::UnexpectedParseState { details: _, span } => *span,
         }
     }
 }

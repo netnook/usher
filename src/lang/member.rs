@@ -9,7 +9,7 @@ use crate::lang::{
 pub struct PropertyOf {
     pub(crate) of: Box<AstNode>,
     pub(crate) property: Identifier,
-    pub(crate) throw_on_missing_prop: bool,
+    pub(crate) optional_property: bool,
     pub(crate) span: Span,
 }
 
@@ -20,15 +20,15 @@ impl core::fmt::Debug for PropertyOf {
             let mut w = f.debug_struct("PropertyOf");
             w.field("of", &self.of);
             w.field("property", &self.property);
-            if self.throw_on_missing_prop {
-                w.field("throw_on_missing_prop", &self.throw_on_missing_prop);
+            if self.optional_property {
+                w.field("optional_property", &self.optional_property);
             }
             w.finish()
         } else {
             f.debug_struct("PropertyOf")
                 .field("of", &self.of)
                 .field("property", &self.property)
-                .field("throw_on_missing_prop", &self.throw_on_missing_prop)
+                .field("optional_property", &self.optional_property)
                 .field("span", &self.span)
                 .finish()
         }
@@ -45,8 +45,8 @@ impl Eval for PropertyOf {
             Value::Dict(of) => {
                 let v = of.borrow().get(&self.property.key);
                 let Some(v) = v else {
-                    if self.throw_on_missing_prop {
-                        return Err(EvalStop::Throw);
+                    if self.optional_property {
+                        return InternalProgramError::MissingOptionalProperty.into();
                     } else {
                         return Err(InternalProgramError::NoSuchProperty {
                             prop: self.property.clone(),
@@ -62,9 +62,8 @@ impl Eval for PropertyOf {
                 "key" => Value::Str(of.key.0.clone()),
                 "value" => of.value.ref_clone(),
                 _ => {
-                    if self.throw_on_missing_prop {
-                        // FIXME: do we really want to allow ? operator on a key/value object?
-                        return Err(EvalStop::Throw);
+                    if self.optional_property {
+                        return InternalProgramError::MissingOptionalProperty.into();
                     } else {
                         return Err(InternalProgramError::NoSuchProperty {
                             prop: self.property.clone(),
@@ -113,7 +112,7 @@ impl Setter for PropertyOf {
 pub struct IndexOf {
     pub(crate) of: Box<AstNode>,
     pub(crate) index: Box<AstNode>,
-    pub(crate) throw_on_missing_prop: bool,
+    pub(crate) optional_property: bool,
     pub(crate) span: Span,
 }
 
@@ -124,15 +123,15 @@ impl core::fmt::Debug for IndexOf {
             let mut w = f.debug_struct("IndexOf");
             w.field("of", &self.of);
             w.field("index", &self.index);
-            if self.throw_on_missing_prop {
-                w.field("throw_on_missing_prop", &self.throw_on_missing_prop);
+            if self.optional_property {
+                w.field("optional_property", &self.optional_property);
             }
             w.finish()
         } else {
             f.debug_struct("IndexOf")
                 .field("of", &self.of)
                 .field("index", &self.index)
-                .field("throw_on_missing_prop", &self.throw_on_missing_prop)
+                .field("optional_property", &self.optional_property)
                 .field("span", &self.span)
                 .finish()
         }
@@ -182,8 +181,8 @@ impl Eval for IndexOf {
         // FIXME: combine index validation for eval and set ?
         let index = {
             if index.is_negative() || index as usize >= of.len() {
-                if self.throw_on_missing_prop {
-                    return Err(EvalStop::Throw);
+                if self.optional_property {
+                    return InternalProgramError::MissingOptionalProperty.into();
                 } else {
                     return InternalProgramError::IndexOutOfRange {
                         index,

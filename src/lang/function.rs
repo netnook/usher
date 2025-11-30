@@ -332,7 +332,6 @@ impl FunctionCall {
                     span,
                 }))
             }
-            Err(EvalStop::Throw) => todo!(),
         }
     }
 

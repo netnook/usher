@@ -1,8 +1,8 @@
 use crate::lang::{
-    Assignment, BinaryOp, Block, Break, ChainCatch, Context, Continue, Declaration, DictBuilder,
-    End, Eval, EvalStop, For, FunctionCall, FunctionDef, IfElse, IndexOf, InterpolatedStr,
-    KeyValueBuilder, ListBuilder, Literal, PropertyOf, ReturnStmt, Setter, Span, This, UnaryOp,
-    Value, Var,
+    Assignment, BinaryOp, Block, Break, CatchMissingOptionalProperty, Context, Continue,
+    Declaration, DictBuilder, End, Eval, EvalStop, For, FunctionCall, FunctionDef, IfElse, IndexOf,
+    InterpolatedStr, KeyValueBuilder, ListBuilder, Literal, PropertyOf, ReturnStmt, Setter, Span,
+    This, UnaryOp, Value, Var,
 };
 use std::rc::Rc;
 
@@ -17,7 +17,7 @@ pub enum AstNode {
     IndexOf(IndexOf),
     UnaryOp(UnaryOp),
     BinaryOp(BinaryOp),
-    ChainCatch(ChainCatch),
+    CatchMissingOptionalProperty(CatchMissingOptionalProperty),
     Block(Block),
     IfElse(IfElse),
     For(For),
@@ -72,7 +72,7 @@ impl core::fmt::Debug for AstNode {
                 IndexOf,
                 UnaryOp,
                 BinaryOp,
-                ChainCatch,
+                CatchMissingOptionalProperty,
                 Block,
                 IfElse,
                 For,
@@ -100,7 +100,7 @@ impl core::fmt::Debug for AstNode {
                 IndexOf,
                 UnaryOp,
                 BinaryOp,
-                ChainCatch,
+                CatchMissingOptionalProperty,
                 Block,
                 IfElse,
                 For,
@@ -145,7 +145,7 @@ impl AstNode {
             AstNode::Continue(v) => v.eval(ctxt),
             AstNode::End(v) => v.eval(ctxt),
             AstNode::KeyValue(v) => v.eval(ctxt),
-            AstNode::ChainCatch(v) => v.eval(ctxt),
+            AstNode::CatchMissingOptionalProperty(v) => v.eval(ctxt),
         }
     }
 
@@ -173,7 +173,7 @@ impl AstNode {
             AstNode::DictBuilder(v) => v.span,
             AstNode::PropertyOf(v) => v.span,
             AstNode::IndexOf(v) => v.span,
-            AstNode::ChainCatch(v) => v.inner.span(),
+            AstNode::CatchMissingOptionalProperty(v) => v.inner.span(),
             AstNode::Block(v) => v.span,
             AstNode::IfElse(v) => v.span,
             AstNode::For(v) => v.span,
