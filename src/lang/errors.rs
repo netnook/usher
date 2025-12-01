@@ -109,7 +109,7 @@ pub enum InternalProgramError {
     #[error("Continue without for.")]
     ContinueWithoutLoop { span: Span },
     #[error(
-        "missing-optional-property error. If you see this error then there is a bug in usher. Please report it."
+        "MissingOptionalProperty. If you see this error then there is a bug in usher. Please report it."
     )]
     MissingOptionalProperty,
 }

@@ -73,27 +73,21 @@ impl Var {
     }
 
     pub(crate) fn declare(&self, ctxt: &mut Context, value: Value) -> Result<(), EvalStop> {
-        match ctxt.declare(self.ident.key.clone(), value) {
-            true => Ok(()),
-            // FIXME: move the check to the ctxt with specialised methods and errors for
-            // .replace, .declare, ....
-            false => Err(InternalProgramError::NameAlreadyDeclared {
+        ctxt.declare(self.ident.key.clone(), value).map_err(|_| {
+            InternalProgramError::NameAlreadyDeclared {
                 name: self.ident.key.to_string(),
                 span: self.ident.span,
             }
-            .into()),
-        }
+        })?;
+        Ok(())
     }
 }
 
 impl Eval for Var {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
-        // FIXME: move the check to the ctxt with specialised methods and errors for
-        // .replace, .declare, ....
         if let Some(value) = ctxt.get(&self.ident.key) {
             return Ok(value);
         }
-        // FIXME: should we return a function here ?
         // if let Some(func) = resolve_function(&self.ident.key) {
         //     return Ok(Value::Func(Func::BuiltIn(func)));
         // }
@@ -109,17 +103,13 @@ accept_default!(Var);
 
 impl Setter for Var {
     fn set(&self, ctxt: &mut Context, value: Value) -> Result<(), EvalStop> {
-        // FIXME: move the check to the ctxt with specialised methods and errors for
-        // .replace, .declare, ....
-        if !ctxt.contains_key(&self.ident.key) {
-            return Err(InternalProgramError::UndeclaredVariable {
+        ctxt.set(&self.ident.key, value).map_err(|_| {
+            InternalProgramError::UndeclaredVariable {
                 name: self.ident.as_string(),
                 span: self.ident.span,
             }
-            .into());
-        }
-        ctxt.set(&self.ident.key, value);
-        Ok(())
+            .into()
+        })
     }
 }
 

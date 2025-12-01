@@ -36,6 +36,7 @@ pub use node::AstNode;
 pub use program::Program;
 use std::rc::Rc;
 pub use string::InterpolatedStr;
+use thiserror::Error;
 pub use unary_op::{UnaryOp, UnaryOpCode};
 pub use value::{KeyValue, Value};
 pub use var::{Assignment, Declaration, This, Var};
@@ -50,22 +51,26 @@ trait Eval {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop>;
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Error)]
 pub enum EvalStop {
-    Error(InternalProgramError),
+    #[error("Error: {0}")]
+    Error(#[from] InternalProgramError),
+    #[error("Return: {0}")]
     Return(Value),
+    #[error("Break")]
     Break(Span),
+    #[error("Continue")]
     Continue(Span),
 }
 
-impl From<InternalProgramError> for EvalStop {
-    fn from(value: InternalProgramError) -> Self {
-        Self::Error(value)
-    }
-}
 impl<T> From<InternalProgramError> for Result<T, EvalStop> {
     fn from(value: InternalProgramError) -> Self {
         Err(value.into())
+    }
+}
+impl<T> From<EvalStop> for Result<T, EvalStop> {
+    fn from(value: EvalStop) -> Self {
+        Err(value)
     }
 }
 

@@ -165,9 +165,8 @@ mod tests {
         list.add(Value::Integer(2));
         list.add(Value::Integer(4));
         let mut ctxt = Context::default();
-        ctxt.set(&"l".into(), list.into());
-        ctxt.set(&"r".into(), Value::Integer(0));
-        // ctxt.set(&id("f"), Value::Bool(false));
+        ctxt.declare("l".into(), list.into()).unwrap();
+        ctxt.declare("r".into(), Value::Integer(0)).unwrap();
 
         let stmt = _for(
             var("i"),

@@ -45,7 +45,6 @@ accept_default!(Block, stmts:vec:node,);
 
 #[cfg(test)]
 mod tests {
-
     use crate::{
         lang::{Block, Context, Eval, Value},
         parser::tests::{_block, ToValue, add, assign, decl, i, var},
@@ -74,8 +73,8 @@ mod tests {
     #[test]
     fn test_block_eval_ctxt() {
         let mut ctxt = Context::default();
-        ctxt.set(&"a".into(), "a-initial".to_value());
-        ctxt.set(&"b".into(), "b-initial".to_value());
+        ctxt.declare("a".into(), "a-initial".to_value()).unwrap();
+        ctxt.declare("b".into(), "b-initial".to_value()).unwrap();
 
         let mut block = _block!();
         block.stmts.push(decl(var("a"), i(1)).into());

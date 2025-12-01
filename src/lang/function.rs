@@ -118,16 +118,11 @@ impl Eval for Rc<FunctionDef> {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
         let f = Value::Func(Func::FuncDef(Rc::clone(self)));
         if let Some(name) = &self.name {
-            match ctxt.declare(name.ident.key.clone(), f.ref_clone()) {
-                true => (),
-                false => {
-                    return Err(InternalProgramError::NameAlreadyDeclared {
-                        name: name.ident.as_string(),
-                        span: name.ident.span,
-                    }
-                    .into());
-                }
-            }
+            ctxt.declare(name.ident.key.clone(), f.ref_clone())
+                .map_err(|_| InternalProgramError::NameAlreadyDeclared {
+                    name: name.ident.as_string(),
+                    span: name.ident.span,
+                })?
         };
         Ok(f)
     }
@@ -345,7 +340,9 @@ impl FunctionCall {
         let mut call_context = ctxt.new_function_call_ctxt();
 
         if let Some(this) = this {
-            call_context.declare_this(this);
+            call_context
+                .declare_this(this)
+                .expect("'this' should not already be declared");
         }
 
         let mut positional_mode = true;
@@ -361,7 +358,9 @@ impl FunctionCall {
                 if arg.name.is_some() {
                     positional_mode = false;
                 } else {
-                    call_context.declare(param.key().clone(), arg.value.eval(ctxt)?);
+                    call_context
+                        .declare(param.key().clone(), arg.value.eval(ctxt)?)
+                        .expect("variable should not already be declared");
                 }
             }
 
@@ -391,7 +390,9 @@ impl FunctionCall {
                     .into());
                 }
 
-                call_context.declare(arg_name.key.clone(), arg.value.eval(ctxt)?);
+                call_context
+                    .declare(arg_name.key.clone(), arg.value.eval(ctxt)?)
+                    .expect("variable should not already be declared");
             }
         }
 
@@ -409,7 +410,9 @@ impl FunctionCall {
                 }
                 Param::Optional(var, val) => {
                     if !call_context.contains_key(&var.ident.key) {
-                        call_context.declare(var.ident.key.clone(), val.deep_clone());
+                        call_context
+                            .declare(var.ident.key.clone(), val.deep_clone())
+                            .expect("variable should not already be declared");
                     }
                 }
                 Param::OtherPositional(_) => {}
@@ -825,7 +828,7 @@ mod tests {
 
     fn prepare_ctxt() -> Context {
         let mut ctxt = Context::default();
-        ctxt.set(&"old".into(), "dummy".into());
+        ctxt.declare("old".into(), "dummy".into()).unwrap();
         ctxt
     }
 }

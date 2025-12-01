@@ -247,7 +247,7 @@ mod tests {
             let mut d = Dict::new();
             d.set("a".into(), 1.to_value());
             d.set("b".into(), "bbb".to_value());
-            ctxt.set(&"dict".into(), d.into());
+            ctxt.declare("dict".into(), d.into()).unwrap();
             ctxt
         };
 
@@ -277,7 +277,7 @@ mod tests {
             l.add(7.to_value());
             l.add("aaa".to_value());
             l.add(8.to_value());
-            ctxt.set(&"list".into(), l.into());
+            ctxt.declare("list".into(), l.into()).unwrap();
             ctxt
         };
 
