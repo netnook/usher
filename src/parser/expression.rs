@@ -363,7 +363,6 @@ impl<'a> Parser<'a> {
                     ))));
                 }
                 id => {
-                    // FIXME: where is the ident checked to make sure that it is valid/permitted ?
                     return Ok(Some(AstNode::Var(Var::new(Identifier::new(
                         id.to_string(),
                         span,

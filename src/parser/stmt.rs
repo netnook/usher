@@ -90,8 +90,6 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn assignment_or_expression(&mut self) -> ParseResult<Option<AstNode>> {
-        // FIXME check assignment does not assign to resered name on LHS
-
         let Some(expr) = self.expression()? else {
             return Ok(None);
         };

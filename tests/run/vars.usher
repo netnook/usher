@@ -29,3 +29,19 @@ Evaluation error in tests/run/vars.usher at line 3, char 5:
   |
 3 | var aaa = 2
   |     ^^^ 'aaa' already declared.
+**************************************
+# test 5
+var print = 1
+---stderr---
+Syntax error in tests/run/vars.usher at line 2, char 5:
+  |
+2 | var print = 1
+  |     ^^^^^ Reserved name cannot be used for declarations.
+**************************************
+# test 6
+print = 1
+---stderr---
+Evaluation error in tests/run/vars.usher at line 2, char 1:
+  |
+2 | print = 1
+  | ^^^^^ Unknown variable 'print'.
