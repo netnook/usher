@@ -12,6 +12,11 @@ pub struct PropertyOf {
     pub(crate) optional_property: bool,
     pub(crate) span: Span,
 }
+impl PropertyOf {
+    pub(crate) fn span(&self) -> Span {
+        Span::merge(self.of.span(), self.span)
+    }
+}
 
 impl core::fmt::Debug for PropertyOf {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -167,6 +172,10 @@ impl IndexOf {
         };
 
         Ok(index)
+    }
+
+    pub(crate) fn span(&self) -> Span {
+        Span::merge(self.of.span(), self.span)
     }
 }
 

@@ -29,6 +29,10 @@ impl ListBuilder {
     pub(crate) fn new(entries: Vec<AstNode>, span: Span) -> Self {
         Self { entries, span }
     }
+
+    pub(crate) fn span(&self) -> Span {
+        self.span
+    }
 }
 
 impl Eval for ListBuilder {

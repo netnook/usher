@@ -110,6 +110,10 @@ impl Break {
     pub(crate) fn new(span: Span) -> Self {
         Self { span }
     }
+
+    pub(crate) fn span(&self) -> Span {
+        self.span
+    }
 }
 
 impl Eval for Break {
@@ -141,6 +145,10 @@ impl core::fmt::Debug for Continue {
 impl Continue {
     pub(crate) fn new(span: Span) -> Self {
         Self { span }
+    }
+
+    pub(crate) fn span(&self) -> Span {
+        self.span
     }
 }
 

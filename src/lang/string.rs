@@ -9,6 +9,12 @@ pub struct InterpolatedStr {
     pub(crate) span: Span,
 }
 
+impl InterpolatedStr {
+    pub(crate) fn span(&self) -> Span {
+        self.span
+    }
+}
+
 impl core::fmt::Debug for InterpolatedStr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let minimal = f.sign_minus();

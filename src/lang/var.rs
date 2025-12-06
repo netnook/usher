@@ -32,6 +32,10 @@ impl This {
         #[allow(clippy::borrow_interior_mutable_const)]
         (*THIS_KEY).clone()
     }
+
+    pub(crate) fn span(&self) -> Span {
+        self.span
+    }
 }
 
 impl Eval for This {

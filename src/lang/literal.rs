@@ -26,6 +26,10 @@ impl Literal {
     pub fn new(val: Value, span: Span) -> Self {
         Self { val, span }
     }
+
+    pub(crate) fn span(&self) -> Span {
+        self.span
+    }
 }
 
 impl Eval for Literal {

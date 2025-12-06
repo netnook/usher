@@ -8,6 +8,11 @@ pub struct DictBuilder {
     pub(crate) entries: Vec<KeyValueBuilder>,
     pub(crate) span: Span,
 }
+impl DictBuilder {
+    pub(crate) fn span(&self) -> Span {
+        self.span
+    }
+}
 
 impl core::fmt::Debug for DictBuilder {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

@@ -1,0 +1,17 @@
+var print = 1
+---stderr---
+Syntax error in tests/run/errors.usher at line 1, char 5:
+  |
+1 | var print = 1
+  |     ^^^^^ Reserved name cannot be used for declarations.
+*****************************************************
+var foo = dict(bar: "bar")
+foo
+  .bar["x"]()
+---stderr---
+Syntax error in tests/run/errors.usher at line 2, char 1:
+     |
+   2 | foo
+     | ^^^ <- starting here
+   3 |   .bar["x"]()
+     | ^^^^^^ <- ending here: 'index-of' operator cannot be applied to a string.

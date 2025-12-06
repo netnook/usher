@@ -211,6 +211,10 @@ impl End {
     pub(crate) fn new(span: Span) -> Self {
         Self { span }
     }
+
+    fn span(&self) -> Span {
+        self.span
+    }
 }
 
 impl Eval for End {

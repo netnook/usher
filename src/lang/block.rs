@@ -39,6 +39,10 @@ impl Block {
         }
         Ok(result)
     }
+
+    pub(crate) fn span(&self) -> Span {
+        self.span
+    }
 }
 
 accept_default!(Block, stmts:vec:node,);

@@ -62,7 +62,7 @@ fn print_error(
             start_char_idx,
             end_line,
             end_line_idx,
-            end_char_idx: _,
+            end_char_idx,
         } => {
             writeln!(
                 w,
@@ -75,15 +75,17 @@ fn print_error(
             let end_line_num = format!("{:4}", end_line_idx + 1);
             let padding = " ".repeat(start_line_num.len().max(end_line_num.len()));
             let start_line_space = " ".repeat(start_char_idx);
-            let end_line_space = " ".repeat(start_char_idx);
-            let underline = "^^^ FIXME".to_string();
+            let start_line_underline = "^".repeat(start_line.len() - start_char_idx);
+            let end_line_underline = "^".repeat(end_char_idx);
 
             writeln!(w, "{padding} |")?;
             writeln!(w, "{start_line_num} | {start_line}")?;
-            writeln!(w, "{padding} | {start_line_space}{underline}")?;
+            writeln!(
+                w,
+                "{padding} | {start_line_space}{start_line_underline} <- starting here"
+            )?;
             writeln!(w, "{end_line_num} | {end_line}")?;
-            writeln!(w, "{padding} | {end_line_space}{underline}")?;
-            writeln!(w, "{padding} | -- {err}")?;
+            writeln!(w, "{padding} | {end_line_underline} <- ending here: {err}")?;
         }
     }
 
