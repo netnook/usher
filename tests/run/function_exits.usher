@@ -51,7 +51,7 @@ Evaluation error in tests/run/function_exits.usher at line 3, char 5:
 *****************************************************
 # test 6 - error
 function aaa() {
-	# FIXME: error not implemented yet
+	# TODO: error not implemented yet
     # error "foo"
 }
 aaa()

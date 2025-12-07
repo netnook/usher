@@ -172,15 +172,5 @@ mod tests {
             decl(var("a"), _func!(_block![b(true)])),
             -1,
         );
-
-        // // FIXME: validation - the following should not be allowed
-
-        // do_test_stmt_err(
-        //     " var a = function named() { true }",
-        //     SyntaxError::ReservedName {
-        //         got: "ad".to_string(),
-        //         span: Span::new(0, 0),
-        //     },
-        // );
     }
 }
