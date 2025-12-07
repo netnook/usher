@@ -46,6 +46,24 @@ Evaluation error in tests/run/chain_catch.usher at line 10, char 11:
 10 | var r = a.xxx.b
    |           ^^^ Property 'xxx' not found. The following properties are available: b, e
 *******************************************
+# error variant 4
+var a = ["a", "b"]
+var r = a[-1]
+---stderr---
+Evaluation error in tests/run/chain_catch.usher at line 3, char 11:
+  |
+3 | var r = a[-1]
+  |           ^^ Index out of range.  Got -1, length: 2.
+*******************************************
+# error variant 5
+var a = ["a", "b"]
+var r = a[2]
+---stderr---
+Evaluation error in tests/run/chain_catch.usher at line 3, char 11:
+  |
+3 | var r = a[2]
+  |           ^ Index out of range.  Got 2, length: 2.
+*******************************************
 # catch variant 1
 var a = dict(
   b: dict(
@@ -82,5 +100,21 @@ var a = dict(
 )
 
 var r = a.x?.b
+---result---
+nil
+*******************************************
+# catch variant 4
+var a = dict(
+  b: "foo"
+)
+
+var r = a.x?()
+---result---
+nil
+*******************************************
+# catch variant 5
+var a = []
+
+var r = a[22]?()
 ---result---
 nil

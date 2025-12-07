@@ -205,7 +205,7 @@ pub mod tests {
     }
 
     impl PropertyOf {
-        pub(crate) fn with_missing_prop_to_nil(mut self, v: bool) -> PropertyOf {
+        pub(crate) fn with_optional_property(mut self, v: bool) -> PropertyOf {
             self.optional_property = v;
             self
         }

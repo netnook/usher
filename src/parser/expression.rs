@@ -250,15 +250,16 @@ impl<'a> Parser<'a> {
 
             if let Some((args, span)) = self.call_of()? {
                 node = match node {
-                    // FIXME: what if property-of has the `throw_on_missing_prop` flag set !!!
-                    AstNode::PropertyOf(node) => AstNode::FunctionCall(FunctionCall {
-                        variant: FunctionCallVariant::MethodCall {
-                            on: node.of,
-                            function: node.property,
-                        },
-                        args,
-                        span: Span::merge(node.span, span),
-                    }),
+                    AstNode::PropertyOf(node) if !node.optional_property => {
+                        AstNode::FunctionCall(FunctionCall {
+                            variant: FunctionCallVariant::MethodCall {
+                                on: node.of,
+                                function: node.property,
+                            },
+                            args,
+                            span: Span::merge(node.span, span),
+                        })
+                    }
                     AstNode::CatchMissingOptionalProperty(_) => {
                         return Err(SyntaxError::UnexpectedParseState {
                             details: "Found expression chain with call on CatchMissingOptionalProperty - please report a bug!".to_string(),
@@ -566,14 +567,14 @@ pub mod tests {
         do_test_expr_ok(
             " foo.bar? ",
             catch_missing_optional_property(
-                prop_of(var("foo"), "bar").with_missing_prop_to_nil(true),
+                prop_of(var("foo"), "bar").with_optional_property(true),
             ),
             -1,
         );
         do_test_expr_ok(
             " foo.bar?.baz ",
             catch_missing_optional_property(prop_of(
-                prop_of(var("foo"), "bar").with_missing_prop_to_nil(true),
+                prop_of(var("foo"), "bar").with_optional_property(true),
                 "baz",
             )),
             -1,
@@ -754,7 +755,7 @@ pub mod tests {
                 greater_equal(
                     add(
                         catch_missing_optional_property(index_of(
-                            prop_of(var("foo"), "bar").with_missing_prop_to_nil(true),
+                            prop_of(var("foo"), "bar").with_optional_property(true),
                             add(s("baz"), i(7)),
                         )),
                         mul(i(32), i(7)),

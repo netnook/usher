@@ -143,7 +143,7 @@ fn test_stmt_spanneds() {
         catch_missing_optional_property(
             index_of(
                 prop_of(var(id("abc").spanned(1, 3)), id("def").spanned(5, 3))
-                    .with_missing_prop_to_nil(true)
+                    .with_optional_property(true)
                     .spanned(4, 5),
                 var(id("ghi").spanned(10, 3)),
             )
