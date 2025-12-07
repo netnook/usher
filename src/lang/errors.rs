@@ -112,6 +112,10 @@ pub enum InternalProgramError {
         "MissingOptionalProperty. If you see this error then there is a bug in usher. Please report it."
     )]
     MissingOptionalProperty,
+    #[error("Error writing to stdout: {cause}")]
+    StdoutWriteError { cause: String, span: Span },
+    #[error("Error writing to stderr: {cause}")]
+    StderrWriteError { cause: String, span: Span },
 }
 
 #[derive(Debug, PartialEq)]
@@ -235,6 +239,8 @@ impl InternalProgramError {
             InternalProgramError::NoSuchFunction { name: _, span } => span,
             InternalProgramError::NameAlreadyDeclared { name: _, span } => span,
             InternalProgramError::MissingOptionalProperty => &DUMMY_SPAN,
+            InternalProgramError::StdoutWriteError { cause: _, span } => span,
+            InternalProgramError::StderrWriteError { cause: _, span } => span,
         }
     }
 
