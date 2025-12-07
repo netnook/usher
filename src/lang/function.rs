@@ -2,7 +2,7 @@ use crate::lang::{
     AstNode, Block, Context, Eval, EvalStop, Identifier, InternalProgramError, Key, KeyValue, Span,
     Value, Var, accept_default,
     builtin_functions::resolve_function,
-    value::Func,
+    value::{Func, StringCell, ValueType},
     visitor::{Accept, Visitor, VisitorResult},
 };
 use std::rc::Rc;
@@ -421,6 +421,40 @@ impl FunctionCall {
         }
 
         Ok(call_context)
+    }
+
+    pub(crate) fn required_positional_arg<'a>(
+        &self,
+        name: &str,
+        arg: Option<&'a Arg>,
+    ) -> Result<&'a Arg, EvalStop> {
+        let Some(arg) = arg else {
+            return Err(InternalProgramError::FunctionCallMissingRequiredArgument {
+                name: name.to_string(),
+                span: self.span,
+            }
+            .into());
+        };
+        Ok(arg)
+    }
+
+    pub(crate) fn require_string(
+        &self,
+        name: &str,
+        arg: &Arg,
+        ctxt: &mut Context,
+    ) -> Result<StringCell, EvalStop> {
+        let val = arg.eval(ctxt)?;
+        let Value::Str(val) = val else {
+            return Err(InternalProgramError::FunctionCallBadArgType {
+                name: name.to_string(),
+                expected: ValueType::String,
+                actual: val.value_type(),
+                span: arg.span(),
+            }
+            .into());
+        };
+        Ok(val)
     }
 }
 

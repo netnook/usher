@@ -2,7 +2,6 @@ use super::InternalProgramError;
 use crate::lang::{
     Context, EvalStop, FunctionCall, Key, Value,
     function::{MethodResolver, MethodType},
-    value::ValueType,
 };
 use std::rc::Rc;
 
@@ -28,28 +27,13 @@ fn str_len(call: &FunctionCall, this: StringCell, _ctxt: &mut Context) -> Result
 }
 
 fn str_split(call: &FunctionCall, this: StringCell, ctxt: &mut Context) -> Result<Value, EvalStop> {
+    // FIXME: have an arg spec as a struct and a macro which can "decode" the args into that struct ?
     let mut on = None;
     for (idx, arg) in call.args.iter().enumerate() {
         match idx {
             0 => {
-                // FIXME: refactor this argument handling into a common utility
-                let Some(on_arg) = call.args.first() else {
-                    return Err(InternalProgramError::FunctionCallMissingRequiredArgument {
-                        name: "on".to_string(),
-                        span: call.span,
-                    }
-                    .into());
-                };
-                let on_val = on_arg.eval(ctxt)?;
-                let Value::Str(on_val) = on_val else {
-                    return Err(InternalProgramError::FunctionCallBadArgType {
-                        name: "on".to_string(),
-                        expected: ValueType::String,
-                        actual: on_val.value_type(),
-                        span: on_arg.span(),
-                    }
-                    .into());
-                };
+                let on_arg = call.required_positional_arg("on", call.args.first())?;
+                let on_val = call.require_string("on", on_arg, ctxt)?;
                 on = Some(on_val);
             }
             _ => {
