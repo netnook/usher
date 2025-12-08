@@ -55,7 +55,11 @@ where
             // FIXME: default should be no separator, and have a named arg "sep=', '" for nicer formatting
             output.write_all(b", ").map_err(&error_mapper)?;
         }
-        let arg = arg.as_string();
+
+        let arg = arg
+            .as_string()
+            .expect("write value to string should succeed");
+
         output.write_all(arg.as_bytes()).map_err(&error_mapper)?;
     }
 

@@ -113,14 +113,14 @@ pub mod tests {
             let val: Value = "the-string".into();
             let expected1 = "the-string";
             let expected2 = "\"the-string\"";
-            assert_eq!(val.as_string(), expected1);
+            assert_eq!(val.as_string().unwrap(), expected1);
             assert_eq!(format!("{val}"), expected2);
         }
         {
             let val: Value = "the-s\"tring".into();
             let expected1 = "the-s\"tring";
             let expected2 = "\"the-s\"tring\"";
-            assert_eq!(val.as_string(), expected1);
+            assert_eq!(val.as_string().unwrap(), expected1);
             assert_eq!(format!("{val}"), expected2);
         }
     }

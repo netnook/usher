@@ -227,7 +227,7 @@ mod tests {
             let val = Value::Dict(Dict::new().into());
             let expected = "dict()";
             assert_eq!(format!("{val}"), expected);
-            assert_eq!(val.as_string(), expected);
+            assert_eq!(val.as_string().unwrap(), expected);
         };
         {
             let mut dict = Dict::new();
@@ -242,7 +242,7 @@ mod tests {
             let expected = r#"dict("dict_a":dict(),"dict_b":dict("foo":"bar"),"nil":nil,"one":1)"#;
             let val = Value::Dict(dict.into());
             assert_eq!(format!("{val}"), expected);
-            assert_eq!(val.as_string(), expected);
+            assert_eq!(val.as_string().unwrap(), expected);
         }
     }
 }

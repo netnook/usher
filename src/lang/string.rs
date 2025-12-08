@@ -34,15 +34,24 @@ impl core::fmt::Debug for InterpolatedStr {
 impl Eval for InterpolatedStr {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
         if self.parts.len() == 1 {
-            self.parts.first().expect("should be there").eval(ctxt)
+            match self.parts.first().expect("should be there").eval(ctxt)? {
+                string @ Value::Str(_) => Ok(string),
+                other => {
+                    let res = other
+                        .as_string()
+                        .expect("write value to string should succeed");
+                    Ok(Value::Str(Rc::new(res)))
+                }
+            }
         } else {
-            // FIXME: change to writer/display format
             let mut res = String::new();
+
             for p in &self.parts {
                 let val = p.eval(ctxt)?;
-                let s = val.as_string();
-                res.push_str(s.as_str());
+                val.write_string(&mut res)
+                    .expect("write value to string should succeed");
             }
+
             Ok(Value::Str(Rc::new(res)))
         }
     }

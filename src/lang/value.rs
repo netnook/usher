@@ -69,18 +69,16 @@ pub enum Value {
 }
 
 impl Value {
-    pub(crate) fn as_string(&'_ self) -> String {
+    pub(crate) fn as_string(&'_ self) -> Result<String, std::fmt::Error> {
+        let mut s = String::new();
+        self.write_string(&mut s)?;
+        Ok(s)
+    }
+
+    pub(crate) fn write_string(&'_ self, into: &mut String) -> Result<(), std::fmt::Error> {
         match self {
-            Value::Func(v) => format!("{v}"),
-            Value::Str(v) => format!("{v}"),
-            Value::Integer(v) => format!("{v}"),
-            Value::Float(v) => format!("{v}"),
-            Value::Bool(v) => format!("{v}"),
-            Value::List(v) => format!("{v}", v = v.borrow()),
-            Value::Dict(v) => format!("{v}", v = v.borrow()),
-            Value::KeyValue(v) => format!("{v}"),
-            Value::Nil => "nil".to_string(),
-            Value::End => "end".to_string(),
+            Value::Str(v) => write!(into, "{v}"),
+            other => write!(into, "{other}"),
         }
     }
 }
@@ -89,13 +87,11 @@ impl Display for Value {
     fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             Value::Func(v) => Display::fmt(v, fmt),
-            // Value::Str(v) => Display::fmt(v.as_ref(), into),
             Value::Str(v) => {
                 fmt.write_char('"')?;
                 fmt.write_str(v)?;
                 fmt.write_char('"')?;
                 Ok(())
-                // format!(r#""{v}""#)
             }
             Value::Integer(v) => Display::fmt(v, fmt),
             Value::Float(v) => Display::fmt(v, fmt),

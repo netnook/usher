@@ -248,7 +248,7 @@ mod tests {
             let val = Value::List(List::new().into());
             let expected = "[]";
             assert_eq!(format!("{val}"), expected);
-            assert_eq!(val.as_string(), expected);
+            assert_eq!(val.as_string().unwrap(), expected);
         };
         {
             let mut list = List::new();
@@ -264,7 +264,7 @@ mod tests {
             let expected = r#"[1,nil,[],["bar"]]"#;
 
             assert_eq!(format!("{val}"), expected);
-            assert_eq!(val.as_string(), expected);
+            assert_eq!(val.as_string().unwrap(), expected);
         }
     }
 }
