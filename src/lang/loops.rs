@@ -50,7 +50,7 @@ impl Eval for For {
                 let list = list.borrow();
                 for val in list.iter() {
                     child_ctxt.reset();
-                    self.loop_item.declare(&mut child_ctxt, val)?;
+                    self.loop_item.declare(&mut child_ctxt, val.ref_clone())?;
                     result = match self.block.eval_with_context(&mut child_ctxt) {
                         Ok(v) => v,
                         Err(EvalStop::Break(_)) => return Ok(Value::Nil),

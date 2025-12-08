@@ -41,12 +41,8 @@ impl List {
         self.content.is_empty()
     }
 
-    // FIXME: why my own Iter implementation rather that collection::Iter ..
-    pub fn iter<'a>(&'a self) -> ListIter<'a> {
-        ListIter {
-            list: self,
-            next: 0,
-        }
+    pub fn iter<'a>(&'a self) -> std::slice::Iter<'a, Value> {
+        self.content.iter()
     }
 
     pub(crate) fn shallow_clone(&self) -> Self {
@@ -95,26 +91,6 @@ impl Display for List {
         fmt.write_char(']')?;
 
         Ok(())
-    }
-}
-
-#[derive(Debug)]
-pub struct ListIter<'a> {
-    list: &'a List,
-    next: usize,
-}
-
-impl<'a> Iterator for ListIter<'a> {
-    type Item = Value;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.next >= self.list.len() {
-            return Option::None;
-        }
-
-        let r = self.list.get(self.next);
-        self.next += 1;
-        Some(r.unwrap_or(Value::Nil))
     }
 }
 
