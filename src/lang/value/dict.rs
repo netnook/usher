@@ -32,7 +32,6 @@ impl Dict {
         self.content.insert(key, value);
     }
 
-    #[allow(dead_code)] // FIXME: remove later
     pub fn remove(&mut self, key: &Key) -> Option<Value> {
         self.content.remove(key)
     }

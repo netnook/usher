@@ -81,13 +81,6 @@ impl Context {
         self.inner.borrow_mut().stderr.clone()
     }
 
-    pub fn stdout(&mut self, str: &str) {
-        self.inner.borrow_mut().stdout(str);
-    }
-    pub fn stderr(&mut self, str: &str) {
-        self.inner.borrow_mut().stderr(str);
-    }
-
     pub(crate) fn new_scope(&self) -> Self {
         let b = self.inner.borrow();
         Self {
@@ -170,13 +163,6 @@ impl ContextInner {
     }
     fn set_stderr(&mut self, err: Output) {
         self.stderr = err;
-    }
-
-    fn stdout(&mut self, str: &str) {
-        self.stdout.write_all(str.as_bytes()).expect("FIXME")
-    }
-    fn stderr(&mut self, str: &str) {
-        self.stderr.write_all(str.as_bytes()).expect("FIXME")
     }
 }
 

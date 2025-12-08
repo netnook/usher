@@ -25,7 +25,7 @@ impl List {
     }
 
     pub fn set(&mut self, index: usize, value: Value) {
-        // should there be an error if index out of range, or grow automatically
+        // FIXME: should there be an error if index out of range, or grow automatically
         self.content[index] = value;
     }
 

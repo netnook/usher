@@ -296,14 +296,13 @@ mod tests {
 
         assert_eq!(i0.eval(&mut ctxt).unwrap(), 7.to_value());
         assert_eq!(i1.eval(&mut ctxt).unwrap(), "aaa".to_value());
-        // assert_eq!(i9.eval(&mut ctxt).unwrap(), Value::Nil); // FIXME: or should this error ????
         assert!(i9.eval(&mut ctxt).is_err_and(|e| matches!(
             e,
             EvalStop::Error(InternalProgramError::IndexOutOfRange {
-                index: _,
-                len: _,
+                index: 9,
+                len: 3,
                 span: _
             })
-        ))); // FIXME: or should this error ????
+        )));
     }
 }
