@@ -325,9 +325,6 @@ pub mod tests {
             span: Span::new(999, 9999),
         }
     }
-    pub(crate) fn _break() -> Break {
-        Break::new(Span::new(999, 9999))
-    }
     pub(crate) fn _continue() -> Continue {
         Continue::new(Span::new(999, 9999))
     }
@@ -335,8 +332,29 @@ pub mod tests {
         End::new(Span::new(999, 9999))
     }
 
-    macro_rules! _ret {
+    macro_rules! brk {
         ($val:expr) => {{
+            use crate::lang::Break;
+            use crate::lang::Span;
+            Break {
+                value: Some(Box::new($val.into())),
+                span: Span::new(999, 9999),
+            }
+        }};
+        () => {{
+            use crate::lang::Break;
+            use crate::lang::Span;
+            Break {
+                value: None,
+                span: Span::new(999, 9999),
+            }
+        }};
+    }
+    pub(crate) use brk;
+
+    macro_rules! ret {
+        ($val:expr) => {{
+            use crate::lang::ReturnStmt;
             use crate::lang::Span;
             ReturnStmt {
                 value: Some(Box::new($val.into())),
@@ -344,6 +362,7 @@ pub mod tests {
             }
         }};
         () => {{
+            use crate::lang::ReturnStmt;
             use crate::lang::Span;
             ReturnStmt {
                 value: None,
@@ -351,7 +370,7 @@ pub mod tests {
             }
         }};
     }
-    pub(crate) use _ret;
+    pub(crate) use ret;
 
     macro_rules! _if {
         ($(cond($cond:expr => $block:expr)),+) => {{

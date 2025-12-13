@@ -1,6 +1,6 @@
 use super::{ParseResult, Parser, SyntaxError};
 use crate::{
-    lang::{Assignment, AstNode, Block, Break, Continue, End, Span},
+    lang::{Assignment, AstNode, Block, Continue, End, Span},
     parser::identifier::UncheckedIdentifier,
 };
 
@@ -20,7 +20,7 @@ impl<'a> Parser<'a> {
                     return Ok(Some(self.var_stmt(span)?));
                 }
                 "break" => {
-                    return Ok(Some(Break::new(span).into()));
+                    return Ok(Some(self.break_stmt(span)?));
                 }
                 "end" => {
                     return Ok(Some(End::new(span).into()));
@@ -208,6 +208,11 @@ pub(super) mod tests {
         do_test_parser_ok(Parser::stmt, input, Some(expected.into()), expected_end);
     }
 
+    #[track_caller]
+    pub(crate) fn do_test_stmt_err(input: &'static str, expected_err: SyntaxError) {
+        do_test_parser_err(Parser::stmt, input, expected_err);
+    }
+
     #[test]
     fn test_stmt() {
         do_test_stmt_ok(" if true { 2 } ", _if!(cond(b(true) => _block![i(2)])), -1);
@@ -224,7 +229,6 @@ pub(super) mod tests {
         do_test_stmt_ok(" iffy + 2 ", add(var("iffy"), i(2)), -1);
         do_test_stmt_ok(" for_me + 2 ", add(var("for_me"), i(2)), -1);
         do_test_stmt_ok(" vario + 2 ", add(var("vario"), i(2)), -1);
-        do_test_stmt_ok(" break ", _break(), -1);
         do_test_stmt_ok(" continue ", _continue(), -1);
         do_test_stmt_ok(" end ", _end(), -1);
     }

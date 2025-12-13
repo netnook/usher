@@ -317,7 +317,7 @@ impl FunctionCall {
             v @ Ok(_) => v,
             e @ Err(EvalStop::Error(_)) => e,
             Err(EvalStop::Return(value)) => Ok(value),
-            Err(EvalStop::Break(span)) => {
+            Err(EvalStop::Break(_, span)) => {
                 Err(EvalStop::Error(InternalProgramError::BreakWithoutLoop {
                     span,
                 }))

@@ -65,3 +65,16 @@ last
 ---result---
 ("b":2)
 
+***********************************************
+var dat = [1,2,3]
+for v in dat {
+  if v == 2 {
+    print("break 44")
+    break 42
+  }
+}
+---result---
+42
+---stdout---
+break 44
+

@@ -63,7 +63,7 @@ impl<'a> Parser<'a> {
                         Err(EvalStop::Error(err)) => {
                             Err(SyntaxError::ConstantEvalError { cause: err })
                         }
-                        Err(EvalStop::Break(span)) => Err(SyntaxError::ConstantEvalError {
+                        Err(EvalStop::Break(_, span)) => Err(SyntaxError::ConstantEvalError {
                             cause: InternalProgramError::BreakWithoutLoop { span },
                         }),
                         Err(EvalStop::Continue(span)) => Err(SyntaxError::ConstantEvalError {

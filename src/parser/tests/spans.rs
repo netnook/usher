@@ -256,10 +256,11 @@ fn test_nil_spans() {
 
 #[test]
 fn test_break_spans() {
+    do_test_parser_exact(Parser::stmt, r#" break "#, brk!().spanned(1, 5).into(), -1);
     do_test_parser_exact(
         Parser::stmt,
-        r#" break "#,
-        _break().spanned(1, 5).into(),
+        r#" break 42 "#,
+        brk!(i(42).spanned(7, 2)).spanned(1, 8).into(),
         -1,
     );
 }
@@ -344,13 +345,13 @@ fn test_return_spans() {
     do_test_parser_exact(
         Parser::stmt,
         " return \n a ",
-        _ret!().spanned(1, 6).into(),
+        ret!().spanned(1, 6).into(),
         -5,
     );
     do_test_parser_exact(
         Parser::stmt,
         " return 2+22",
-        _ret!(add(i(2).spanned(8, 1), i(22).spanned(10, 2)))
+        ret!(add(i(2).spanned(8, 1), i(22).spanned(10, 2)))
             .spanned(1, 11)
             .into(),
         0,

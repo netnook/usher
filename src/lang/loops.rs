@@ -53,7 +53,7 @@ impl Eval for For {
                     self.loop_item.declare(&mut child_ctxt, val.ref_clone())?;
                     result = match self.block.eval_with_context(&mut child_ctxt) {
                         Ok(v) => v,
-                        Err(EvalStop::Break(_)) => return Ok(Value::Nil),
+                        Err(EvalStop::Break(value, _)) => return Ok(value),
                         Err(EvalStop::Continue(_)) => Value::Nil,
                         other @ Err(_) => return other,
                     };
@@ -68,7 +68,7 @@ impl Eval for For {
                     self.loop_item.declare(&mut child_ctxt, loop_val)?;
                     result = match self.block.eval_with_context(&mut child_ctxt) {
                         Ok(v) => v,
-                        Err(EvalStop::Break(_)) => return Ok(Value::Nil),
+                        Err(EvalStop::Break(value, _)) => return Ok(value),
                         Err(EvalStop::Continue(_)) => Value::Nil,
                         other @ Err(_) => return other,
                     };
@@ -83,7 +83,6 @@ impl Eval for For {
             }
         }
 
-        // FIXME: break result value ?
         Ok(result)
     }
 }
@@ -92,6 +91,7 @@ accept_default!(For, iterable:node, loop_item:var, loop_info:opt:var, block:bloc
 
 #[derive(PartialEq, Clone)]
 pub struct Break {
+    pub(crate) value: Option<Box<AstNode>>,
     pub(crate) span: Span,
 }
 
@@ -107,18 +107,19 @@ impl core::fmt::Debug for Break {
 }
 
 impl Break {
-    pub(crate) fn new(span: Span) -> Self {
-        Self { span }
-    }
-
     pub(crate) fn span(&self) -> Span {
         self.span
     }
 }
 
 impl Eval for Break {
-    fn eval(&self, _: &mut Context) -> Result<Value, EvalStop> {
-        Err(EvalStop::Break(self.span))
+    fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
+        let value = match &self.value {
+            Some(v) => v.eval(ctxt)?,
+            None => Value::Nil,
+        };
+
+        Err(EvalStop::Break(value, self.span))
     }
 }
 

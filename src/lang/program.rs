@@ -50,7 +50,7 @@ impl<'a> Program<'a> {
         let mut res = Value::Nil;
         for stmt in &self.stmts {
             res = stmt.eval(ctxt).map_err(|e| match e {
-                EvalStop::Break(span) => {
+                EvalStop::Break(_, span) => {
                     EvalStop::Error(InternalProgramError::BreakWithoutLoop { span })
                 }
                 EvalStop::Continue(span) => {

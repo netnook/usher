@@ -38,24 +38,17 @@ impl<'a> Parser<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::tests::*;
-
-    #[track_caller]
-    fn do_test_return_ok(input: &'static str, expected: AstNode, expected_end: isize) {
-        do_test_parser_ok(Parser::stmt, input, Some(expected), expected_end);
-    }
-
-    #[track_caller]
-    fn do_test_return_err(input: &'static str, expected_err: SyntaxError) {
-        do_test_parser_err(Parser::stmt, input, expected_err);
-    }
+    use crate::parser::{
+        stmt::tests::{do_test_stmt_err, do_test_stmt_ok},
+        tests::*,
+    };
 
     #[test]
     fn test_return() {
-        do_test_return_ok(r" return ", _ret!().into(), -1);
-        do_test_return_ok(" return 42 ", _ret!(i(42)).into(), -1);
-        do_test_return_ok(" return 42 + 3 ", _ret!(add(i(42), i(3))).into(), -1);
-        do_test_return_ok(" return 42 \n +3 ", _ret!(i(42)).into(), 10);
-        do_test_return_err(" return { 42 } ", SyntaxError::ExpectsExpression { pos: 8 });
+        do_test_stmt_ok(r" return ", ret!(), -1);
+        do_test_stmt_ok(" return 42 ", ret!(i(42)), -1);
+        do_test_stmt_ok(" return 42 + 3 ", ret!(add(i(42), i(3))), -1);
+        do_test_stmt_ok(" return 42 \n +3 ", ret!(i(42)), 10);
+        do_test_stmt_err(" return { 42 } ", SyntaxError::ExpectsExpression { pos: 8 });
     }
 }

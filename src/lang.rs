@@ -58,7 +58,7 @@ pub enum EvalStop {
     #[error("Return: {0}")]
     Return(Value),
     #[error("Break")]
-    Break(Span),
+    Break(Value, Span),
     #[error("Continue")]
     Continue(Span),
 }
