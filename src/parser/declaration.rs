@@ -38,57 +38,53 @@ impl<'a> Parser<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{lang::Span, parser::tests::*};
-
-    #[track_caller]
-    fn do_test_var_ok(input: &'static str, expected: Declaration, expected_end: isize) {
-        do_test_parser_ok(Parser::stmt, input, Some(expected.into()), expected_end);
-    }
-
-    #[track_caller]
-    fn do_test_var_err(input: &'static str, expected_err: SyntaxError) {
-        do_test_parser_err(Parser::stmt, input, expected_err);
-    }
+    use crate::{
+        lang::Span,
+        parser::{
+            stmt::tests::{do_test_stmt_err, do_test_stmt_ok},
+            tests::*,
+        },
+    };
 
     #[test]
     fn test_var() {
-        do_test_var_ok(" var a=x+2 ", decl(var("a"), add(var("x"), i(2))), -1);
-        do_test_var_ok(" var a = x + 2 ", decl(var("a"), add(var("x"), i(2))), -1);
-        do_test_var_ok(" var a = x + 2 ", decl(var("a"), add(var("x"), i(2))), -1);
-        do_test_var_ok(
+        do_test_stmt_ok(" var a=x+2 ", decl(var("a"), add(var("x"), i(2))), -1);
+        do_test_stmt_ok(" var a = x + 2 ", decl(var("a"), add(var("x"), i(2))), -1);
+        do_test_stmt_ok(" var a = x + 2 ", decl(var("a"), add(var("x"), i(2))), -1);
+        do_test_stmt_ok(
             " var # comment \n a = # comment \n x + 2 ",
             decl(var("a"), add(var("x"), i(2))),
             -1,
         );
 
-        do_test_var_err(
+        do_test_stmt_err(
             " var,=x+2 ",
             SyntaxError::ExpectedWhitespaceOrComment { pos: 4 },
         );
-        do_test_var_err(
+        do_test_stmt_err(
             " var ,=x+2 ",
             SyntaxError::ExpectedVariableIdentifier { pos: 5 },
         );
-        do_test_var_err(
+        do_test_stmt_err(
             " var a # comment \n = 1 ",
             SyntaxError::DeclarationExpectedEquals { got: '#', pos: 7 },
         );
-        do_test_var_err(
+        do_test_stmt_err(
             " var a +  = 1 ",
             SyntaxError::DeclarationExpectedEquals { got: '+', pos: 7 },
         );
-        do_test_var_err(
+        do_test_stmt_err(
             " var a = ; 1 ",
             SyntaxError::DeclarationExpectedExpression { pos: 9 },
         );
-        do_test_var_err(
+        do_test_stmt_err(
             " var print = 1 ",
             SyntaxError::ReservedName {
                 got: "print".to_string(),
                 span: Span::new(5, 5),
             },
         );
-        do_test_var_err(
+        do_test_stmt_err(
             " var else = 1 ",
             SyntaxError::ReservedKeyword {
                 got: "else".to_string(),

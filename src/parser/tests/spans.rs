@@ -2,15 +2,12 @@ use super::*;
 use pretty_assertions::assert_eq;
 
 #[track_caller]
-fn do_test_parser_exact<'a, F, T>(func: F, input: &'static str, expected: T, expected_end: isize)
-where
-    F: FnOnce(&mut Parser<'a>) -> Result<Option<T>, SyntaxError>,
-    T: PartialEq<T> + std::fmt::Debug,
-{
+fn do_test_parser_exact(input: &'static str, expected: AstNode, expected_end: isize) {
     let mut parser = Parser::new("dummy", input);
     parser.pos = 1;
 
-    let actual = func(&mut parser)
+    let actual = parser
+        .stmt()
         .expect("parser should succeed")
         .expect("with some");
 
@@ -35,7 +32,6 @@ where
 #[test]
 fn test_string_spans() {
     do_test_parser_exact(
-        Parser::string,
         r#"_"ab{ foo -45 }cde{ 35 }"_"#,
         _interp![
             s("ab").spanned(2, 2),
@@ -52,7 +48,6 @@ fn test_string_spans() {
 #[test]
 fn test_list_spans() {
     do_test_parser_exact(
-        Parser::expression,
         r#" [111, "xxx"] "#,
         list!(i(111).spanned(2, 3), s("xxx").spanned(7, 5))
             .spanned(1, 12)
@@ -64,7 +59,6 @@ fn test_list_spans() {
 #[test]
 fn test_dict_spans() {
     do_test_parser_exact(
-        Parser::expression,
         r#" dict(a:1,b : 22 ) "#,
         dict_builder(vec![
             kv(id("a").spanned(6, 1), i(1).spanned(8, 1)),
@@ -79,7 +73,6 @@ fn test_dict_spans() {
 #[test]
 fn test_stmt_spanneds() {
     do_test_parser_exact(
-        Parser::stmt,
         " var a=xx>=2 ",
         decl(
             var(id("a").spanned(5, 1)),
@@ -90,7 +83,6 @@ fn test_stmt_spanneds() {
         -1,
     );
     do_test_parser_exact(
-        Parser::stmt,
         " var # comment \n a = # comment \n xyz + 23 ",
         decl(
             var(id("a").spanned(17, 1)),
@@ -101,7 +93,6 @@ fn test_stmt_spanneds() {
         -1,
     );
     do_test_parser_exact(
-        Parser::stmt,
         " var a = !(-b==c) ",
         decl(
             var(id("a").spanned(5, 1)),
@@ -116,7 +107,6 @@ fn test_stmt_spanneds() {
         -1,
     );
     do_test_parser_exact(
-        Parser::stmt,
         " abc.def.ghi ",
         prop_of(
             prop_of(var(id("abc").spanned(1, 3)), id("def").spanned(5, 3)).spanned(4, 4),
@@ -127,7 +117,6 @@ fn test_stmt_spanneds() {
         -1,
     );
     do_test_parser_exact(
-        Parser::stmt,
         r#" abc[a][123] "#,
         index_of(
             index_of(var(id("abc").spanned(1, 3)), var(id("a").spanned(5, 1))).spanned(4, 3),
@@ -138,7 +127,6 @@ fn test_stmt_spanneds() {
         -1,
     );
     do_test_parser_exact(
-        Parser::stmt,
         r#" abc.def?[ghi]? "#,
         catch_missing_optional_property(
             index_of(
@@ -153,7 +141,6 @@ fn test_stmt_spanneds() {
         -1,
     );
     do_test_parser_exact(
-        Parser::stmt,
         r#" aaa(123).bbb(456) "#,
         _method_call!(
             _function_call!(id("aaa").spanned(1, 3), arg!(i(123).spanned(5, 3))).spanned(1, 8),
@@ -165,7 +152,6 @@ fn test_stmt_spanneds() {
         -1,
     );
     do_test_parser_exact(
-        Parser::stmt,
         " { \n abc = 2 \n 42 \n } ",
         _block!(
             assign(var(id("abc").spanned(5, 3)), i(2).spanned(11, 1)),
@@ -179,86 +165,30 @@ fn test_stmt_spanneds() {
 
 #[test]
 fn test_literal_spanneds() {
-    do_test_parser_exact(
-        Parser::expression,
-        " 1234 ",
-        i(1234).spanned(1, 4).into(),
-        -1,
-    );
-    do_test_parser_exact(
-        Parser::expression,
-        " -1234 ",
-        i(-1234).spanned(1, 5).into(),
-        -1,
-    );
-    do_test_parser_exact(
-        Parser::expression,
-        " 12.34 ",
-        f(12.34).spanned(1, 5).into(),
-        -1,
-    );
-    do_test_parser_exact(
-        Parser::expression,
-        " -12.34 ",
-        f(-12.34).spanned(1, 6).into(),
-        -1,
-    );
-    do_test_parser_exact(
-        Parser::expression,
-        " 12. ",
-        f(12.0).spanned(1, 3).into(),
-        -1,
-    );
-    do_test_parser_exact(
-        Parser::expression,
-        " -12. ",
-        f(-12.0).spanned(1, 4).into(),
-        -1,
-    );
-    do_test_parser_exact(
-        Parser::expression,
-        " \"xy\\\"z\" ",
-        s("xy\"z").spanned(1, 7).into(),
-        -1,
-    );
-    do_test_parser_exact(
-        Parser::expression,
-        " true ",
-        b(true).spanned(1, 4).into(),
-        -1,
-    );
-    do_test_parser_exact(
-        Parser::expression,
-        " false ",
-        b(false).spanned(1, 5).into(),
-        -1,
-    );
-    do_test_parser_exact(Parser::expression, " true", b(true).spanned(1, 4).into(), 0);
+    do_test_parser_exact(" 1234 ", i(1234).spanned(1, 4).into(), -1);
+    do_test_parser_exact(" -1234 ", i(-1234).spanned(1, 5).into(), -1);
+    do_test_parser_exact(" 12.34 ", f(12.34).spanned(1, 5).into(), -1);
+    do_test_parser_exact(" -12.34 ", f(-12.34).spanned(1, 6).into(), -1);
+    do_test_parser_exact(" 12. ", f(12.0).spanned(1, 3).into(), -1);
+    do_test_parser_exact(" -12. ", f(-12.0).spanned(1, 4).into(), -1);
+    do_test_parser_exact(" \"xy\\\"z\" ", s("xy\"z").spanned(1, 7).into(), -1);
+    do_test_parser_exact(" true ", b(true).spanned(1, 4).into(), -1);
+    do_test_parser_exact(" false ", b(false).spanned(1, 5).into(), -1);
+    do_test_parser_exact(" true", b(true).spanned(1, 4).into(), 0);
 
-    do_test_parser_exact(
-        Parser::expression,
-        " nil2 ",
-        var(id("nil2").spanned(1, 4)).into(),
-        -1,
-    );
+    do_test_parser_exact(" nil2 ", var(id("nil2").spanned(1, 4)).into(), -1);
 }
 
 #[test]
 fn test_nil_spans() {
-    do_test_parser_exact(Parser::expression, " nil ", nil().spanned(1, 3).into(), -1);
-    do_test_parser_exact(
-        Parser::expression,
-        " nil2 ",
-        var(id("nil2").spanned(1, 4)).into(),
-        -1,
-    );
+    do_test_parser_exact(" nil ", nil().spanned(1, 3).into(), -1);
+    do_test_parser_exact(" nil2 ", var(id("nil2").spanned(1, 4)).into(), -1);
 }
 
 #[test]
 fn test_break_spans() {
-    do_test_parser_exact(Parser::stmt, r#" break "#, brk!().spanned(1, 5).into(), -1);
+    do_test_parser_exact(r#" break "#, brk!().spanned(1, 5).into(), -1);
     do_test_parser_exact(
-        Parser::stmt,
         r#" break 42 "#,
         brk!(i(42).spanned(7, 2)).spanned(1, 8).into(),
         -1,
@@ -267,18 +197,12 @@ fn test_break_spans() {
 
 #[test]
 fn test_continue_spans() {
-    do_test_parser_exact(
-        Parser::stmt,
-        r#" continue "#,
-        _continue().spanned(1, 8).into(),
-        -1,
-    );
+    do_test_parser_exact(r#" continue "#, _continue().spanned(1, 8).into(), -1);
 }
 
 #[test]
 fn test_declaration_spans() {
     do_test_parser_exact(
-        Parser::stmt,
         r#" var a = 1 "#,
         decl(var(id("a").spanned(5, 1)), i(1).spanned(9, 1))
             .spanned(1, 9)
@@ -289,18 +213,17 @@ fn test_declaration_spans() {
 
 #[test]
 fn test_this_spans() {
-    do_test_parser_exact(Parser::stmt, r#" this "#, this().spanned(1, 4).into(), -1);
+    do_test_parser_exact(r#" this "#, this().spanned(1, 4).into(), -1);
 }
 
 #[test]
 fn test_end_spans() {
-    do_test_parser_exact(Parser::stmt, r#" end "#, _end().spanned(1, 3).into(), -1);
+    do_test_parser_exact(r#" end "#, _end().spanned(1, 3).into(), -1);
 }
 
 #[test]
 fn test_ifelse_spans() {
     do_test_parser_exact(
-        Parser::stmt,
         r#" if a { 1 } else if b { 2 } else { 3 } "#,
         _if!(
             cond(var(id("a").spanned(4, 1)) => _block![i(1).spanned(8, 1)].spanned(6, 5)),
@@ -312,7 +235,6 @@ fn test_ifelse_spans() {
         -1,
     );
     do_test_parser_exact(
-        Parser::stmt,
         r#" if a { 1 } "#,
         _if!(
             cond(var(id("a").spanned(4, 1)) => _block![i(1).spanned(8, 1)].spanned(6, 5))
@@ -326,7 +248,6 @@ fn test_ifelse_spans() {
 #[test]
 fn test_for_spans() {
     do_test_parser_exact(
-        Parser::stmt,
         r#" for a in b { 1 } "#,
         _for(
             var(id("a").spanned(5, 1)),
@@ -342,14 +263,8 @@ fn test_for_spans() {
 
 #[test]
 fn test_return_spans() {
+    do_test_parser_exact(" return \n a ", ret!().spanned(1, 6).into(), -5);
     do_test_parser_exact(
-        Parser::stmt,
-        " return \n a ",
-        ret!().spanned(1, 6).into(),
-        -5,
-    );
-    do_test_parser_exact(
-        Parser::stmt,
         " return 2+22",
         ret!(add(i(2).spanned(8, 1), i(22).spanned(10, 2)))
             .spanned(1, 11)
@@ -361,7 +276,6 @@ fn test_return_spans() {
 #[test]
 fn test_functiondef_spans() {
     do_test_parser_exact(
-        Parser::stmt,
         " function foo() { 1 } ",
         _func!(
             name(id("foo").spanned(10, 3)),

@@ -71,33 +71,23 @@ impl<'a> Parser<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::lang::IfElse;
+    use crate::parser::stmt::tests::{do_test_stmt_err, do_test_stmt_ok};
     use crate::parser::tests::*;
-
-    #[track_caller]
-    fn do_test_if_ok(input: &'static str, expected: IfElse, expected_end: isize) {
-        do_test_parser_ok(Parser::stmt, input, Some(expected.into()), expected_end);
-    }
-
-    #[track_caller]
-    fn do_test_if_err(input: &'static str, expected_err: SyntaxError) {
-        do_test_parser_err(Parser::stmt, input, expected_err);
-    }
 
     #[test]
     fn test_if() {
-        do_test_if_ok(r" if x { 1 } ", _if!(cond(var("x") => _block![i(1)])), -1);
-        do_test_if_ok(
+        do_test_stmt_ok(r" if x { 1 } ", _if!(cond(var("x") => _block![i(1)])), -1);
+        do_test_stmt_ok(
             " if x { 1 } else if y { 2 } ",
             _if!(cond(var("x") => _block![i(1)]), cond(var("y") => _block![i(2)])),
             -1,
         );
-        do_test_if_ok(
+        do_test_stmt_ok(
             " if x { 1 } else { 2 } ",
             _if!(cond(var("x") => _block![i(1)]), else(_block![i(2)])),
             -1,
         );
-        do_test_if_ok(
+        do_test_stmt_ok(
             " if x { 1 } else if y { 2 } else { 3 } ",
             _if!(
                 cond(var("x") => _block![i(1)]),
@@ -106,7 +96,7 @@ mod tests {
             ),
             -1,
         );
-        do_test_if_ok(
+        do_test_stmt_ok(
             " if x { 1 } else if y { 2 } else if z { 3 } else { 4 } ",
             _if!(
                 cond(var("x") => _block![i(1)]),
@@ -116,7 +106,7 @@ mod tests {
             ),
             -1,
         );
-        do_test_if_ok(
+        do_test_stmt_ok(
             " if x{1}else if y{2}else{3} ",
             _if!(
                 cond(var("x") => _block![i(1)]),
@@ -125,7 +115,7 @@ mod tests {
             ),
             -1,
         );
-        do_test_if_ok(
+        do_test_stmt_ok(
             r" if x {
                 1
                 if a { 10 } else { 11 }
@@ -162,24 +152,24 @@ mod tests {
             ),
             -1,
         );
-        do_test_if_ok(
+        do_test_stmt_ok(
             " if x { 1 } else { 2 } else { 3 } ",
             _if!(cond(var("x") => _block![i(1)]), else(_block![i(2)])),
             -12,
         );
-        do_test_if_err(
+        do_test_stmt_err(
             " if, { 1 } else if y { 2 } else { 3 } ",
             SyntaxError::ExpectedWhitespaceOrComment { pos: 3 },
         );
-        do_test_if_err(
+        do_test_stmt_err(
             " if x { 1; } else if y { 2 } else { 3 } ",
             SyntaxError::ExpectedNewLineAfterStmt { pos: 9 },
         );
-        do_test_if_err(
+        do_test_stmt_err(
             " if x { 1 } else ify { 2 } else { 3 } ",
             SyntaxError::ExpectedBlockOrIf { pos: 17 },
         );
-        do_test_if_err(
+        do_test_stmt_err(
             " if x { 1 } else if y { 2  else { 3 } ",
             SyntaxError::ExpectedNewLineAfterStmt { pos: 27 },
         );

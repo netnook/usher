@@ -129,30 +129,20 @@ pub(super) mod tests {
     use super::*;
     use crate::parser::tests::*;
 
-    #[track_caller]
-    fn do_test_block_ok(input: &'static str, expected: Block, expected_end: isize) {
-        do_test_parser_ok(Parser::stmt, input, Some(expected.into()), expected_end);
-    }
-
-    #[track_caller]
-    fn do_test_block_err(input: &'static str, expected_err: SyntaxError) {
-        do_test_parser_err(Parser::block, input, expected_err);
-    }
-
     #[test]
     fn test_block() {
-        do_test_block_ok(" {1} ", _block![i(1)], -1);
-        do_test_block_ok(" { 1 } ", _block![i(1)], -1);
-        do_test_block_ok(" { 1 \n 2 \n 3 } ", _block![i(1), i(2), i(3)], -1);
-        do_test_block_ok(" { \n 1 \n 2 \n 3 \n } ", _block![i(1), i(2), i(3)], -1);
-        do_test_block_ok(" { #foo\n 1 #bar\n #baz \n 2 } ", _block![i(1), i(2)], -1);
+        do_test_stmt_ok(" {1} ", _block![i(1)], -1);
+        do_test_stmt_ok(" { 1 } ", _block![i(1)], -1);
+        do_test_stmt_ok(" { 1 \n 2 \n 3 } ", _block![i(1), i(2), i(3)], -1);
+        do_test_stmt_ok(" { \n 1 \n 2 \n 3 \n } ", _block![i(1), i(2), i(3)], -1);
+        do_test_stmt_ok(" { #foo\n 1 #bar\n #baz \n 2 } ", _block![i(1), i(2)], -1);
 
-        do_test_block_err(" { 1 ", SyntaxError::MissingClosingBrace { pos: 1 });
-        do_test_block_err(
+        do_test_stmt_err(" { 1 ", SyntaxError::MissingClosingBrace { pos: 1 });
+        do_test_stmt_err(
             " { 1 2 } ",
             SyntaxError::ExpectedNewLineAfterStmt { pos: 5 },
         );
-        do_test_block_err(" { 1 \n ; } ", SyntaxError::ExpectedStmt { pos: 7 });
+        do_test_stmt_err(" { 1 \n ; } ", SyntaxError::ExpectedStmt { pos: 7 });
     }
 
     #[track_caller]
