@@ -1,7 +1,7 @@
 use crate::lang::{Context, EvalStop, FunctionCall, Key, Output, Value, function::FunctionType};
-use std::io::Write;
+use std::{io::Write, rc::Rc};
 
-use super::InternalProgramError;
+use super::{InternalProgramError, value::ValueType};
 
 pub fn resolve_function(key: &Key) -> Option<FunctionType> {
     match key.as_str() {
@@ -42,21 +42,51 @@ where
 {
     let mut first = true;
 
-    let args = call
-        .args
-        .iter()
-        .map(|a| a.eval(ctxt))
-        .collect::<Result<Vec<Value>, EvalStop>>()?;
+    let mut values = Vec::with_capacity(call.args.len());
+    let mut sep = None;
 
-    for arg in args {
+    for a in &call.args {
+        let val = a.value.eval(ctxt)?;
+        if let Some(name) = &a.name {
+            if name.key.as_str() == "sep" {
+                sep = match val {
+                    Value::Str(s) => Some(s),
+                    Value::Nil => Some(Rc::new(String::new())),
+                    _ => {
+                        return Err(InternalProgramError::BadValueType {
+                            expected: ValueType::String,
+                            actual: val.value_type(),
+                            span: a.span(),
+                        }
+                        .into_stop());
+                    }
+                };
+            } else {
+                return Err(InternalProgramError::FunctionCallNoSuchParameter {
+                    name: name.as_string(),
+                    span: a.span(),
+                }
+                .into_stop());
+            }
+        } else {
+            values.push(val);
+        }
+    }
+
+    for val in values {
         if first {
             first = false;
         } else {
-            // FIXME: default should be no separator, and have a named arg "sep=', '" for nicer formatting
-            output.write_all(b", ").map_err(&error_mapper)?;
+            let s = match &sep {
+                Some(sep) => sep.as_str(),
+                None => ", ",
+            };
+            if !s.is_empty() {
+                output.write_all(s.as_bytes()).map_err(&error_mapper)?;
+            }
         }
 
-        let arg = arg
+        let arg = val
             .as_string()
             .expect("write value to string should succeed");
 

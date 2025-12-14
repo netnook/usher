@@ -22,10 +22,10 @@ use error::ParseError;
 pub use error::SyntaxError;
 pub use position::SourceRef;
 
-pub(crate) const KEYWORDS: [&str; 27] = [
+pub(crate) const KEYWORDS: [&str; 28] = [
     "if", "else", "for", "in", "break", "continue", "return", "function", "var", "true", "false",
     "nil", "end", "dict", "switch", "case", "defer", "exit", "throw", "catch", "finally", "raise",
-    "iif", "drop", "unlet", "let", "const",
+    "iif", "drop", "unlet", "let", "const", "debug",
 ];
 
 pub(crate) const RESERVED_NAMES: [&str; 3] = ["print", "error", "std"];

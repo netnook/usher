@@ -19,3 +19,22 @@ dict("a":"aaa","b":42,"c":"ccc")
 dict("a":"aaa","b":42,"c":["sub",dict("x":"list","y":[])])
 [dict("a":"aaa","b":42),["sub",dict("x":"list","y":[])]]
 42, 42.42, true, false, a, string, [], dict()
+*************************************************
+# separators
+print("abc", "def")
+print("abc", "def", sep:"")
+print("abc", "def", sep:"--")
+print("abc", "def", sep:nil)
+---stdout---
+abc, def
+abcdef
+abc--def
+abcdef
+*************************************************
+# bad separator
+print("abc", "def", sep:42)
+---stderr---
+Evaluation error in tests/run/print.usher at line 2, char 21:
+  |
+2 | print("abc", "def", sep:42)
+  |                     ^^^^^^ Bad type. Expected 'string' but got integer.
