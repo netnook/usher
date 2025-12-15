@@ -1,6 +1,6 @@
 use super::{ParseResult, Parser, SyntaxError};
 use crate::{
-    lang::{Assignment, AstNode, Block, Continue, End, Span},
+    lang::{Assignment, AstNode, Block, Continue, Span},
     parser::identifier::UncheckedIdentifier,
 };
 
@@ -10,26 +10,17 @@ impl<'a> Parser<'a> {
 
         if let Some(UncheckedIdentifier(id, span)) = self.unchecked_identifier() {
             match id {
-                "if" => {
-                    return Ok(Some(self.if_stmt(span)?));
-                }
-                "for" => {
-                    return Ok(Some(self.for_stmt(span)?));
-                }
                 "var" => {
                     return Ok(Some(self.var_stmt(span)?));
+                }
+                "return" => {
+                    return Ok(Some(self.return_stmt(span)?));
                 }
                 "break" => {
                     return Ok(Some(self.break_stmt(span)?));
                 }
-                "end" => {
-                    return Ok(Some(End::new(span).into()));
-                }
                 "continue" => {
                     return Ok(Some(Continue::new(span).into()));
-                }
-                "return" => {
-                    return Ok(Some(self.return_stmt(span)?));
                 }
                 _ => {
                     self.pos = start;
@@ -37,11 +28,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        if let Some(blk) = self.block()? {
-            return Ok(Some(blk.into()));
-        }
-
-        // FIXME: binary run exppression
+        // FIXME: execute binary/pipeline exppression
         if let Some(res) = self.assignment_or_expression()? {
             return Ok(Some(res));
         }
@@ -89,8 +76,8 @@ impl<'a> Parser<'a> {
         }))
     }
 
-    pub(super) fn assignment_or_expression(&mut self) -> ParseResult<Option<AstNode>> {
-        let Some(expr) = self.expression()? else {
+    fn assignment_or_expression(&mut self) -> ParseResult<Option<AstNode>> {
+        let Some(expr) = self.complex_expression()? else {
             return Ok(None);
         };
 
@@ -109,7 +96,7 @@ impl<'a> Parser<'a> {
                 return Err(SyntaxError::AssignmentInvalidLHS { span: lhs.span() });
             }
 
-            let Some(rhs) = self.expression()? else {
+            let Some(rhs) = self.complex_expression()? else {
                 return Err(SyntaxError::ExpectsExpression { pos: self.pos });
             };
 
@@ -220,6 +207,5 @@ pub(super) mod tests {
         do_test_stmt_ok(" for_me + 2 ", add(var("for_me"), i(2)), -1);
         do_test_stmt_ok(" vario + 2 ", add(var("vario"), i(2)), -1);
         do_test_stmt_ok(" continue ", _continue(), -1);
-        do_test_stmt_ok(" end ", _end(), -1);
     }
 }

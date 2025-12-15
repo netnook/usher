@@ -108,6 +108,8 @@ pub enum InternalProgramError {
     BreakWithoutLoop { span: Span },
     #[error("Continue without for.")]
     ContinueWithoutLoop { span: Span },
+    #[error("Return outside of function.")]
+    ReturnWithoutFunction { span: Span },
     #[error(
         "MissingOptionalProperty. If you see this error then there is a bug in usher. Please report it."
     )]
@@ -236,6 +238,7 @@ impl InternalProgramError {
             InternalProgramError::UndeclaredVariable { name: _, span } => span,
             InternalProgramError::BreakWithoutLoop { span } => span,
             InternalProgramError::ContinueWithoutLoop { span } => span,
+            InternalProgramError::ReturnWithoutFunction { span } => span,
             InternalProgramError::NoSuchFunction { name: _, span } => span,
             InternalProgramError::NameAlreadyDeclared { name: _, span } => span,
             InternalProgramError::MissingOptionalProperty => &DUMMY_SPAN,

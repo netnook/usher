@@ -218,7 +218,7 @@ fn test_this_spans() {
 
 #[test]
 fn test_end_spans() {
-    do_test_parser_exact(r#" end "#, _end().spanned(1, 3).into(), -1);
+    do_test_parser_exact(r#" end "#, end().spanned(1, 3).into(), -1);
 }
 
 #[test]

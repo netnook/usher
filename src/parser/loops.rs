@@ -1,8 +1,5 @@
 use super::{ParseResult, Parser, SyntaxError};
-use crate::{
-    lang::{AstNode, Break, For, Span},
-    parser::identifier::UncheckedIdentifier,
-};
+use crate::lang::{AstNode, Break, For, Span};
 
 impl<'a> Parser<'a> {
     // "for" ident "in" expr block
@@ -31,13 +28,13 @@ impl<'a> Parser<'a> {
             self.whitespace_comments();
         }
 
-        let Some(UncheckedIdentifier("in", _)) = self.unchecked_identifier() else {
+        let Some("in") = self.identifier_str() else {
             return Err(SyntaxError::LoopExpectedInKeyword { pos: self.pos });
         };
 
         self.whitespace_comments();
 
-        let Some(iterable) = self.expression()? else {
+        let Some(iterable) = self.simple_expression()? else {
             return Err(SyntaxError::ExpectsExpression { pos: self.pos });
         };
 
@@ -78,7 +75,7 @@ impl<'a> Parser<'a> {
             return Ok(AstNode::Break(Break { value: None, span }));
         }
 
-        let Some(expr) = self.expression()? else {
+        let Some(expr) = self.complex_expression()? else {
             return Err(SyntaxError::ExpectsExpression { pos: self.pos });
         };
 
@@ -169,6 +166,6 @@ mod tests {
         do_test_stmt_ok(" break 42 ", brk!(i(42)), -1);
         do_test_stmt_ok(" break 42 + 3 ", brk!(add(i(42), i(3))), -1);
         do_test_stmt_ok(" break 42 \n +3 ", brk!(i(42)), 9);
-        do_test_stmt_err(" break { 42 } ", SyntaxError::ExpectsExpression { pos: 7 });
+        do_test_stmt_err(" break continue", SyntaxError::ExpectsExpression { pos: 7 });
     }
 }

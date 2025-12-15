@@ -5,10 +5,11 @@ var sum3 = 0
 var i = "i"
 var a = "a"
 
-# FIXME: this won't parse because of assigment/declaration at the beginning
-#var a = for i in lst {
-#  sum = sum + i
-#}
+var sum = 0
+var b = for i in lst {
+  sum = sum + i
+  sum
+}
 
 for i in lst {
   sum1 = sum1 + i
@@ -34,9 +35,9 @@ for kv in data {
   out.add(kv.value)
 }
 
-[sum1,sum2,sum3,i,a,out]
+[sum,sum1,sum2,sum3,i,a,b,out]
 ---result---
-[16,16,12,"i","a",["a",1]]
+[16,16,16,12,"i","a",16,["a",1]]
 ***********************************************
 var lst = [ 1, 2, 3, 4 ]
 var last = nil

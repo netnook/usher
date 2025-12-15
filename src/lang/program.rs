@@ -36,7 +36,7 @@ impl<'a> Program<'a> {
     fn internal_eval(&self, ctxt: &mut Context) -> Result<Value, EvalError<'a>> {
         match self.do_internal_eval(ctxt) {
             Ok(v) => Ok(v),
-            Err(EvalStop::Return(v)) => Ok(v),
+            Err(EvalStop::Return(v, _)) => Ok(v),
             Err(EvalStop::Error(e)) => Err(EvalError {
                 file: self.file,
                 source: self.source,

@@ -18,7 +18,7 @@ impl<'a> Parser<'a> {
                 break;
             }
 
-            let Some(expr) = self.expression()? else {
+            let Some(expr) = self.simple_expression()? else {
                 if self.is_eoi() {
                     return Err(SyntaxError::MissingClosingBracket { pos: start });
                 } else {

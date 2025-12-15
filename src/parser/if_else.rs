@@ -1,8 +1,5 @@
 use super::{ParseResult, Parser, SyntaxError};
-use crate::{
-    lang::{AstNode, ConditionalBlock, IfElse, Span},
-    parser::identifier::UncheckedIdentifier,
-};
+use crate::lang::{AstNode, ConditionalBlock, IfElse, Span};
 
 impl<'a> Parser<'a> {
     // if_expr = { "if" ~ expr ~ block ~ if_else_if* ~ if_else? }
@@ -23,14 +20,14 @@ impl<'a> Parser<'a> {
 
             self.whitespace_comments();
 
-            let Some(UncheckedIdentifier("else", _)) = self.unchecked_identifier() else {
+            let Some("else") = self.identifier_str() else {
                 break savepoint;
             };
 
             let ws = self.whitespace_comments();
 
             let savepoint = self.pos;
-            if let Some(UncheckedIdentifier("if", _)) = self.unchecked_identifier() {
+            if let Some("if") = self.identifier_str() {
                 if !ws {
                     return Err(SyntaxError::ExpectedWhitespaceOrComment { pos: savepoint });
                 }
@@ -55,7 +52,7 @@ impl<'a> Parser<'a> {
 
     // if_condition_block
     fn conditional_block(&mut self) -> ParseResult<ConditionalBlock> {
-        let Some(condition) = self.expression()? else {
+        let Some(condition) = self.simple_expression()? else {
             return Err(SyntaxError::ExpectedConditionExpression { pos: self.pos });
         };
         self.whitespace_comments();

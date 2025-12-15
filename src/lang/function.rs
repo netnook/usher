@@ -316,7 +316,7 @@ impl FunctionCall {
         match value {
             v @ Ok(_) => v,
             e @ Err(EvalStop::Error(_)) => e,
-            Err(EvalStop::Return(value)) => Ok(value),
+            Err(EvalStop::Return(value, _)) => Ok(value),
             Err(EvalStop::Break(_, span)) => {
                 Err(EvalStop::Error(InternalProgramError::BreakWithoutLoop {
                     span,
@@ -564,7 +564,7 @@ impl Eval for ReturnStmt {
             None => Value::Nil,
         };
 
-        Err(EvalStop::Return(val))
+        Err(EvalStop::Return(val, self.span))
     }
 }
 

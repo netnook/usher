@@ -23,7 +23,7 @@ impl<'a> Parser<'a> {
 
         self.whitespace_comments();
 
-        let Some(value) = self.expression()? else {
+        let Some(value) = self.complex_expression()? else {
             return Err(SyntaxError::DeclarationExpectedExpression { pos: self.pos });
         };
 

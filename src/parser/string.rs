@@ -89,7 +89,7 @@ impl<'a> Parser<'a> {
 
                 self.linespace();
                 let savepoint = self.pos;
-                let Some(expr) = self.expression()? else {
+                let Some(expr) = self.simple_expression()? else {
                     return Err(SyntaxError::ExpectsExpression { pos: savepoint });
                 };
 

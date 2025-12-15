@@ -1,6 +1,6 @@
 use crate::lang::{
     Assignment, BinaryOp, Block, Break, CatchMissingOptionalProperty, Context, Continue,
-    Declaration, DictBuilder, End, Eval, EvalStop, For, FunctionCall, FunctionDef, IfElse, IndexOf,
+    Declaration, DictBuilder, Eval, EvalStop, For, FunctionCall, FunctionDef, IfElse, IndexOf,
     InterpolatedStr, KeyValueBuilder, ListBuilder, Literal, PropertyOf, ReturnStmt, Setter, Span,
     This, UnaryOp, Value, Var,
 };
@@ -30,7 +30,6 @@ pub enum AstNode {
     KeyValue(KeyValueBuilder),
     Break(Break),
     Continue(Continue),
-    End(End),
 }
 
 macro_rules! node_debug_1 {
@@ -85,8 +84,7 @@ impl core::fmt::Debug for AstNode {
                 KeyValue,
                 This,
                 Break,
-                Continue,
-                End
+                Continue
             )
         } else {
             node_debug_2!(
@@ -113,8 +111,7 @@ impl core::fmt::Debug for AstNode {
                 KeyValue,
                 This,
                 Break,
-                Continue,
-                End
+                Continue
             )
         }
     }
@@ -143,7 +140,6 @@ impl AstNode {
             AstNode::This(v) => v.eval(ctxt),
             AstNode::Break(v) => v.eval(ctxt),
             AstNode::Continue(v) => v.eval(ctxt),
-            AstNode::End(v) => v.eval(ctxt),
             AstNode::KeyValue(v) => v.eval(ctxt),
             AstNode::CatchMissingOptionalProperty(v) => v.eval(ctxt),
         }
@@ -167,7 +163,6 @@ impl AstNode {
             AstNode::UnaryOp(v) => v.span(),
             AstNode::Break(v) => v.span(),
             AstNode::Continue(v) => v.span(),
-            AstNode::End(v) => v.span(),
             AstNode::This(v) => v.span(),
             AstNode::InterpolatedStr(v) => v.span(),
             AstNode::ListBuilder(v) => v.span(),
@@ -281,11 +276,6 @@ impl From<Break> for AstNode {
 impl From<Continue> for AstNode {
     fn from(value: Continue) -> Self {
         Self::Continue(value)
-    }
-}
-impl From<End> for AstNode {
-    fn from(value: End) -> Self {
-        Self::End(value)
     }
 }
 impl From<This> for AstNode {

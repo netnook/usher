@@ -24,7 +24,7 @@ impl<'a> Parser<'a> {
             return Ok(AstNode::ReturnStmt(ReturnStmt { value: None, span }));
         }
 
-        let Some(expr) = self.expression()? else {
+        let Some(expr) = self.complex_expression()? else {
             return Err(SyntaxError::ExpectsExpression { pos: self.pos });
         };
 
@@ -49,6 +49,6 @@ mod tests {
         do_test_stmt_ok(" return 42 ", ret!(i(42)), -1);
         do_test_stmt_ok(" return 42 + 3 ", ret!(add(i(42), i(3))), -1);
         do_test_stmt_ok(" return 42 \n +3 ", ret!(i(42)), 10);
-        do_test_stmt_err(" return { 42 } ", SyntaxError::ExpectsExpression { pos: 8 });
+        do_test_stmt_err(" return break ", SyntaxError::ExpectsExpression { pos: 8 });
     }
 }

@@ -22,7 +22,7 @@ impl<'a> Parser<'a> {
                 break;
             }
 
-            let Some(n) = self.expression()? else {
+            let Some(n) = self.simple_expression()? else {
                 if self.is_eoi() {
                     return Err(SyntaxError::DictMissingCloseParens { pos: open_pos });
                 } else {

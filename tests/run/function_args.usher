@@ -69,26 +69,46 @@ f()
 [1], dict("a":[2])
 [1], dict("a":[2])
 *****************************************************
-## test 7 - test default arg with return
-## FIXME: currently won't even parse
-#function f(l: [ { return 42 } ] ) {
-#    print(l)
-#}
-#f()
----stdout---
+# test 7 - test default arg with return
+function f(l: [ return 42 ] ) {
+    print(l)
+}
+f()
+---stderr---
+Syntax error in tests/run/function_args.usher at line 2, char 17:
+  |
+2 | function f(l: [ return 42 ] ) {
+  |                 ^ Expected expression or ']'.
 *****************************************************
-## test 8 - test default arg with break
-## FIXME: currently won't even parse
-#function f(l: [ { break } ] ) {
-#    print(l)
-#}
-#f()
----stdout---
+# test 8 - test default arg with break
+function f(l: [ break ] ) {
+    print(l)
+}
+f()
+---stderr---
+Syntax error in tests/run/function_args.usher at line 2, char 17:
+  |
+2 | function f(l: [ break ] ) {
+  |                 ^ Expected expression or ']'.
 *****************************************************
-## test 9 - test default arg with continue
-## FIXME: currently won't even parse
-#function f(l: [ { continue } ] ) {
-#    print(l)
-#}
-#f()
----stdout---
+# test 9 - test default arg with continue
+function f(l: [ continue ] ) {
+    print(l)
+}
+f()
+---stderr---
+Syntax error in tests/run/function_args.usher at line 2, char 17:
+  |
+2 | function f(l: [ continue ] ) {
+  |                 ^ Expected expression or ']'.
+*****************************************************
+# test 10 - test default arg with block
+function f(l: [ { 42 } ] ) {
+    print(l)
+}
+f()
+---stderr---
+Syntax error in tests/run/function_args.usher at line 2, char 17:
+  |
+2 | function f(l: [ { 42 } ] ) {
+  |                 ^ Expected expression or ']'.

@@ -99,9 +99,19 @@ impl core::fmt::Debug for Break {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let minimal = f.sign_minus();
         if minimal {
-            write!(f, "Break")
+            match &self.value {
+                Some(v) => {
+                    f.write_str("Break { ")?;
+                    v.fmt(f)?;
+                    f.write_str(" }")
+                }
+                None => write!(f, "Break"),
+            }
         } else {
-            f.debug_struct("Break").field("span", &self.span).finish()
+            f.debug_struct("Break")
+                .field("value", &self.value)
+                .field("span", &self.span)
+                .finish()
         }
     }
 }
@@ -123,7 +133,7 @@ impl Eval for Break {
     }
 }
 
-accept_default!(Break);
+accept_default!(Break, value:opt:node,);
 
 #[derive(PartialEq, Clone)]
 pub struct Continue {

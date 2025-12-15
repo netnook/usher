@@ -22,13 +22,13 @@ use error::ParseError;
 pub use error::SyntaxError;
 pub use position::SourceRef;
 
-pub(crate) const KEYWORDS: [&str; 28] = [
+pub(crate) const KEYWORDS: [&str; 30] = [
     "if", "else", "for", "in", "break", "continue", "return", "function", "var", "true", "false",
-    "nil", "end", "dict", "switch", "case", "defer", "exit", "throw", "catch", "finally", "raise",
-    "iif", "drop", "unlet", "let", "const", "debug",
+    "nil", "end", "dict", "switch", "case", "choose", "defer", "exit", "throw", "catch", "finally",
+    "raise", "iif", "drop", "unlet", "let", "const", "debug", "error",
 ];
 
-pub(crate) const RESERVED_NAMES: [&str; 3] = ["print", "error", "std"];
+pub(crate) const RESERVED_NAMES: [&str; 2] = ["print", "std"];
 
 pub fn parse<'a>(filename: &'a str, input: &'a str) -> Result<Program<'a>, ParseError<'a>> {
     let mut p = Parser::new(filename, input);
@@ -86,7 +86,7 @@ pub mod tests {
     use crate::{
         lang::{
             Assignment, AstNode, BinaryOp, BinaryOpCode, Block, Break,
-            CatchMissingOptionalProperty, Continue, Declaration, Dict, DictBuilder, End, For,
+            CatchMissingOptionalProperty, Continue, Declaration, Dict, DictBuilder, For,
             FunctionCall, FunctionDef, Identifier, IfElse, IndexOf, InterpolatedStr, KeyValue,
             KeyValueBuilder, List, ListBuilder, Literal, PropertyOf, ReturnStmt, Span, This,
             UnaryOp, UnaryOpCode, Value, Var,
@@ -149,6 +149,9 @@ pub mod tests {
     }
     pub fn nil() -> Literal {
         Literal::new(Value::Nil, Span::new(999, 9999))
+    }
+    pub fn end() -> Literal {
+        Literal::new(Value::End, Span::new(999, 9999))
     }
     macro_rules! dict{
         ($($key:expr => $value:expr),*) => {{
@@ -327,9 +330,6 @@ pub mod tests {
     }
     pub(crate) fn _continue() -> Continue {
         Continue::new(Span::new(999, 9999))
-    }
-    pub(crate) fn _end() -> End {
-        End::new(Span::new(999, 9999))
     }
 
     macro_rules! brk {
@@ -748,7 +748,6 @@ pub mod tests {
     with_span!(FunctionCall);
     with_span!(Break);
     with_span!(Continue);
-    with_span!(End);
     with_span!(This);
     with_span!(InterpolatedStr);
     with_span!(IfElse);

@@ -56,7 +56,7 @@ pub enum EvalStop {
     #[error("Error: {0}")]
     Error(#[from] InternalProgramError),
     #[error("Return: {0}")]
-    Return(Value),
+    Return(Value, Span),
     #[error("Break")]
     Break(Value, Span),
     #[error("Continue")]
@@ -201,40 +201,6 @@ impl Eval for KeyValueBuilder {
 }
 
 accept_default!(KeyValueBuilder, value:node,);
-
-#[derive(PartialEq, Clone)]
-pub struct End {
-    pub(crate) span: Span,
-}
-
-impl End {
-    pub(crate) fn new(span: Span) -> Self {
-        Self { span }
-    }
-
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-
-impl Eval for End {
-    fn eval(&self, _: &mut Context) -> Result<Value, EvalStop> {
-        Ok(Value::End)
-    }
-}
-
-accept_default!(End);
-
-impl core::fmt::Debug for End {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let minimal = f.sign_minus();
-        if minimal {
-            write!(f, "End")
-        } else {
-            f.debug_struct("End").field("span", &self.span).finish()
-        }
-    }
-}
 
 #[cfg(test)]
 mod tests {}

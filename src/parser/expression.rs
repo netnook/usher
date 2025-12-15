@@ -1,17 +1,40 @@
 use super::{ParseResult, Parser, SyntaxError, chars::is_digit};
 use crate::{
     lang::{
-        Accept, Arg, AstNode, BinaryOp, BinaryOpCode, CatchMissingOptionalProperty, End,
-        FunctionCall, FunctionCallVariant, Identifier, IndexOf, KeyValueBuilder, Literal,
-        PropertyOf, Span, This, UnaryOp, UnaryOpCode, Value, Var, Visitor, VisitorResult,
+        Accept, Arg, AstNode, BinaryOp, BinaryOpCode, CatchMissingOptionalProperty, FunctionCall,
+        FunctionCallVariant, Identifier, IndexOf, KeyValueBuilder, Literal, PropertyOf, Span, This,
+        UnaryOp, UnaryOpCode, Value, Var, Visitor, VisitorResult,
     },
     parser::identifier::UncheckedIdentifier,
 };
 use std::rc::Rc;
 
 impl<'a> Parser<'a> {
-    /// Consume an expression or nothing.
-    pub(super) fn expression(&mut self) -> ParseResult<Option<AstNode>> {
+    pub(super) fn complex_expression(&mut self) -> ParseResult<Option<AstNode>> {
+        let start = self.pos;
+
+        if let Some(blk) = self.block()? {
+            return Ok(Some(blk.into()));
+        }
+
+        if let Some(UncheckedIdentifier(id, span)) = self.unchecked_identifier() {
+            match id {
+                "if" => {
+                    return Ok(Some(self.if_stmt(span)?));
+                }
+                "for" => {
+                    return Ok(Some(self.for_stmt(span)?));
+                }
+                _ => {
+                    self.pos = start;
+                }
+            }
+        }
+
+        self.simple_expression()
+    }
+
+    pub(super) fn simple_expression(&mut self) -> ParseResult<Option<AstNode>> {
         if let Some(v) = self.key_value_expression()? {
             return Ok(Some(v));
         }
@@ -190,7 +213,7 @@ impl<'a> Parser<'a> {
             if self.char(b'!') {
                 ops.push(UnaryOp {
                     op: UnaryOpCode::Not,
-                    on: Box::new(End::new(Span::new(0, 0)).into()), // dummy
+                    on: Box::new(This::new(Span::new(0, 0)).into()), // dummy
                     span: Span::new(self.pos - 1, 1),
                 });
                 continue;
@@ -202,7 +225,7 @@ impl<'a> Parser<'a> {
                 }
                 ops.push(UnaryOp {
                     op: UnaryOpCode::Negative,
-                    on: Box::new(End::new(Span::new(0, 0)).into()), // dummy
+                    on: Box::new(This::new(Span::new(0, 0)).into()), // dummy
                     span: Span::new(self.pos - 1, 1),
                 });
                 continue;
@@ -210,7 +233,7 @@ impl<'a> Parser<'a> {
             break;
         }
 
-        let Some(mut node) = self.expression_chain()? else {
+        let Some(mut node) = self.term()? else {
             self.pos = start;
             return Ok(None);
         };
@@ -223,13 +246,14 @@ impl<'a> Parser<'a> {
         Ok(Some(node))
     }
 
+    // Term
     // Primary expression with chained operations:
     // - property access (dot operator),
     // - index op or
     // - function call
     // Consumes and returns node or consumes nothing.
-    fn expression_chain(&mut self) -> ParseResult<Option<AstNode>> {
-        let Some(mut node) = self.primary_expression()? else {
+    fn term(&mut self) -> ParseResult<Option<AstNode>> {
+        let Some(mut node) = self.first_path_term()? else {
             return Ok(None);
         };
 
@@ -329,10 +353,10 @@ impl<'a> Parser<'a> {
     //   - literals,
     //   - list or object
     //   - parenthesised expression
-    fn primary_expression(&mut self) -> ParseResult<Option<AstNode>> {
+    fn first_path_term(&mut self) -> ParseResult<Option<AstNode>> {
         let start = self.pos;
 
-        if let Some(UncheckedIdentifier(name, span)) = self.unchecked_identifier() {
+        if let Some(uid @ UncheckedIdentifier(name, span)) = self.unchecked_identifier() {
             match name {
                 "this" => {
                     return Ok(Some(AstNode::This(This::new(span))));
@@ -364,6 +388,9 @@ impl<'a> Parser<'a> {
                     ))));
                 }
                 id => {
+                    if uid.check_not_keyword().is_err() {
+                        return Ok(None);
+                    }
                     return Ok(Some(AstNode::Var(Var::new(Identifier::new(
                         id.to_string(),
                         span,
@@ -398,7 +425,7 @@ impl<'a> Parser<'a> {
         };
         self.whitespace_comments();
 
-        let Some(expr) = self.expression()? else {
+        let Some(expr) = self.simple_expression()? else {
             return Err(SyntaxError::ExpectsExpression { pos: self.pos });
         };
 
@@ -444,7 +471,7 @@ impl<'a> Parser<'a> {
 
         self.whitespace_comments();
 
-        let Some(index) = self.expression()? else {
+        let Some(index) = self.simple_expression()? else {
             return Err(SyntaxError::ExpectsExpression { pos: self.pos });
         };
 
@@ -474,7 +501,7 @@ impl<'a> Parser<'a> {
                 break;
             }
 
-            let Some(expr) = self.expression()? else {
+            let Some(expr) = self.simple_expression()? else {
                 if self.is_eoi() {
                     return Err(SyntaxError::MissingClosingParens { pos: start });
                 } else {
@@ -533,7 +560,7 @@ pub mod tests {
         expected_end: isize,
     ) {
         do_test_parser_ok(
-            Parser::expression,
+            Parser::simple_expression,
             input,
             Some(expected.into()),
             expected_end,
@@ -542,7 +569,7 @@ pub mod tests {
 
     #[track_caller]
     pub(crate) fn do_test_expr_err(input: &'static str, expected_err: SyntaxError) {
-        do_test_parser_err(Parser::expression, input, expected_err);
+        do_test_parser_err(Parser::simple_expression, input, expected_err);
     }
 
     #[test]
@@ -825,6 +852,12 @@ pub mod tests {
     }
 
     #[test]
+    fn test_end() {
+        do_test_expr_ok(" end ", end(), -1);
+        do_test_expr_ok(" end", end(), 0);
+    }
+
+    #[test]
     fn test_numbers() {
         do_test_expr_ok(" 1234 ", i(1234), -1);
         do_test_expr_ok(" -1234 ", i(-1234), -1);
@@ -836,6 +869,6 @@ pub mod tests {
     fn test_boolean() {
         do_test_expr_ok(" tru ", var("tru"), -1);
         do_test_expr_ok(" falsey", var("falsey"), 0);
-        do_test_parser_none(Parser::expression, " ");
+        do_test_parser_none(Parser::simple_expression, " ");
     }
 }

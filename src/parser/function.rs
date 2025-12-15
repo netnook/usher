@@ -46,7 +46,7 @@ impl<'a> Parser<'a> {
             }
 
             let ref_pos = self.pos;
-            let Some(expr) = self.expression()? else {
+            let Some(expr) = self.simple_expression()? else {
                 return Err(SyntaxError::FunctionExpectedParamIdent { pos: self.pos });
             };
 
@@ -59,7 +59,9 @@ impl<'a> Parser<'a> {
                     let mut ctxt = Context::default();
                     let value = match value.eval(&mut ctxt) {
                         Ok(val) => Ok(val),
-                        Err(EvalStop::Return(val)) => Ok(val),
+                        Err(EvalStop::Return(_, span)) => Err(SyntaxError::ConstantEvalError {
+                            cause: InternalProgramError::ReturnWithoutFunction { span },
+                        }),
                         Err(EvalStop::Error(err)) => {
                             Err(SyntaxError::ConstantEvalError { cause: err })
                         }

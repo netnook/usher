@@ -1,8 +1,8 @@
 use crate::lang::{
     Arg, Assignment, AstNode, BinaryOp, Block, Break, CatchMissingOptionalProperty,
-    ConditionalBlock, Continue, Declaration, DictBuilder, End, For, FunctionCall, FunctionDef,
-    IfElse, IndexOf, InterpolatedStr, KeyValueBuilder, ListBuilder, Literal, Param, PropertyOf,
-    ReturnStmt, This, UnaryOp, Var,
+    ConditionalBlock, Continue, Declaration, DictBuilder, For, FunctionCall, FunctionDef, IfElse,
+    IndexOf, InterpolatedStr, KeyValueBuilder, ListBuilder, Literal, Param, PropertyOf, ReturnStmt,
+    This, UnaryOp, Var,
 };
 use std::rc::Rc;
 
@@ -54,7 +54,6 @@ pub(crate) trait Visitor<T>: Sized {
             AstNode::KeyValue(v) => self.visit_key_value(v),
             AstNode::Break(v) => self.visit_break(v),
             AstNode::Continue(v) => self.visit_continue(v),
-            AstNode::End(v) => self.visit_end(v),
         }
     }
 
@@ -134,9 +133,6 @@ pub(crate) trait Visitor<T>: Sized {
         v.accept(self)
     }
     fn visit_continue(&mut self, v: &Continue) -> VisitorResult<T> {
-        v.accept(self)
-    }
-    fn visit_end(&mut self, v: &End) -> VisitorResult<T> {
         v.accept(self)
     }
 }
@@ -341,10 +337,6 @@ mod tests {
                 self.push("Continue");
                 v.accept(self)
             }
-            fn visit_end(&mut self, v: &End) -> VisitorResult<()> {
-                self.push("End");
-                v.accept(self)
-            }
         }
 
         let mut test_visitor = TestVisitor::default();
@@ -375,7 +367,7 @@ mod tests {
 
                 for a, b in c {
                     continue
-                    break
+                    break 45
                 }
 
                 var a = 11
@@ -397,7 +389,7 @@ mod tests {
             test_visitor.data,
             [
                 "This",
-                "End",
+                "Literal end",
                 "Literal 42",
                 "InterpolatedStr",
                 "Literal \"start\"",
@@ -442,6 +434,7 @@ mod tests {
                 "Block",
                 "Continue",
                 "Break",
+                "Literal 45",
                 "Declaration",
                 "Var a",
                 "Literal 11",

@@ -119,5 +119,5 @@ Program { [
             property: Ident("c"),
         } },
     },
-    End,
+    Literal(end),
 ] }
