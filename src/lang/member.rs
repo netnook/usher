@@ -218,22 +218,14 @@ impl Setter for IndexOf {
 
         let index = self.index(ctxt)?;
 
-        let mut of = of.borrow_mut();
-
-        // FIXME: combine index validation for eval and set ?
-        let index = {
-            if index.is_negative() || index as usize >= of.len() {
-                return InternalProgramError::IndexOutOfRange {
-                    index,
-                    len: of.len(),
-                    span: self.index.span(),
-                }
-                .into();
+        of.borrow_mut().set(index, value).map_err(|e| {
+            InternalProgramError::IndexOutOfRange {
+                index,
+                len: e.len,
+                span: self.index.span(),
             }
-            index as usize
-        };
-
-        of.set(index, value);
+            .into_stop()
+        })?;
 
         Ok(())
     }

@@ -1,3 +1,5 @@
+use thiserror::Error;
+
 use crate::lang::{
     Context, EvalStop, FunctionCall, Key, Value,
     function::{MethodResolver, MethodType},
@@ -7,6 +9,12 @@ use std::{
     fmt::{Display, Write},
     rc::Rc,
 };
+
+#[derive(Error, Debug)]
+#[error("Index out of range.")]
+pub struct IndexOutOfRangeError {
+    pub(crate) len: usize,
+}
 
 pub type ListCell = Rc<RefCell<List>>;
 
@@ -24,9 +32,14 @@ impl List {
         self.content.get(index).cloned()
     }
 
-    pub fn set(&mut self, index: usize, value: Value) {
-        // FIXME: should there be an error if index out of range, or grow automatically
-        self.content[index] = value;
+    pub fn set(&mut self, index: isize, value: Value) -> Result<(), IndexOutOfRangeError> {
+        if index.is_negative() || index as usize >= self.content.len() {
+            return Err(IndexOutOfRangeError {
+                len: self.content.len(),
+            });
+        }
+        self.content[index as usize] = value;
+        Ok(())
     }
 
     pub fn add(&mut self, value: Value) {
