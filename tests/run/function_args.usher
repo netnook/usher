@@ -57,8 +57,8 @@ Syntax error in tests/run/function_args.usher at line 3, char 18:
 *****************************************************
 # test 6 - test default list/dict does not get modified
 function f(l:[], d:dict(a:[])) {
-    l.add(1)
-	d.a.add(2)
+    l.push(1)
+	d.a.push(2)
     print(l, d)
 }
 f()

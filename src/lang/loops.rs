@@ -180,9 +180,9 @@ mod tests {
         use crate::parser::tests::*;
 
         let mut list = List::new();
-        list.add(Value::Integer(1));
-        list.add(Value::Integer(2));
-        list.add(Value::Integer(4));
+        list.push(Value::Integer(1));
+        list.push(Value::Integer(2));
+        list.push(Value::Integer(4));
         let mut ctxt = Context::default();
         ctxt.declare("l".into(), list.into()).unwrap();
         ctxt.declare("r".into(), Value::Integer(0)).unwrap();

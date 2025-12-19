@@ -42,7 +42,7 @@ impl List {
         Ok(())
     }
 
-    pub fn add(&mut self, value: Value) {
+    pub fn push(&mut self, value: Value) {
         self.content.push(value);
     }
 
@@ -61,7 +61,7 @@ impl List {
     pub(crate) fn shallow_clone(&self) -> Self {
         let mut result = Self::new();
         for e in &self.content {
-            result.add(e.ref_clone());
+            result.push(e.ref_clone());
         }
         result
     }
@@ -69,7 +69,7 @@ impl List {
     pub(crate) fn deep_clone(&self) -> Self {
         let mut result = Self::new();
         for e in &self.content {
-            result.add(e.deep_clone());
+            result.push(e.deep_clone());
         }
         result
     }
@@ -110,13 +110,13 @@ impl Display for List {
 impl MethodResolver for ListCell {
     fn resolve_method(&self, key: &Key) -> Option<MethodType<Self>> {
         match key.as_str() {
-            "add" => Some(list_add),
+            "push" => Some(list_push),
             _ => None,
         }
     }
 }
 
-fn list_add(
+fn list_push(
     call: &FunctionCall,
     this: Rc<RefCell<List>>,
     ctxt: &mut Context,
@@ -130,7 +130,7 @@ fn list_add(
         .collect::<Result<Vec<Value>, EvalStop>>()?;
 
     for arg in args {
-        list.add(arg);
+        list.push(arg);
     }
 
     Ok(Value::Nil)
@@ -146,23 +146,23 @@ mod tests {
     fn test_ref_clone() {
         {
             let mut l = List::new();
-            l.add(42.into());
-            l.add(43.into());
+            l.push(42.into());
+            l.push(43.into());
             let mut a = Value::List(l.into());
             let b = a.ref_clone();
             assert_eq!(a, b);
 
             let Value::List(l) = &mut a else { panic!() };
-            l.borrow_mut().add(45.into());
+            l.borrow_mut().push(45.into());
             assert_eq!(a, b);
         }
         {
             let mut sub = List::new();
-            sub.add(42.to_value());
-            sub.add(43.to_value());
+            sub.push(42.to_value());
+            sub.push(43.to_value());
             let mut l = List::new();
-            l.add(44.to_value());
-            l.add(sub.into());
+            l.push(44.to_value());
+            l.push(sub.into());
             let mut a = Value::List(l.into());
             let b = a.ref_clone();
             assert_eq!(a, b);
@@ -171,7 +171,7 @@ mod tests {
             let Value::List(sub) = &mut l.borrow().get(1).unwrap() else {
                 panic!()
             };
-            sub.borrow_mut().add(45.into());
+            sub.borrow_mut().push(45.into());
             assert_eq!(a, b); // a and b still differ after sub list modified
         }
     }
@@ -180,11 +180,11 @@ mod tests {
     fn test_shallow_clone() {
         {
             let mut sub = List::new();
-            sub.add(42.to_value());
-            sub.add(43.to_value());
+            sub.push(42.to_value());
+            sub.push(43.to_value());
             let mut l = List::new();
-            l.add(44.to_value());
-            l.add(sub.into());
+            l.push(44.to_value());
+            l.push(sub.into());
             let mut a = Value::List(l.into());
             let b = a.shallow_clone();
             assert_eq!(a, b);
@@ -193,11 +193,11 @@ mod tests {
             let Value::List(sub) = &mut l.borrow().get(1).unwrap() else {
                 panic!()
             };
-            sub.borrow_mut().add(45.into());
+            sub.borrow_mut().push(45.into());
             assert_eq!(a, b); // a and b still same after sub list modified (shallow copy only)
 
             let Value::List(l) = &mut a else { panic!() };
-            l.borrow_mut().add(46.into());
+            l.borrow_mut().push(46.into());
             assert_ne!(a, b); // and and b differ after top list modified
         }
     }
@@ -206,23 +206,23 @@ mod tests {
     fn test_deep_clone() {
         {
             let mut l = List::new();
-            l.add(42.into());
-            l.add(43.into());
+            l.push(42.into());
+            l.push(43.into());
             let mut a = Value::List(l.into());
             let b = a.deep_clone();
             assert_eq!(a, b);
 
             let Value::List(l) = &mut a else { panic!() };
-            l.borrow_mut().add(45.into());
+            l.borrow_mut().push(45.into());
             assert_ne!(a, b);
         }
         {
             let mut sub = List::new();
-            sub.add(42.to_value());
-            sub.add(43.to_value());
+            sub.push(42.to_value());
+            sub.push(43.to_value());
             let mut l = List::new();
-            l.add(44.to_value());
-            l.add(sub.into());
+            l.push(44.to_value());
+            l.push(sub.into());
             let mut a = Value::List(l.into());
             let b = a.deep_clone();
             assert_eq!(a, b);
@@ -231,7 +231,7 @@ mod tests {
             let Value::List(sub) = &mut l.borrow().get(1).unwrap() else {
                 panic!()
             };
-            sub.borrow_mut().add(45.into());
+            sub.borrow_mut().push(45.into());
             assert_ne!(a, b);
         }
     }
@@ -244,12 +244,12 @@ mod tests {
         assert_eq!(l.get(1), None);
         assert_eq!(l.len(), 0);
 
-        l.add(42.to_value());
+        l.push(42.to_value());
         assert_eq!(l.get(0), Some(42.to_value()));
         assert_eq!(l.get(1), None);
         assert_eq!(l.len(), 1);
 
-        l.add("aaa".to_value());
+        l.push("aaa".to_value());
         assert_eq!(l.get(0), Some(42.to_value()));
         assert_eq!(l.get(1), Some("aaa".to_value()));
         assert_eq!(l.len(), 2);
@@ -265,13 +265,13 @@ mod tests {
         };
         {
             let mut list = List::new();
-            list.add(Value::Integer(1));
-            list.add(Value::Nil);
+            list.push(Value::Integer(1));
+            list.push(Value::Nil);
             let list_a = List::new();
-            list.add(list_a.into());
+            list.push(list_a.into());
             let mut list_b = List::new();
-            list_b.add("bar".to_value());
-            list.add(list_b.into());
+            list_b.push("bar".to_value());
+            list.push(list_b.into());
 
             let val = Value::List(list.into());
             let expected = r#"[1,nil,[],["bar"]]"#;

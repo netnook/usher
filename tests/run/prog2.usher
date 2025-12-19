@@ -1,9 +1,9 @@
 var cow = dict()
 
 cow
-  .add("moo")
+  .push("moo")
 ---stderr---
 Evaluation error in tests/run/prog2.usher at line 4, char 4:
   |
-4 |   .add("moo")
-  |    ^^^ No such method 'add' on dict.
+4 |   .push("moo")
+  |    ^^^^ No such method 'push' on dict.

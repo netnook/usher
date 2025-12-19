@@ -275,9 +275,9 @@ mod tests {
         let mut ctxt = {
             let mut ctxt = Context::default();
             let mut l = List::new();
-            l.add(7.to_value());
-            l.add("aaa".to_value());
-            l.add(8.to_value());
+            l.push(7.to_value());
+            l.push("aaa".to_value());
+            l.push(8.to_value());
             ctxt.declare("list".into(), l.into()).unwrap();
             ctxt
         };

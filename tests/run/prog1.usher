@@ -5,8 +5,8 @@ e.fee = ["moo", "sheep"]
 e.fee[1] = "cow"
 # print("e={e}")
 var l = []
-l.add(e.fee[1])
-l.add("moo")
+l.push(e.fee[1])
+l.push("moo")
 # for k in e.keys().sorted() {
 # 	l.add(k)
 # 	l.add(e[k])

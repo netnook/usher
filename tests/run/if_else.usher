@@ -5,40 +5,40 @@ var results = []
 
 if a {
     var x="-"
-	results.add("a")
+	results.push("a")
 } else if b {
     var x="-"
-	results.add("b")
+	results.push("b")
 } else {
     var x="-"
-	results.add("c")
+	results.push("c")
 }
 
 b=true
 if a {
     var x="-"
-	results.add("a")
+	results.push("a")
 } else if b {
     var x="-"
-	results.add("b")
+	results.push("b")
 } else {
     var x="-"
-	results.add("c")
+	results.push("c")
 }
 
 a=true
 if a {
     var x="-"
-	results.add("a")
+	results.push("a")
 } else if b {
     var x="-"
-	results.add("b")
+	results.push("b")
 } else {
     var x="-"
-	results.add("c")
+	results.push("c")
 }
 
-results.add(x)
+results.push(x)
 results
 ---result---
 ["c","b","a","xx"]

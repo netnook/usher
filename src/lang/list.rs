@@ -41,7 +41,7 @@ impl Eval for ListBuilder {
 
         for v in &self.entries {
             let value = v.eval(ctxt)?;
-            list.add(value);
+            list.push(value);
         }
 
         Ok(list.into())
@@ -60,9 +60,9 @@ mod tests {
         let d = list!(s("a"), i(1), add(i(1), i(3)));
         let actual = d.eval(&mut Context::default()).expect("a value");
         let mut expected = List::new();
-        expected.add("a".to_value());
-        expected.add(1.to_value());
-        expected.add(4.to_value());
+        expected.push("a".to_value());
+        expected.push(1.to_value());
+        expected.push(4.to_value());
         assert_eq!(actual, expected.into());
     }
 }

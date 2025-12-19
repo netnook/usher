@@ -31,8 +31,8 @@ for i in lst {
 var data = dict(a:1)
 var out = []
 for kv in data {
-  out.add(kv.key)
-  out.add(kv.value)
+  out.push(kv.key)
+  out.push(kv.value)
 }
 
 [sum,sum1,sum2,sum3,i,a,b,out]
