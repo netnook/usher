@@ -185,26 +185,18 @@ impl Eval for IndexOf {
 
         let index = self.index(ctxt)?;
 
-        let of = of.borrow();
-
-        // FIXME: combine index validation for eval and set ?
-        let index = {
-            if index.is_negative() || index as usize >= of.len() {
-                if self.optional_property {
-                    return InternalProgramError::MissingOptionalProperty.into();
-                } else {
-                    return InternalProgramError::IndexOutOfRange {
-                        index,
-                        len: of.len(),
-                        span: self.index.span(),
-                    }
-                    .into();
+        let result = of.borrow().get(index).map_err(|e| {
+            if self.optional_property {
+                InternalProgramError::MissingOptionalProperty.into()
+            } else {
+                InternalProgramError::IndexOutOfRange {
+                    index,
+                    len: e.len,
+                    span: self.index.span(),
                 }
+                .into_stop()
             }
-            index as usize
-        };
-
-        let result = of.get(index).expect("index in range");
+        })?;
 
         Ok(result)
     }

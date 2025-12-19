@@ -10,7 +10,7 @@ use std::{
     rc::Rc,
 };
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, PartialEq)]
 #[error("Index out of range.")]
 pub struct IndexOutOfRangeError {
     pub(crate) len: usize,
@@ -28,15 +28,25 @@ impl List {
         Self::default()
     }
 
-    pub fn get(&self, index: usize) -> Option<Value> {
-        self.content.get(index).cloned()
+    fn index_out_of_range(&self) -> IndexOutOfRangeError {
+        IndexOutOfRangeError {
+            len: self.content.len(),
+        }
+    }
+
+    pub fn get(&self, index: isize) -> Result<Value, IndexOutOfRangeError> {
+        if index < 0 {
+            return Err(self.index_out_of_range());
+        }
+        match self.content.get(index as usize) {
+            Some(v) => Ok(v.clone()),
+            None => Err(self.index_out_of_range()),
+        }
     }
 
     pub fn set(&mut self, index: isize, value: Value) -> Result<(), IndexOutOfRangeError> {
         if index.is_negative() || index as usize >= self.content.len() {
-            return Err(IndexOutOfRangeError {
-                len: self.content.len(),
-            });
+            return Err(self.index_out_of_range());
         }
         self.content[index as usize] = value;
         Ok(())
@@ -240,18 +250,18 @@ mod tests {
     fn test_list() {
         let mut l = List::new();
 
-        assert_eq!(l.get(0), None);
-        assert_eq!(l.get(1), None);
+        assert_eq!(l.get(0), Err(IndexOutOfRangeError { len: 0 }));
+        assert_eq!(l.get(1), Err(IndexOutOfRangeError { len: 0 }));
         assert_eq!(l.len(), 0);
 
         l.push(42.to_value());
-        assert_eq!(l.get(0), Some(42.to_value()));
-        assert_eq!(l.get(1), None);
+        assert_eq!(l.get(0), Ok(42.to_value()));
+        assert_eq!(l.get(1), Err(IndexOutOfRangeError { len: 1 }));
         assert_eq!(l.len(), 1);
 
         l.push("aaa".to_value());
-        assert_eq!(l.get(0), Some(42.to_value()));
-        assert_eq!(l.get(1), Some("aaa".to_value()));
+        assert_eq!(l.get(0), Ok(42.to_value()));
+        assert_eq!(l.get(1), Ok("aaa".to_value()));
         assert_eq!(l.len(), 2);
     }
 
