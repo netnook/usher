@@ -52,6 +52,13 @@ impl List {
         Ok(())
     }
 
+    pub fn remove(&mut self, index: isize) -> Result<Value, IndexOutOfRangeError> {
+        if index.is_negative() || index as usize >= self.content.len() {
+            return Err(self.index_out_of_range());
+        }
+        Ok(self.content.remove(index as usize))
+    }
+
     pub fn push(&mut self, value: Value) {
         self.content.push(value);
     }
@@ -121,12 +128,33 @@ impl MethodResolver for ListCell {
     fn resolve_method(&self, key: &Key) -> Option<MethodType<Self>> {
         match key.as_str() {
             "push" => Some(list_push),
+            "remove" => Some(list_remove),
             _ => None,
         }
     }
 }
 
 fn list_push(
+    call: &FunctionCall,
+    this: Rc<RefCell<List>>,
+    ctxt: &mut Context,
+) -> Result<Value, EvalStop> {
+    let mut list = this.borrow_mut();
+
+    let args = call
+        .args
+        .iter()
+        .map(|a| a.eval(ctxt))
+        .collect::<Result<Vec<Value>, EvalStop>>()?;
+
+    for arg in args {
+        list.push(arg);
+    }
+
+    Ok(Value::Nil)
+}
+
+fn list_remove(
     call: &FunctionCall,
     this: Rc<RefCell<List>>,
     ctxt: &mut Context,
@@ -263,6 +291,33 @@ mod tests {
         assert_eq!(l.get(0), Ok(42.to_value()));
         assert_eq!(l.get(1), Ok("aaa".to_value()));
         assert_eq!(l.len(), 2);
+    }
+
+    #[test]
+    fn test_list_remove() {
+        let a = "aaa".to_value();
+        let b = "bbb".to_value();
+        let c = "ccc".to_value();
+        let mut l = List::new();
+        l.content = vec![a.clone(), b.clone(), c.clone()];
+
+        assert_eq!(l.remove(-1), Err(IndexOutOfRangeError { len: 3 }));
+        assert_eq!(l.remove(5), Err(IndexOutOfRangeError { len: 3 }));
+        assert_eq!(l.len(), 3);
+
+        assert_eq!(l.remove(1), Ok(b.clone()));
+        assert_eq!(l.len(), 2);
+        assert_eq!(l.content, vec![a.clone(), c.clone()]);
+
+        assert_eq!(l.remove(1), Ok(c.clone()));
+        assert_eq!(l.len(), 1);
+        assert_eq!(l.content, vec![a.clone()]);
+
+        assert_eq!(l.remove(0), Ok(a));
+        assert_eq!(l.len(), 0);
+        assert_eq!(l.content, vec![]);
+
+        assert_eq!(l.remove(0), Err(IndexOutOfRangeError { len: 0 }));
     }
 
     #[test]
