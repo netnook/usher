@@ -30,9 +30,9 @@ for i in lst {
 
 var data = dict(a:1)
 var out = []
-for kv in data {
-  out.push(kv.key)
-  out.push(kv.value)
+for k, v in data {
+  out.push(k)
+  out.push(v)
 }
 
 [sum,sum1,sum2,sum3,i,a,b,out]
@@ -56,16 +56,15 @@ last
 ***********************************************
 var dat = dict(a:1, b:2, c:3)
 var last = nil
-for kv in dat {
-  last = kv
-  if kv.key == "b" {
+for k, v in dat {
+  last = k
+  if k == "b" {
     break
   }
 }
 last
 ---result---
-("b":2)
-
+"b"
 ***********************************************
 var dat = [1,2,3]
 for v in dat {

@@ -475,6 +475,25 @@ impl FunctionCall {
         };
         Ok(val)
     }
+
+    pub(crate) fn require_key_value(
+        &self,
+        name: &str,
+        arg: &Arg,
+        ctxt: &mut Context,
+    ) -> Result<Rc<KeyValue>, EvalStop> {
+        let val = arg.eval(ctxt)?;
+        let Value::KeyValue(val) = val else {
+            return Err(InternalProgramError::FunctionCallBadArgType {
+                name: name.to_string(),
+                expected: ValueType::KeyValue,
+                actual: val.value_type(),
+                span: arg.span(),
+            }
+            .into());
+        };
+        Ok(val)
+    }
 }
 
 impl<T> Accept<T> for FunctionCall {

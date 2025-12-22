@@ -1,0 +1,41 @@
+# create dict
+var dct = dict(a:1, b:3, c:5, d:7)
+dct
+---result---
+dict("a":1,"b":3,"c":5,"d":7)
+***********************************************
+# push onto dict
+var dct = dict(a:1, c:5)
+dct.add(b:3)
+dct.add(d:7)
+dct
+---result---
+dict("a":1,"b":3,"c":5,"d":7)
+***********************************************
+# iterate through dict
+var dct = dict(a:1, b:3, c:5, d:7)
+for k, v in dct {
+  print(k, v)
+}
+---stdout---
+a, 1
+b, 3
+c, 5
+d, 7
+***********************************************
+# iterate through dict and modify
+var dct = dict(a:1, b:3, c:5, d:7)
+for k, v in dct {
+  print(k,v)
+  if k == "b" {
+    dct.remove(k)
+  }
+}
+dct
+---result---
+dict("a":1,"c":5,"d":7)
+---stdout---
+a, 1
+b, 3
+c, 5
+d, 7

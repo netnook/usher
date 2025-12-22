@@ -4,7 +4,7 @@ mod string;
 
 use super::{FunctionDef, InternalProgramError};
 use crate::lang::{Key, function::FunctionType};
-pub use dict::{Dict, DictCell};
+pub use dict::{Dict, DictCell, DictIter};
 pub use list::{List, ListCell, ListIter};
 use std::{
     cell::RefCell,
@@ -193,6 +193,11 @@ impl From<KeyValue> for Value {
 impl From<&str> for Value {
     fn from(value: &str) -> Self {
         Value::Str(Rc::new(value.to_string()))
+    }
+}
+impl From<&Key> for Value {
+    fn from(value: &Key) -> Self {
+        Value::Str(Rc::clone(&value.0))
     }
 }
 

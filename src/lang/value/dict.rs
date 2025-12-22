@@ -1,5 +1,5 @@
 use crate::lang::{
-    Key, Value,
+    Context, EvalStop, FunctionCall, InternalProgramError, Key, Value,
     function::{MethodResolver, MethodType},
 };
 use std::{
@@ -28,8 +28,8 @@ impl Dict {
         self.content.get(key).cloned()
     }
 
-    pub fn set(&mut self, key: Key, value: Value) {
-        self.content.insert(key, value);
+    pub fn set(&mut self, key: Key, value: Value) -> Option<Value> {
+        self.content.insert(key, value)
     }
 
     pub fn remove(&mut self, key: &Key) -> Option<Value> {
@@ -67,10 +67,96 @@ impl From<Dict> for DictCell {
     }
 }
 
-impl MethodResolver for DictCell {
-    fn resolve_method(&self, _key: &Key) -> Option<MethodType<Self>> {
-        None
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct DictIter {
+    dict: DictCell,
+    keys: Vec<Key>,
+    next: usize,
+}
+
+impl DictIter {
+    pub fn new(dict: DictCell) -> Self {
+        // FIXME: terrible.  Switch to ordermap under the hood to that we don't have
+        // to play around and sort keys for stability
+        let mut keys: Vec<Key> = dict.borrow().keys().cloned().collect();
+        keys.sort();
+        Self {
+            dict,
+            keys,
+            next: 0,
+        }
     }
+
+    pub fn next(&mut self) -> Option<(&Key, Value)> {
+        let key = self.keys.get(self.next);
+        let key = match key {
+            Some(k) => {
+                self.next += 1;
+                k
+            }
+            None => return None,
+        };
+
+        let dict = self.dict.borrow();
+        dict.get(key).map(|v| (key, v))
+    }
+}
+
+impl MethodResolver for DictCell {
+    fn resolve_method(&self, key: &Key) -> Option<MethodType<Self>> {
+        match key.as_str() {
+            "add" => Some(dict_add),
+            "remove" => Some(dict_remove),
+            _ => None,
+        }
+    }
+}
+
+fn dict_add(
+    call: &FunctionCall,
+    this: Rc<RefCell<Dict>>,
+    ctxt: &mut Context,
+) -> Result<Value, EvalStop> {
+    // FIXME: have an arg spec as a struct and a macro which can "decode" the args into that struct ?
+    let mut iter = call.args.iter();
+    let val_arg = call.required_positional_arg("value", iter.next())?;
+    let val_val = call.require_key_value("value", val_arg, ctxt)?;
+
+    if let Some(arg) = iter.next() {
+        return Err(
+            InternalProgramError::FunctionCallUnexpectedArgument { span: arg.span() }.into(),
+        );
+    };
+
+    let mut dict = this.borrow_mut();
+
+    let old_value = dict.set(val_val.key.clone(), val_val.value.ref_clone());
+
+    Ok(old_value.unwrap_or(Value::Nil))
+}
+
+fn dict_remove(
+    call: &FunctionCall,
+    this: Rc<RefCell<Dict>>,
+    ctxt: &mut Context,
+) -> Result<Value, EvalStop> {
+    // FIXME: have an arg spec as a struct and a macro which can "decode" the args into that struct ?
+    let mut iter = call.args.iter();
+    let key_arg = call.required_positional_arg("key", iter.next())?;
+    // FIXME: key could be integer
+    let key_val = call.require_string("key", key_arg, ctxt)?;
+
+    if let Some(arg) = iter.next() {
+        return Err(
+            InternalProgramError::FunctionCallUnexpectedArgument { span: arg.span() }.into(),
+        );
+    };
+
+    let mut dict = this.borrow_mut();
+
+    let old_value = dict.remove(&(&key_val).into());
+
+    Ok(old_value.unwrap_or(Value::Nil))
 }
 
 impl Display for Dict {
@@ -211,10 +297,10 @@ mod tests {
 
         assert_eq!(d.get(&key), None);
 
-        d.set(key.clone(), 42.to_value());
+        assert_eq!(d.set(key.clone(), 42.to_value()), None);
         assert_eq!(d.get(&key), Some(42.to_value()));
 
-        d.set(key.clone(), "aaa".to_value());
+        assert_eq!(d.set(key.clone(), "aaa".to_value()), Some(42.to_value()));
         assert_eq!(d.get(&key), Some("aaa".to_value()));
 
         assert_eq!(d.remove(&key), Some("aaa".to_value()));

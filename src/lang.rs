@@ -182,6 +182,12 @@ impl From<&str> for Key {
     }
 }
 
+impl From<&Rc<String>> for Key {
+    fn from(value: &Rc<String>) -> Self {
+        Self(Rc::clone(value))
+    }
+}
+
 #[derive(PartialEq, Debug, Clone)]
 pub struct KeyValueBuilder {
     pub(crate) key: Identifier,

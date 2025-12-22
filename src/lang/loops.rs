@@ -1,7 +1,8 @@
 use super::{Context, Value};
 use crate::lang::{
-    Accept, AstNode, Block, Eval, EvalStop, InternalProgramError, KeyValue, Span, Var, Visitor,
-    VisitorResult, accept_default, value::ListIter,
+    Accept, AstNode, Block, Eval, EvalStop, InternalProgramError, Span, Var, Visitor,
+    VisitorResult, accept_default,
+    value::{DictIter, ListIter},
 };
 
 #[derive(PartialEq, Clone)]
@@ -51,6 +52,7 @@ impl Eval for For {
                 while let Some((idx, val)) = iter.next() {
                     child_ctxt.reset();
                     self.loop_item.declare(&mut child_ctxt, val.ref_clone())?;
+                    // FIXME: this loop_info should not be the index, but a custom object with .index, .first, .last properties
                     if let Some(loop_info) = &self.loop_info {
                         loop_info.declare(&mut child_ctxt, Value::Integer(idx))?;
                     }
@@ -64,11 +66,19 @@ impl Eval for For {
             }
             Value::Dict(dict) => {
                 // FIXME: what happen if dict is modified during iteration ???
-                let dict = dict.borrow();
-                for (k, val) in dict.iter() {
-                    let loop_val = KeyValue::new(k.clone(), val.ref_clone()).into();
+                let Some(loop_info) = &self.loop_info else {
+                    return Err(InternalProgramError::LoopOnDictMissingValueDeclartion {
+                        span: self.span,
+                    }
+                    .into_stop());
+                };
+                let mut iter = DictIter::new(dict);
+
+                while let Some((key, val)) = iter.next() {
+                    // FIXME: dict should always have vars for key and value, and an optional third as loop_info (with .index, .first, .last properties)
                     child_ctxt.reset();
-                    self.loop_item.declare(&mut child_ctxt, loop_val)?;
+                    self.loop_item.declare(&mut child_ctxt, key.into())?;
+                    loop_info.declare(&mut child_ctxt, val.clone())?;
                     result = match self.block.eval_with_context(&mut child_ctxt) {
                         Ok(v) => v,
                         Err(EvalStop::Break(value, _)) => return Ok(value),

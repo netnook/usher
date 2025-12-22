@@ -118,6 +118,8 @@ pub enum InternalProgramError {
     StdoutWriteError { cause: String, span: Span },
     #[error("Error writing to stderr: {cause}")]
     StderrWriteError { cause: String, span: Span },
+    #[error("Loop on dict requires at least a key and a value varible.")]
+    LoopOnDictMissingValueDeclartion { span: Span },
 }
 
 #[derive(Debug, PartialEq)]
@@ -244,6 +246,7 @@ impl InternalProgramError {
             InternalProgramError::MissingOptionalProperty => &DUMMY_SPAN,
             InternalProgramError::StdoutWriteError { cause: _, span } => span,
             InternalProgramError::StderrWriteError { cause: _, span } => span,
+            InternalProgramError::LoopOnDictMissingValueDeclartion { span } => span,
         }
     }
 
