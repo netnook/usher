@@ -5,7 +5,7 @@ mod string;
 use super::{FunctionDef, InternalProgramError};
 use crate::lang::{Key, function::FunctionType};
 pub use dict::{Dict, DictCell};
-pub use list::{List, ListCell};
+pub use list::{List, ListCell, ListIter};
 use std::{
     cell::RefCell,
     fmt::{Display, Write},

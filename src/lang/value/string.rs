@@ -32,7 +32,7 @@ fn str_split(call: &FunctionCall, this: StringCell, ctxt: &mut Context) -> Resul
     for (idx, arg) in call.args.iter().enumerate() {
         match idx {
             0 => {
-                let on_arg = call.required_positional_arg("on", call.args.first())?;
+                let on_arg = call.required_positional_arg("on", Some(arg))?;
                 let on_val = call.require_string("on", on_arg, ctxt)?;
                 on = Some(on_val);
             }

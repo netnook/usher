@@ -1,7 +1,7 @@
 use super::{Context, Value};
 use crate::lang::{
     Accept, AstNode, Block, Eval, EvalStop, InternalProgramError, KeyValue, Span, Var, Visitor,
-    VisitorResult, accept_default,
+    VisitorResult, accept_default, value::ListIter,
 };
 
 #[derive(PartialEq, Clone)]
@@ -46,11 +46,14 @@ impl Eval for For {
 
         match iterable {
             Value::List(list) => {
-                // FIXME: what happen if list is modified during iteration ???
-                let list = list.borrow();
-                for val in list.iter() {
+                let mut iter = ListIter::new(list);
+
+                while let Some((idx, val)) = iter.next() {
                     child_ctxt.reset();
                     self.loop_item.declare(&mut child_ctxt, val.ref_clone())?;
+                    if let Some(loop_info) = &self.loop_info {
+                        loop_info.declare(&mut child_ctxt, Value::Integer(idx))?;
+                    }
                     result = match self.block.eval_with_context(&mut child_ctxt) {
                         Ok(v) => v,
                         Err(EvalStop::Break(value, _)) => return Ok(value),
@@ -60,7 +63,7 @@ impl Eval for For {
                 }
             }
             Value::Dict(dict) => {
-                // FIXME: what happen if list is modified during iteration ???
+                // FIXME: what happen if dict is modified during iteration ???
                 let dict = dict.borrow();
                 for (k, val) in dict.iter() {
                     let loop_val = KeyValue::new(k.clone(), val.ref_clone()).into();

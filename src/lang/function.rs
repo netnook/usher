@@ -456,6 +456,25 @@ impl FunctionCall {
         };
         Ok(val)
     }
+
+    pub(crate) fn require_integer(
+        &self,
+        name: &str,
+        arg: &Arg,
+        ctxt: &mut Context,
+    ) -> Result<isize, EvalStop> {
+        let val = arg.eval(ctxt)?;
+        let Value::Integer(val) = val else {
+            return Err(InternalProgramError::FunctionCallBadArgType {
+                name: name.to_string(),
+                expected: ValueType::Integer,
+                actual: val.value_type(),
+                span: arg.span(),
+            }
+            .into());
+        };
+        Ok(val)
+    }
 }
 
 impl<T> Accept<T> for FunctionCall {

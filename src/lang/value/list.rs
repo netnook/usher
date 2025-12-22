@@ -1,7 +1,5 @@
-use thiserror::Error;
-
 use crate::lang::{
-    Context, EvalStop, FunctionCall, Key, Value,
+    Context, EvalStop, FunctionCall, InternalProgramError, Key, Value,
     function::{MethodResolver, MethodType},
 };
 use std::{
@@ -9,6 +7,7 @@ use std::{
     fmt::{Display, Write},
     rc::Rc,
 };
+use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq)]
 #[error("Index out of range.")]
@@ -71,10 +70,6 @@ impl List {
         self.content.is_empty()
     }
 
-    pub fn iter<'a>(&'a self) -> std::slice::Iter<'a, Value> {
-        self.content.iter()
-    }
-
     pub(crate) fn shallow_clone(&self) -> Self {
         let mut result = Self::new();
         for e in &self.content {
@@ -124,6 +119,32 @@ impl Display for List {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct ListIter {
+    list: ListCell,
+    next: isize,
+}
+
+impl ListIter {
+    pub fn new(list: ListCell) -> Self {
+        Self { list, next: 0 }
+    }
+
+    pub fn next(&mut self) -> Option<(isize, Value)> {
+        let list = self.list.borrow();
+        let val = list.get(self.next);
+
+        match val {
+            Ok(val) => {
+                let r = Some((self.next, val));
+                self.next += 1;
+                r
+            }
+            Err(_e) => None,
+        }
+    }
+}
+
 impl MethodResolver for ListCell {
     fn resolve_method(&self, key: &Key) -> Option<MethodType<Self>> {
         match key.as_str() {
@@ -159,19 +180,28 @@ fn list_remove(
     this: Rc<RefCell<List>>,
     ctxt: &mut Context,
 ) -> Result<Value, EvalStop> {
+    // FIXME: have an arg spec as a struct and a macro which can "decode" the args into that struct ?
+    let mut iter = call.args.iter();
+    let idx_arg = call.required_positional_arg("index", iter.next())?;
+    let idx_val = call.require_integer("index", idx_arg, ctxt)?;
+
+    if let Some(arg) = iter.next() {
+        return Err(
+            InternalProgramError::FunctionCallUnexpectedArgument { span: arg.span() }.into(),
+        );
+    };
+
     let mut list = this.borrow_mut();
 
-    let args = call
-        .args
-        .iter()
-        .map(|a| a.eval(ctxt))
-        .collect::<Result<Vec<Value>, EvalStop>>()?;
-
-    for arg in args {
-        list.push(arg);
+    match list.remove(idx_val) {
+        Ok(v) => Ok(v),
+        Err(e) => Err(InternalProgramError::IndexOutOfRange {
+            index: idx_val,
+            len: e.len,
+            span: idx_arg.span(),
+        }
+        .into_stop()),
     }
-
-    Ok(Value::Nil)
 }
 
 #[cfg(test)]
