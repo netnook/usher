@@ -64,7 +64,7 @@ impl Eval for PropertyOf {
                 v
             }
             Value::KeyValue(of) => match self.property.key.0.as_str() {
-                "key" => Value::Str(of.key.0.clone()),
+                "key" => (&of.key).into(),
                 "value" => of.value.ref_clone(),
                 _ => {
                     if self.optional_property {

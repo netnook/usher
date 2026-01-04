@@ -1,7 +1,6 @@
 use crate::lang::{
     Accept, AstNode, Context, Eval, EvalStop, Span, Value, Visitor, VisitorResult, accept_default,
 };
-use std::rc::Rc;
 
 #[derive(PartialEq, Clone)]
 pub struct InterpolatedStr {
@@ -40,7 +39,7 @@ impl Eval for InterpolatedStr {
                     let res = other
                         .as_string()
                         .expect("write value to string should succeed");
-                    Ok(Value::Str(Rc::new(res)))
+                    Ok(Value::Str(res.into()))
                 }
             }
         } else {
@@ -52,7 +51,7 @@ impl Eval for InterpolatedStr {
                     .expect("write value to string should succeed");
             }
 
-            Ok(Value::Str(Rc::new(res)))
+            Ok(Value::Str(res.into()))
         }
     }
 }

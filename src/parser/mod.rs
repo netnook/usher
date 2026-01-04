@@ -101,7 +101,7 @@ pub mod tests {
 
     impl ToValue for &str {
         fn to_value(self) -> Value {
-            Value::Str(Rc::new(self.to_string()))
+            Value::Str(self.to_string().into())
         }
     }
     impl ToValue for isize {

@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use super::{ParseResult, Parser, SyntaxError};
 use crate::lang::{AstNode, InterpolatedStr, Literal, Span, Value};
 
@@ -57,13 +55,13 @@ impl<'a> Parser<'a> {
 
                 if interpolator_result.is_empty() {
                     return Ok(Some(AstNode::Literal(Literal::new(
-                        Value::Str(Rc::new(literal)),
+                        Value::Str(literal.into()),
                         Span::new(start, self.pos - start),
                     ))));
                 } else {
                     if !literal.is_empty() {
                         interpolator_result.push(AstNode::Literal(Literal::new(
-                            Value::Str(Rc::new(literal)),
+                            Value::Str(literal.into()),
                             Span::new(literal_start, self.pos - 1 - literal_start),
                         )));
                     }
@@ -81,7 +79,7 @@ impl<'a> Parser<'a> {
                     let tmp = String::from_utf8_lossy(&self.input[literal_start..self.pos]);
                     literal.push_str(&tmp);
                     interpolator_result.push(AstNode::Literal(Literal::new(
-                        Value::Str(Rc::new(literal)),
+                        Value::Str(literal.into()),
                         Span::new(literal_start, self.pos - literal_start),
                     )));
                 }

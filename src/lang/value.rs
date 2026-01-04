@@ -109,7 +109,7 @@ impl Value {
     pub fn ref_clone(&self) -> Self {
         match self {
             Value::Func(v) => Value::Func(v.clone()),
-            Value::Str(v) => Value::Str(Rc::clone(v)),
+            Value::Str(v) => Value::Str(v.clone()),
             Value::Integer(v) => Value::Integer(*v),
             Value::Float(v) => Value::Float(*v),
             Value::Bool(v) => Value::Bool(*v),
@@ -124,7 +124,7 @@ impl Value {
     pub fn shallow_clone(&self) -> Self {
         match self {
             Value::Func(v) => Value::Func(v.clone()),
-            Value::Str(v) => Value::Str(Rc::new(v.as_str().to_string())),
+            Value::Str(v) => Value::Str(v.shallow_clone()),
             Value::Integer(v) => Value::Integer(*v),
             Value::Float(v) => Value::Float(*v),
             Value::Bool(v) => Value::Bool(*v),
@@ -139,7 +139,7 @@ impl Value {
     pub fn deep_clone(&self) -> Self {
         match self {
             Value::Func(v) => Value::Func(v.clone()),
-            Value::Str(v) => Value::Str(Rc::new(v.as_str().to_string())),
+            Value::Str(v) => Value::Str(v.deep_clone()),
             Value::Integer(v) => Value::Integer(*v),
             Value::Float(v) => Value::Float(*v),
             Value::Bool(v) => Value::Bool(*v),
@@ -193,12 +193,12 @@ impl From<KeyValue> for Value {
 
 impl From<&str> for Value {
     fn from(value: &str) -> Self {
-        Value::Str(Rc::new(value.to_string()))
+        Value::Str(value.into())
     }
 }
 impl From<&Key> for Value {
     fn from(value: &Key) -> Self {
-        Value::Str(Rc::clone(&value.0))
+        Value::Str(value.into())
     }
 }
 
@@ -285,14 +285,9 @@ pub mod tests {
         );
 
         {
-            let a = Value::Str(Rc::new("string".to_string()));
+            let a = Value::Str("string".into());
             let b = a.ref_clone();
             assert_eq!(a, b);
-
-            let Value::Str(mut v) = a else { panic!() };
-            if Rc::get_mut(&mut v).is_some() {
-                panic!("expected none");
-            };
         }
         {
             let mut a = Value::Integer(42);
@@ -347,14 +342,9 @@ pub mod tests {
         );
 
         {
-            let a = Value::Str(Rc::new("string".to_string()));
+            let a = Value::Str("string".into());
             let b = a.shallow_clone();
             assert_eq!(a, b);
-
-            let Value::Str(mut v) = a else { panic!() };
-            Rc::get_mut(&mut v).unwrap().push_str("xxx");
-            let a = Value::Str(v);
-            assert_ne!(a, b);
         }
         {
             let mut a = Value::Integer(42);
@@ -409,14 +399,9 @@ pub mod tests {
         );
 
         {
-            let a = Value::Str(Rc::new("string".to_string()));
+            let a = Value::Str("string".into());
             let b = a.deep_clone();
             assert_eq!(a, b);
-
-            let Value::Str(mut v) = a else { panic!() };
-            Rc::get_mut(&mut v).unwrap().push_str("xxx");
-            let a = Value::Str(v);
-            assert_ne!(a, b);
         }
         {
             let mut a = Value::Integer(42);

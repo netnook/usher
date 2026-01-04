@@ -1,7 +1,8 @@
-use crate::lang::{Context, EvalStop, FunctionCall, Key, Output, Value, function::FunctionType};
-use std::{io::Write, rc::Rc};
-
 use super::{InternalProgramError, value::ValueType};
+use crate::lang::{
+    Context, EvalStop, FunctionCall, Key, Output, Value, function::FunctionType, value::StringCell,
+};
+use std::io::Write;
 
 pub fn resolve_function(key: &Key) -> Option<FunctionType> {
     match key.as_str() {
@@ -51,7 +52,7 @@ where
             if name.key.as_str() == "sep" {
                 sep = match val {
                     Value::Str(s) => Some(s),
-                    Value::Nil => Some(Rc::new(String::new())),
+                    Value::Nil => Some(StringCell::new()),
                     _ => {
                         return Err(InternalProgramError::BadValueType {
                             expected: ValueType::String,

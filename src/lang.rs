@@ -19,6 +19,7 @@ mod value;
 mod var;
 mod visitor;
 
+use crate::lang::value::StringCell;
 pub use binary_op::{BinaryOp, BinaryOpCode};
 pub use block::Block;
 pub use catch::CatchMissingOptionalProperty;
@@ -182,9 +183,9 @@ impl From<&str> for Key {
     }
 }
 
-impl From<&Rc<String>> for Key {
-    fn from(value: &Rc<String>) -> Self {
-        Self(Rc::clone(value))
+impl From<&StringCell> for Key {
+    fn from(value: &StringCell) -> Self {
+        Self(Rc::clone(&value.content))
     }
 }
 

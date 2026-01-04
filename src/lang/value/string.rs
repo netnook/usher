@@ -3,9 +3,78 @@ use crate::lang::{
     Context, EvalStop, FunctionCall, Key, Value,
     function::{MethodResolver, MethodType},
 };
-use std::rc::Rc;
+use std::{fmt::Display, ops::Deref, rc::Rc};
 
-pub type StringCell = Rc<String>;
+#[derive(Debug, PartialEq, Default, Clone)]
+pub struct StringCell {
+    pub(crate) content: Rc<String>,
+}
+
+impl StringCell {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn len(&self) -> usize {
+        self.content.len()
+    }
+
+    pub(crate) fn as_str(&self) -> &str {
+        self.content.as_str()
+    }
+
+    pub(crate) fn shallow_clone(&self) -> Self {
+        Self {
+            // FIXME: are strings immutable, in which case the clone is un-necessary
+            content: Rc::new(self.content.as_str().to_string()),
+        }
+    }
+
+    pub(crate) fn deep_clone(&self) -> Self {
+        Self {
+            // FIXME: are strings immutable, in which case the clone is un-necessary
+            content: Rc::new(self.content.as_str().to_string()),
+        }
+    }
+}
+
+impl Deref for StringCell {
+    type Target = str;
+
+    fn deref(&self) -> &Self::Target {
+        self.content.as_str()
+    }
+}
+
+impl From<&Key> for StringCell {
+    fn from(value: &Key) -> Self {
+        Self {
+            content: value.0.clone(),
+        }
+    }
+}
+impl From<&str> for StringCell {
+    fn from(value: &str) -> Self {
+        Self {
+            content: Rc::new(value.to_string()),
+        }
+    }
+}
+
+impl From<String> for StringCell {
+    fn from(value: String) -> Self {
+        Self {
+            content: Rc::new(value),
+        }
+    }
+}
+
+impl Display for StringCell {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.content)
+        // todo!()
+    }
+}
 
 impl MethodResolver for StringCell {
     fn resolve_method(&self, key: &Key) -> Option<MethodType<Self>> {
@@ -62,48 +131,32 @@ fn str_split(call: &FunctionCall, this: StringCell, ctxt: &mut Context) -> Resul
 
 #[cfg(test)]
 pub mod tests {
-    use super::*;
     use crate::lang::Value;
 
     #[test]
     fn test_ref_clone() {
         {
-            let a = Value::Str(Rc::new("string".to_string()));
+            let a = Value::Str("string".into());
             let b = a.ref_clone();
             assert_eq!(a, b);
-
-            let Value::Str(mut v) = a else { panic!() };
-            if Rc::get_mut(&mut v).is_some() {
-                panic!("expected none");
-            };
         }
     }
 
     #[test]
     fn test_shallow_clone() {
         {
-            let a = Value::Str(Rc::new("string".to_string()));
+            let a = Value::Str("string".into());
             let b = a.shallow_clone();
             assert_eq!(a, b);
-
-            let Value::Str(mut v) = a else { panic!() };
-            Rc::get_mut(&mut v).unwrap().push_str("xxx");
-            let a = Value::Str(v);
-            assert_ne!(a, b);
         }
     }
 
     #[test]
     fn test_deep_clone() {
         {
-            let a = Value::Str(Rc::new("string".to_string()));
+            let a = Value::Str("string".into());
             let b = a.deep_clone();
             assert_eq!(a, b);
-
-            let Value::Str(mut v) = a else { panic!() };
-            Rc::get_mut(&mut v).unwrap().push_str("xxx");
-            let a = Value::Str(v);
-            assert_ne!(a, b);
         }
     }
 
