@@ -48,7 +48,7 @@ impl Eval for PropertyOf {
 
         let result = match of {
             Value::Dict(of) => {
-                let v = of.borrow().get(&self.property.key);
+                let v = of.get(&self.property.key);
                 let Some(v) = v else {
                     if self.optional_property {
                         return InternalProgramError::MissingOptionalProperty.into();
@@ -98,7 +98,7 @@ impl Setter for PropertyOf {
         let of = self.of.eval(ctxt)?;
 
         match of {
-            Value::Dict(of) => of.borrow_mut().set(self.property.key.clone(), value),
+            Value::Dict(mut of) => of.set(self.property.key.clone(), value),
             _ => {
                 return InternalProgramError::SuffixOperatorDoesNotSupportOperand {
                     op: "property-of",
@@ -254,7 +254,7 @@ mod tests {
             prop_c.eval(&mut ctxt).unwrap_err(),
             InternalProgramError::NoSuchProperty {
                 prop: id("c"),
-                from: PropertyList::Dict(dict!("a" => 1, "b" => "bbb").into()),
+                from: PropertyList::Dict(dict!("a" => 1, "b" => "bbb")),
                 span: Span::new(999, 9999)
             }
             .into_stop()

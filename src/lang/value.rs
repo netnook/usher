@@ -4,7 +4,7 @@ mod string;
 
 use super::{FunctionDef, InternalProgramError};
 use crate::lang::{Key, function::FunctionType};
-pub use dict::{Dict, DictCell, DictIter};
+pub use dict::{Dict, DictIter};
 pub use list::{List, ListIter};
 use std::{
     fmt::{Display, Write},
@@ -61,7 +61,7 @@ pub enum Value {
     Float(f64),
     Bool(bool),
     List(List),
-    Dict(DictCell),
+    Dict(Dict),
     KeyValue(KeyValueCell),
     Nil,
     End,
@@ -96,7 +96,7 @@ impl Display for Value {
             Value::Float(v) => Display::fmt(v, fmt),
             Value::Bool(v) => Display::fmt(v, fmt),
             Value::List(v) => Display::fmt(v, fmt),
-            Value::Dict(v) => Display::fmt(&*v.borrow(), fmt),
+            Value::Dict(v) => Display::fmt(v, fmt),
             Value::KeyValue(v) => Display::fmt(v.as_ref(), fmt),
             Value::Nil => fmt.write_str("nil"),
             Value::End => fmt.write_str("end"),
@@ -114,7 +114,7 @@ impl Value {
             Value::Float(v) => Value::Float(*v),
             Value::Bool(v) => Value::Bool(*v),
             Value::List(v) => Value::List(v.clone()),
-            Value::Dict(v) => Value::Dict(Rc::clone(v)),
+            Value::Dict(v) => Value::Dict(v.clone()),
             Value::KeyValue(v) => Value::KeyValue(Rc::clone(v)),
             Value::Nil => Value::Nil,
             Value::End => Value::End,
@@ -129,7 +129,7 @@ impl Value {
             Value::Float(v) => Value::Float(*v),
             Value::Bool(v) => Value::Bool(*v),
             Value::List(v) => Value::List(v.shallow_clone()),
-            Value::Dict(v) => Value::Dict(v.borrow().shallow_clone().into()),
+            Value::Dict(v) => Value::Dict(v.shallow_clone()),
             Value::KeyValue(v) => Value::KeyValue(v.shallow_clone().into()),
             Value::Nil => Value::Nil,
             Value::End => Value::End,
@@ -144,7 +144,7 @@ impl Value {
             Value::Float(v) => Value::Float(*v),
             Value::Bool(v) => Value::Bool(*v),
             Value::List(v) => Value::List(v.deep_clone()),
-            Value::Dict(v) => Value::Dict(v.borrow().deep_clone().into()),
+            Value::Dict(v) => Value::Dict(v.deep_clone()),
             Value::KeyValue(v) => Value::KeyValue(v.deep_clone().into()),
             Value::Nil => Value::Nil,
             Value::End => Value::End,
@@ -169,7 +169,7 @@ impl Value {
 
 impl From<Dict> for Value {
     fn from(value: Dict) -> Self {
-        Self::Dict(value.into())
+        Self::Dict(value)
     }
 }
 

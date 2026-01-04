@@ -81,7 +81,7 @@ pub mod tests {
     mod nested_types;
     mod spans;
 
-    use std::{cell::RefCell, rc::Rc};
+    use std::rc::Rc;
 
     use crate::{
         lang::{
@@ -131,7 +131,7 @@ pub mod tests {
     }
     impl ToValue for Dict {
         fn to_value(self) -> Value {
-            Value::Dict(Rc::new(RefCell::new(self)))
+            Value::Dict(self)
         }
     }
 

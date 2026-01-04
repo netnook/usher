@@ -2,7 +2,7 @@ use crate::{
     lang::{Dict, EvalStop, Identifier, KeyValue, Span, value::ValueType},
     parser::{SourceRef, position},
 };
-use std::{cell::RefCell, fmt::Display, rc::Rc};
+use std::{fmt::Display, rc::Rc};
 use thiserror::Error;
 
 const DUMMY_SPAN: Span = Span::new(0, 1);
@@ -124,7 +124,7 @@ pub enum InternalProgramError {
 
 #[derive(Debug, PartialEq)]
 pub enum PropertyList {
-    Dict(Rc<RefCell<Dict>>),
+    Dict(Dict),
     KeyValue(Rc<KeyValue>),
 }
 
@@ -133,8 +133,7 @@ impl Display for PropertyList {
         match self {
             PropertyList::Dict(v) => {
                 let mut first = true;
-                let v = v.borrow();
-                let mut keys: Vec<_> = v.keys().collect::<Vec<_>>();
+                let mut keys: Vec<_> = v.keys();
                 keys.sort();
                 for key in keys {
                     match first {

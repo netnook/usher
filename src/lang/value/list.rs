@@ -74,12 +74,7 @@ impl List {
     }
 
     pub(crate) fn shallow_clone(&self) -> Self {
-        let mut result = Self::new();
-        let content = self.content.borrow();
-        for e in &*content {
-            result.push(e.ref_clone());
-        }
-        result
+        self.content.borrow().clone().into()
     }
 
     pub(crate) fn deep_clone(&self) -> Self {

@@ -208,7 +208,7 @@ impl Eval for FunctionCall {
                 let on_value_type = on.value_type();
                 match on {
                     Value::Dict(dict) => {
-                        let r = dict.borrow().get(&function.key);
+                        let r = dict.get(&function.key);
                         match r {
                             Some(Value::Func(func)) => {
                                 return self.call_func(func, ctxt, Some(Value::Dict(dict)));
