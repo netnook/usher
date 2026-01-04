@@ -5,9 +5,8 @@ mod string;
 use super::{FunctionDef, InternalProgramError};
 use crate::lang::{Key, function::FunctionType};
 pub use dict::{Dict, DictCell, DictIter};
-pub use list::{List, ListCell, ListIter};
+pub use list::{List, ListIter};
 use std::{
-    cell::RefCell,
     fmt::{Display, Write},
     rc::Rc,
 };
@@ -61,7 +60,7 @@ pub enum Value {
     Integer(isize),
     Float(f64),
     Bool(bool),
-    List(ListCell),
+    List(List),
     Dict(DictCell),
     KeyValue(KeyValueCell),
     Nil,
@@ -96,7 +95,7 @@ impl Display for Value {
             Value::Integer(v) => Display::fmt(v, fmt),
             Value::Float(v) => Display::fmt(v, fmt),
             Value::Bool(v) => Display::fmt(v, fmt),
-            Value::List(v) => Display::fmt(&*v.borrow(), fmt),
+            Value::List(v) => Display::fmt(v, fmt),
             Value::Dict(v) => Display::fmt(&*v.borrow(), fmt),
             Value::KeyValue(v) => Display::fmt(v.as_ref(), fmt),
             Value::Nil => fmt.write_str("nil"),
@@ -106,6 +105,7 @@ impl Display for Value {
 }
 
 impl Value {
+    // FIXME: deprecate
     pub fn ref_clone(&self) -> Self {
         match self {
             Value::Func(v) => Value::Func(v.clone()),
@@ -113,7 +113,7 @@ impl Value {
             Value::Integer(v) => Value::Integer(*v),
             Value::Float(v) => Value::Float(*v),
             Value::Bool(v) => Value::Bool(*v),
-            Value::List(v) => Value::List(Rc::clone(v)),
+            Value::List(v) => Value::List(v.clone()),
             Value::Dict(v) => Value::Dict(Rc::clone(v)),
             Value::KeyValue(v) => Value::KeyValue(Rc::clone(v)),
             Value::Nil => Value::Nil,
@@ -128,7 +128,7 @@ impl Value {
             Value::Integer(v) => Value::Integer(*v),
             Value::Float(v) => Value::Float(*v),
             Value::Bool(v) => Value::Bool(*v),
-            Value::List(v) => Value::List(v.borrow().shallow_clone().into()),
+            Value::List(v) => Value::List(v.shallow_clone()),
             Value::Dict(v) => Value::Dict(v.borrow().shallow_clone().into()),
             Value::KeyValue(v) => Value::KeyValue(v.shallow_clone().into()),
             Value::Nil => Value::Nil,
@@ -143,7 +143,7 @@ impl Value {
             Value::Integer(v) => Value::Integer(*v),
             Value::Float(v) => Value::Float(*v),
             Value::Bool(v) => Value::Bool(*v),
-            Value::List(v) => Value::List(v.borrow().deep_clone().into()),
+            Value::List(v) => Value::List(v.deep_clone()),
             Value::Dict(v) => Value::Dict(v.borrow().deep_clone().into()),
             Value::KeyValue(v) => Value::KeyValue(v.deep_clone().into()),
             Value::Nil => Value::Nil,
@@ -175,12 +175,13 @@ impl From<Dict> for Value {
 
 impl From<Vec<Value>> for Value {
     fn from(value: Vec<Value>) -> Self {
-        Self::List(Rc::new(RefCell::new(value.into())))
+        Self::List(value.into())
     }
 }
+
 impl From<List> for Value {
     fn from(value: List) -> Self {
-        Self::List(value.into())
+        Self::List(value)
     }
 }
 

@@ -15,11 +15,9 @@ pub struct IndexOutOfRangeError {
     pub(crate) len: usize,
 }
 
-pub type ListCell = Rc<RefCell<List>>;
-
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Debug, PartialEq, Default, Clone)]
 pub struct List {
-    pub content: Vec<Value>,
+    content: Rc<RefCell<Vec<Value>>>,
 }
 
 impl List {
@@ -27,52 +25,58 @@ impl List {
         Self::default()
     }
 
-    fn index_out_of_range(&self) -> IndexOutOfRangeError {
-        IndexOutOfRangeError {
-            len: self.content.len(),
-        }
-    }
-
     pub fn get(&self, index: isize) -> Result<Value, IndexOutOfRangeError> {
         if index < 0 {
-            return Err(self.index_out_of_range());
+            return Err({
+                IndexOutOfRangeError {
+                    len: self.content.borrow().len(),
+                }
+            });
         }
-        match self.content.get(index as usize) {
+        match self.content.borrow().get(index as usize) {
             Some(v) => Ok(v.clone()),
-            None => Err(self.index_out_of_range()),
+            None => Err({
+                IndexOutOfRangeError {
+                    len: self.content.borrow().len(),
+                }
+            }),
         }
     }
 
     pub fn set(&mut self, index: isize, value: Value) -> Result<(), IndexOutOfRangeError> {
-        if index.is_negative() || index as usize >= self.content.len() {
-            return Err(self.index_out_of_range());
+        let mut content = self.content.borrow_mut();
+        if index.is_negative() || index as usize >= content.len() {
+            return Err(IndexOutOfRangeError { len: content.len() });
         }
-        self.content[index as usize] = value;
+        content[index as usize] = value;
         Ok(())
     }
 
     pub fn remove(&mut self, index: isize) -> Result<Value, IndexOutOfRangeError> {
-        if index.is_negative() || index as usize >= self.content.len() {
-            return Err(self.index_out_of_range());
+        let mut content = self.content.borrow_mut();
+        if index.is_negative() || index as usize >= content.len() {
+            return Err(IndexOutOfRangeError { len: content.len() });
         }
-        Ok(self.content.remove(index as usize))
+        Ok(content.remove(index as usize))
     }
 
     pub fn push(&mut self, value: Value) {
-        self.content.push(value);
+        let mut content = self.content.borrow_mut();
+        content.push(value);
     }
 
     pub fn len(&self) -> usize {
-        self.content.len()
+        self.content.borrow().len()
     }
 
     pub fn is_empty(&self) -> bool {
-        self.content.is_empty()
+        self.content.borrow().is_empty()
     }
 
     pub(crate) fn shallow_clone(&self) -> Self {
         let mut result = Self::new();
-        for e in &self.content {
+        let content = self.content.borrow();
+        for e in &*content {
             result.push(e.ref_clone());
         }
         result
@@ -80,7 +84,8 @@ impl List {
 
     pub(crate) fn deep_clone(&self) -> Self {
         let mut result = Self::new();
-        for e in &self.content {
+        let content = self.content.borrow();
+        for e in &*content {
             result.push(e.deep_clone());
         }
         result
@@ -89,13 +94,9 @@ impl List {
 
 impl From<Vec<Value>> for List {
     fn from(value: Vec<Value>) -> Self {
-        Self { content: value }
-    }
-}
-
-impl From<List> for ListCell {
-    fn from(value: List) -> Self {
-        Rc::new(RefCell::new(value))
+        Self {
+            content: Rc::new(RefCell::new(value)),
+        }
     }
 }
 
@@ -104,7 +105,7 @@ impl Display for List {
         fmt.write_char('[')?;
 
         let mut first = true;
-        for v in &self.content {
+        for v in &*self.content.borrow() {
             if !first {
                 fmt.write_char(',')?;
             } else {
@@ -119,20 +120,19 @@ impl Display for List {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Debug, PartialEq, Default)]
 pub struct ListIter {
-    list: ListCell,
+    list: List,
     next: isize,
 }
 
 impl ListIter {
-    pub fn new(list: ListCell) -> Self {
+    pub fn new(list: List) -> Self {
         Self { list, next: 0 }
     }
 
     pub fn next(&mut self) -> Option<(isize, Value)> {
-        let list = self.list.borrow();
-        let val = list.get(self.next);
+        let val = self.list.get(self.next);
 
         match val {
             Ok(val) => {
@@ -145,7 +145,7 @@ impl ListIter {
     }
 }
 
-impl MethodResolver for ListCell {
+impl MethodResolver for List {
     fn resolve_method(&self, key: &Key) -> Option<MethodType<Self>> {
         match key.as_str() {
             "push" => Some(list_push),
@@ -155,19 +155,14 @@ impl MethodResolver for ListCell {
     }
 }
 
-fn list_push(
-    call: &FunctionCall,
-    this: Rc<RefCell<List>>,
-    ctxt: &mut Context,
-) -> Result<Value, EvalStop> {
-    let mut list = this.borrow_mut();
-
+fn list_push(call: &FunctionCall, this: List, ctxt: &mut Context) -> Result<Value, EvalStop> {
     let args = call
         .args
         .iter()
         .map(|a| a.eval(ctxt))
         .collect::<Result<Vec<Value>, EvalStop>>()?;
 
+    let mut list = this.content.borrow_mut();
     for arg in args {
         list.push(arg);
     }
@@ -175,11 +170,7 @@ fn list_push(
     Ok(Value::Nil)
 }
 
-fn list_remove(
-    call: &FunctionCall,
-    this: Rc<RefCell<List>>,
-    ctxt: &mut Context,
-) -> Result<Value, EvalStop> {
+fn list_remove(call: &FunctionCall, this: List, ctxt: &mut Context) -> Result<Value, EvalStop> {
     // FIXME: have an arg spec as a struct and a macro which can "decode" the args into that struct ?
     let mut iter = call.args.iter();
     let idx_arg = call.required_positional_arg("index", iter.next())?;
@@ -191,9 +182,10 @@ fn list_remove(
         );
     };
 
-    let mut list = this.borrow_mut();
+    // FIXME: remove following line when builtins take a &mut XXX
+    let mut this = this;
 
-    match list.remove(idx_val) {
+    match this.remove(idx_val) {
         Ok(v) => Ok(v),
         Err(e) => Err(InternalProgramError::IndexOutOfRange {
             index: idx_val,
@@ -216,12 +208,12 @@ mod tests {
             let mut l = List::new();
             l.push(42.into());
             l.push(43.into());
-            let mut a = Value::List(l.into());
+            let mut a = Value::List(l);
             let b = a.ref_clone();
             assert_eq!(a, b);
 
             let Value::List(l) = &mut a else { panic!() };
-            l.borrow_mut().push(45.into());
+            l.push(45.into());
             assert_eq!(a, b);
         }
         {
@@ -231,15 +223,15 @@ mod tests {
             let mut l = List::new();
             l.push(44.to_value());
             l.push(sub.into());
-            let mut a = Value::List(l.into());
+            let mut a = Value::List(l);
             let b = a.ref_clone();
             assert_eq!(a, b);
 
             let Value::List(l) = &mut a else { panic!() };
-            let Value::List(sub) = &mut l.borrow().get(1).unwrap() else {
+            let Value::List(sub) = &mut l.get(1).unwrap() else {
                 panic!()
             };
-            sub.borrow_mut().push(45.into());
+            sub.push(45.into());
             assert_eq!(a, b); // a and b still differ after sub list modified
         }
     }
@@ -253,19 +245,19 @@ mod tests {
             let mut l = List::new();
             l.push(44.to_value());
             l.push(sub.into());
-            let mut a = Value::List(l.into());
+            let mut a = Value::List(l);
             let b = a.shallow_clone();
             assert_eq!(a, b);
 
             let Value::List(l) = &mut a else { panic!() };
-            let Value::List(sub) = &mut l.borrow().get(1).unwrap() else {
+            let Value::List(sub) = &mut l.get(1).unwrap() else {
                 panic!()
             };
-            sub.borrow_mut().push(45.into());
+            sub.push(45.into());
             assert_eq!(a, b); // a and b still same after sub list modified (shallow copy only)
 
             let Value::List(l) = &mut a else { panic!() };
-            l.borrow_mut().push(46.into());
+            l.push(46.into());
             assert_ne!(a, b); // and and b differ after top list modified
         }
     }
@@ -276,12 +268,12 @@ mod tests {
             let mut l = List::new();
             l.push(42.into());
             l.push(43.into());
-            let mut a = Value::List(l.into());
+            let mut a = Value::List(l);
             let b = a.deep_clone();
             assert_eq!(a, b);
 
             let Value::List(l) = &mut a else { panic!() };
-            l.borrow_mut().push(45.into());
+            l.push(45.into());
             assert_ne!(a, b);
         }
         {
@@ -291,15 +283,15 @@ mod tests {
             let mut l = List::new();
             l.push(44.to_value());
             l.push(sub.into());
-            let mut a = Value::List(l.into());
+            let mut a = Value::List(l);
             let b = a.deep_clone();
             assert_eq!(a, b);
 
             let Value::List(l) = &mut a else { panic!() };
-            let Value::List(sub) = &mut l.borrow().get(1).unwrap() else {
+            let Value::List(sub) = &mut l.get(1).unwrap() else {
                 panic!()
             };
-            sub.borrow_mut().push(45.into());
+            sub.push(45.into());
             assert_ne!(a, b);
         }
     }
@@ -328,8 +320,7 @@ mod tests {
         let a = "aaa".to_value();
         let b = "bbb".to_value();
         let c = "ccc".to_value();
-        let mut l = List::new();
-        l.content = vec![a.clone(), b.clone(), c.clone()];
+        let mut l: List = vec![a.clone(), b.clone(), c.clone()].into();
 
         assert_eq!(l.remove(-1), Err(IndexOutOfRangeError { len: 3 }));
         assert_eq!(l.remove(5), Err(IndexOutOfRangeError { len: 3 }));
@@ -337,15 +328,15 @@ mod tests {
 
         assert_eq!(l.remove(1), Ok(b.clone()));
         assert_eq!(l.len(), 2);
-        assert_eq!(l.content, vec![a.clone(), c.clone()]);
+        assert_eq!(*l.content.borrow(), vec![a.clone(), c.clone()]);
 
         assert_eq!(l.remove(1), Ok(c.clone()));
         assert_eq!(l.len(), 1);
-        assert_eq!(l.content, vec![a.clone()]);
+        assert_eq!(*l.content.borrow(), vec![a.clone()]);
 
         assert_eq!(l.remove(0), Ok(a));
         assert_eq!(l.len(), 0);
-        assert_eq!(l.content, vec![]);
+        assert_eq!(*l.content.borrow(), vec![]);
 
         assert_eq!(l.remove(0), Err(IndexOutOfRangeError { len: 0 }));
     }
@@ -353,7 +344,7 @@ mod tests {
     #[test]
     fn test_display() {
         {
-            let val = Value::List(List::new().into());
+            let val = Value::List(List::new());
             let expected = "[]";
             assert_eq!(format!("{val}"), expected);
             assert_eq!(val.as_string().unwrap(), expected);
@@ -368,7 +359,7 @@ mod tests {
             list_b.push("bar".to_value());
             list.push(list_b.into());
 
-            let val = Value::List(list.into());
+            let val = Value::List(list);
             let expected = r#"[1,nil,[],["bar"]]"#;
 
             assert_eq!(format!("{val}"), expected);

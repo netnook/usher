@@ -126,7 +126,7 @@ pub mod tests {
     }
     impl ToValue for List {
         fn to_value(self) -> Value {
-            Value::List(Rc::new(RefCell::new(self)))
+            Value::List(self)
         }
     }
     impl ToValue for Dict {

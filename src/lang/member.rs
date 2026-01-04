@@ -2,7 +2,7 @@ use super::errors::PropertyList;
 use crate::lang::{
     Accept, AstNode, Context, Eval, EvalStop, Identifier, InternalProgramError, Setter, Span,
     Value, Visitor, VisitorResult, accept_default,
-    value::{ListCell, ValueType},
+    value::{List, ValueType},
 };
 
 #[derive(PartialEq, Clone)]
@@ -144,7 +144,7 @@ impl core::fmt::Debug for IndexOf {
 }
 
 impl IndexOf {
-    fn of(&self, ctxt: &mut Context) -> Result<ListCell, EvalStop> {
+    fn of(&self, ctxt: &mut Context) -> Result<List, EvalStop> {
         let of = self.of.eval(ctxt)?;
 
         let Value::List(of) = of else {
@@ -185,7 +185,7 @@ impl Eval for IndexOf {
 
         let index = self.index(ctxt)?;
 
-        let result = of.borrow().get(index).map_err(|e| {
+        let result = of.get(index).map_err(|e| {
             if self.optional_property {
                 InternalProgramError::MissingOptionalProperty.into()
             } else {
@@ -206,11 +206,11 @@ accept_default!(IndexOf, of:node, index:node,);
 
 impl Setter for IndexOf {
     fn set(&self, ctxt: &mut Context, value: Value) -> Result<(), EvalStop> {
-        let of = self.of(ctxt)?;
+        let mut of = self.of(ctxt)?;
 
         let index = self.index(ctxt)?;
 
-        of.borrow_mut().set(index, value).map_err(|e| {
+        of.set(index, value).map_err(|e| {
             InternalProgramError::IndexOutOfRange {
                 index,
                 len: e.len,
