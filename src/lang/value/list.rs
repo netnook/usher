@@ -165,7 +165,7 @@ fn list_push(call: &FunctionCall, this: List, ctxt: &mut Context) -> Result<Valu
     Ok(Value::Nil)
 }
 
-fn list_remove(call: &FunctionCall, this: List, ctxt: &mut Context) -> Result<Value, EvalStop> {
+fn list_remove(call: &FunctionCall, mut this: List, ctxt: &mut Context) -> Result<Value, EvalStop> {
     // FIXME: have an arg spec as a struct and a macro which can "decode" the args into that struct ?
     let mut iter = call.args.iter();
     let idx_arg = call.required_positional_arg("index", iter.next())?;
@@ -176,9 +176,6 @@ fn list_remove(call: &FunctionCall, this: List, ctxt: &mut Context) -> Result<Va
             InternalProgramError::FunctionCallUnexpectedArgument { span: arg.span() }.into(),
         );
     };
-
-    // FIXME: remove following line when builtins take a &mut XXX
-    let mut this = this;
 
     match this.remove(idx_val) {
         Ok(v) => Ok(v),

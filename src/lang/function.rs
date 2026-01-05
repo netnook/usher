@@ -233,7 +233,7 @@ impl Eval for FunctionCall {
                     }
                     Value::Str(string) => {
                         if let Some(func) = string.resolve_method(&function.key) {
-                            return func(self, string.clone(), ctxt);
+                            return func(self, string, ctxt);
                         }
                     }
                     _ => {}

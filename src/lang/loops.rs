@@ -65,7 +65,6 @@ impl Eval for For {
                 }
             }
             Value::Dict(dict) => {
-                // FIXME: what happen if dict is modified during iteration ???
                 let Some(loop_info) = &self.loop_info else {
                     return Err(InternalProgramError::LoopOnDictMissingValueDeclartion {
                         span: self.span,
