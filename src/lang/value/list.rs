@@ -85,6 +85,10 @@ impl List {
         }
         result
     }
+
+    pub(crate) fn iter(&self) -> ListIter {
+        ListIter::new(self.clone())
+    }
 }
 
 impl From<Vec<Value>> for List {
@@ -122,7 +126,7 @@ pub struct ListIter {
 }
 
 impl ListIter {
-    pub fn new(list: List) -> Self {
+    fn new(list: List) -> Self {
         Self { list, next: 0 }
     }
 

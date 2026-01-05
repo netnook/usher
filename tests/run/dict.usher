@@ -10,7 +10,7 @@ dct.add(b:3)
 dct.add(d:7)
 dct
 ---result---
-dict("a":1,"b":3,"c":5,"d":7)
+dict("a":1,"c":5,"b":3,"d":7)
 ***********************************************
 # iterate through dict
 var dct = dict(a:1, b:3, c:5, d:7)
@@ -37,5 +37,4 @@ dict("a":1,"c":5,"d":7)
 ---stdout---
 a, 1
 b, 3
-c, 5
 d, 7

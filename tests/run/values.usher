@@ -10,7 +10,7 @@ lst.push([1,2,3])
 lst.push(dict(b:2,a:1,c:3))
 lst
 ---result---
-[123,12.3,"abc",true,false,nil,end,[1,2,3],dict("a":1,"b":2,"c":3)]
+[123,12.3,"abc",true,false,nil,end,[1,2,3],dict("b":2,"a":1,"c":3)]
 **************************
 "foo".len()
 ---result---

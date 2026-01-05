@@ -2,7 +2,6 @@ use super::{Context, Value};
 use crate::lang::{
     Accept, AstNode, Block, Eval, EvalStop, InternalProgramError, Span, Var, Visitor,
     VisitorResult, accept_default,
-    value::{DictIter, ListIter},
 };
 
 #[derive(PartialEq, Clone)]
@@ -47,7 +46,7 @@ impl Eval for For {
 
         match iterable {
             Value::List(list) => {
-                let mut iter = ListIter::new(list);
+                let mut iter = list.iter();
 
                 while let Some((idx, val)) = iter.next() {
                     child_ctxt.reset();
@@ -71,7 +70,7 @@ impl Eval for For {
                     }
                     .into_stop());
                 };
-                let mut iter = DictIter::new(dict);
+                let mut iter = dict.iter();
 
                 while let Some((key, val)) = iter.next() {
                     // FIXME: dict should always have vars for key and value, and an optional third as loop_info (with .index, .first, .last properties)

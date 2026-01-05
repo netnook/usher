@@ -133,14 +133,14 @@ impl Display for PropertyList {
         match self {
             PropertyList::Dict(v) => {
                 let mut first = true;
-                let mut keys: Vec<_> = v.keys();
-                keys.sort();
-                for key in keys {
+                // FIXME get the DictIter and ListIter to actually implement iterator
+                let mut iter = v.iter();
+                while let Some((k, _)) = iter.next() {
                     match first {
                         true => first = false,
                         false => f.write_str(", ")?,
                     }
-                    f.write_str(&key.0)?
+                    f.write_str(&k.0)?
                 }
                 Ok(())
             }

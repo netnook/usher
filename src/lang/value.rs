@@ -4,8 +4,8 @@ mod string;
 
 use super::{FunctionDef, InternalProgramError};
 use crate::lang::{Key, function::FunctionType};
-pub use dict::{Dict, DictIter};
-pub use list::{List, ListIter};
+pub use dict::Dict;
+pub use list::List;
 use std::{
     fmt::{Display, Write},
     rc::Rc,
@@ -198,6 +198,11 @@ impl From<&str> for Value {
 }
 impl From<&Key> for Value {
     fn from(value: &Key) -> Self {
+        Value::Str(value.into())
+    }
+}
+impl From<Key> for Value {
+    fn from(value: Key) -> Self {
         Value::Str(value.into())
     }
 }

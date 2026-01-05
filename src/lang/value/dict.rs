@@ -1,17 +1,18 @@
+use ordermap::OrderMap;
+
 use crate::lang::{
     Context, EvalStop, FunctionCall, InternalProgramError, Key, Value,
     function::{MethodResolver, MethodType},
 };
 use std::{
     cell::RefCell,
-    collections::HashMap,
     fmt::{Display, Write},
     rc::Rc,
 };
 
 #[derive(Debug, PartialEq, Default, Clone)]
 pub struct Dict {
-    content: Rc<RefCell<HashMap<Key, Value>>>,
+    content: Rc<RefCell<OrderMap<Key, Value>>>,
 }
 
 impl Dict {
@@ -31,26 +32,26 @@ impl Dict {
         self.content.borrow_mut().remove(key)
     }
 
-    pub(crate) fn keys(&'_ self) -> Vec<Key> {
-        self.content.borrow().keys().cloned().collect()
-    }
-
     pub(crate) fn shallow_clone(&self) -> Self {
         self.content.borrow().clone().into()
     }
 
     pub(crate) fn deep_clone(&self) -> Self {
-        let mut result = HashMap::new();
+        let mut result = OrderMap::new();
         let content = self.content.borrow();
         for (k, v) in &*content {
             result.insert(k.clone(), v.deep_clone());
         }
         result.into()
     }
+
+    pub(crate) fn iter(&self) -> DictIter {
+        DictIter::new(self.clone())
+    }
 }
 
-impl From<HashMap<Key, Value>> for Dict {
-    fn from(value: HashMap<Key, Value>) -> Self {
+impl From<OrderMap<Key, Value>> for Dict {
+    fn from(value: OrderMap<Key, Value>) -> Self {
         Self {
             content: Rc::new(RefCell::new(value)),
         }
@@ -60,34 +61,26 @@ impl From<HashMap<Key, Value>> for Dict {
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct DictIter {
     dict: Dict,
-    keys: Vec<Key>,
     next: usize,
 }
 
 impl DictIter {
     pub fn new(dict: Dict) -> Self {
-        // FIXME: terrible.  Switch to ordermap under the hood to that we don't have
-        // to play around and sort keys for stability
-        let mut keys: Vec<Key> = dict.content.borrow().keys().cloned().collect();
-        keys.sort();
-        Self {
-            dict,
-            keys,
-            next: 0,
-        }
+        Self { dict, next: 0 }
     }
 
-    pub fn next(&mut self) -> Option<(&Key, Value)> {
-        let key = self.keys.get(self.next);
-        let key = match key {
-            Some(k) => {
-                self.next += 1;
-                k
-            }
-            None => return None,
-        };
+    pub fn next(&mut self) -> Option<(Key, Value)> {
+        let map = self.dict.content.borrow();
+        let kv = map.get_index(self.next);
 
-        self.dict.get(key).map(|v| (key, v))
+        match kv {
+            Some((k, v)) => {
+                let r = Some((k.clone(), v.clone()));
+                self.next += 1;
+                r
+            }
+            None => None,
+        }
     }
 }
 
@@ -140,13 +133,10 @@ impl Display for Dict {
     fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
         fmt.write_str("dict(")?;
 
-        // make the output sortable for testing
-        let content = self.content.borrow();
-        let mut keys: Vec<&Key> = content.keys().collect();
-        keys.sort();
+        let mut iter = self.iter();
 
         let mut first = true;
-        for k in keys {
+        while let Some((k, v)) = iter.next() {
             match first {
                 true => first = false,
                 false => fmt.write_char(',')?,
@@ -155,10 +145,7 @@ impl Display for Dict {
             fmt.write_str(k.as_str())?;
             fmt.write_str("\":")?;
 
-            match self.get(k) {
-                Some(v) => Display::fmt(&v, fmt)?,
-                None => fmt.write_str("?none?")?,
-            }
+            Display::fmt(&v, fmt)?;
         }
 
         fmt.write_char(')')?;
@@ -303,7 +290,7 @@ mod tests {
             dict_b.set("foo".into(), "bar".to_value());
             dict.set("dict_b".into(), dict_b.into());
 
-            let expected = r#"dict("dict_a":dict(),"dict_b":dict("foo":"bar"),"nil":nil,"one":1)"#;
+            let expected = r#"dict("one":1,"nil":nil,"dict_a":dict(),"dict_b":dict("foo":"bar"))"#;
             let val = Value::Dict(dict);
             assert_eq!(format!("{val}"), expected);
             assert_eq!(val.as_string().unwrap(), expected);

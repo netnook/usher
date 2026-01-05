@@ -53,6 +53,12 @@ impl From<&Key> for StringCell {
         }
     }
 }
+impl From<Key> for StringCell {
+    fn from(value: Key) -> Self {
+        Self { content: value.0 }
+    }
+}
+
 impl From<&str> for StringCell {
     fn from(value: &str) -> Self {
         Self {
