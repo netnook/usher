@@ -1,9 +1,8 @@
-use ordermap::OrderMap;
-
 use crate::lang::{
-    Context, EvalStop, FunctionCall, InternalProgramError, Key, Value,
-    function::{MethodResolver, MethodType},
+    Arg, Context, EvalStop, FunctionCall, InternalProgramError, Key, Value,
+    function::{MethodResolver, MethodType, args_struct},
 };
+use ordermap::OrderMap;
 use std::{
     cell::RefCell,
     fmt::{Display, Write},
@@ -94,37 +93,30 @@ impl MethodResolver for Dict {
     }
 }
 
+// FIXME: a function called "add" should only add (refuse to change) a key.
+// Instead, a replace (replace one returning old value) or set (set any number of value) should exist
 fn dict_add(call: &FunctionCall, mut this: Dict, ctxt: &mut Context) -> Result<Value, EvalStop> {
-    // FIXME: have an arg spec as a struct and a macro which can "decode" the args into that struct ?
-    let mut iter = call.args.iter();
-    let val_arg = call.required_positional_arg("value", iter.next())?;
-    let val_val = call.require_key_value("value", val_arg, ctxt)?;
+    args_struct!(
+        Args,
+        arg(key, 0, string, required), // FIXME: should accept int keys
+        arg(value, 1, any, required)
+    );
 
-    if let Some(arg) = iter.next() {
-        return Err(
-            InternalProgramError::FunctionCallUnexpectedArgument { span: arg.span() }.into(),
-        );
-    };
+    let args = Args::new(call, ctxt)?;
 
-    let old_value = this.set(val_val.key.clone(), val_val.value.ref_clone());
-
+    let old_value = this.set(args.key.into(), args.value);
     Ok(old_value.unwrap_or(Value::Nil))
 }
 
 fn dict_remove(call: &FunctionCall, mut this: Dict, ctxt: &mut Context) -> Result<Value, EvalStop> {
-    // FIXME: have an arg spec as a struct and a macro which can "decode" the args into that struct ?
-    let mut iter = call.args.iter();
-    let key_arg = call.required_positional_arg("key", iter.next())?;
-    // FIXME: key could be integer
-    let key_val = call.require_string("key", key_arg, ctxt)?;
+    args_struct!(
+        Args,
+        arg(key, 0, string, required) // FIXME: should accept int keys
+    );
 
-    if let Some(arg) = iter.next() {
-        return Err(
-            InternalProgramError::FunctionCallUnexpectedArgument { span: arg.span() }.into(),
-        );
-    };
+    let args = Args::new(call, ctxt)?;
 
-    let old_value = this.remove(&(&key_val).into());
+    let old_value = this.remove(&(&args.key).into());
 
     Ok(old_value.unwrap_or(Value::Nil))
 }

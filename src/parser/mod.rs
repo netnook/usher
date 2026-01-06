@@ -135,25 +135,44 @@ pub mod tests {
         }
     }
 
+    pub fn l(val: Value) -> Literal {
+        Literal::new(val, Span::new(999, 9999))
+    }
     pub fn s(val: &str) -> Literal {
-        Literal::new(val.to_value(), Span::new(999, 9999))
+        l(val.to_value())
     }
     pub fn i(val: isize) -> Literal {
-        Literal::new(Value::Integer(val), Span::new(999, 9999))
+        l(val.to_value())
     }
     pub fn f(val: f64) -> Literal {
-        Literal::new(Value::Float(val), Span::new(999, 9999))
+        l(val.to_value())
     }
     pub fn b(val: bool) -> Literal {
-        Literal::new(Value::Bool(val), Span::new(999, 9999))
+        l(val.to_value())
     }
     pub fn nil() -> Literal {
-        Literal::new(Value::Nil, Span::new(999, 9999))
+        l(Value::Nil)
     }
     pub fn end() -> Literal {
-        Literal::new(Value::End, Span::new(999, 9999))
+        l(Value::End)
     }
+    macro_rules! list{
+        ($($value:expr),*) => {{
+            use crate::lang::List;
+            let l = vec![
+                $($value.into()),*
+            ];
+            let l: List = l.into();
+            l
+        }};
+    }
+    pub(crate) use list;
+
     macro_rules! dict{
+        () => {{
+            use crate::lang::Dict;
+            Dict::new()
+        }};
         ($($key:expr => $value:expr),*) => {{
             use crate::lang::Dict;
             let mut d = Dict::new();
@@ -187,7 +206,7 @@ pub mod tests {
             span: Span::new(999, 9999),
         }
     }
-    macro_rules! list{
+    macro_rules! list_builder{
         ($($entry:expr),*) => {{
             use crate::lang::ListBuilder;
             use crate::lang::Span;
@@ -197,7 +216,7 @@ pub mod tests {
             }
         }};
     }
-    pub(crate) use list;
+    pub(crate) use list_builder;
 
     pub(crate) fn prop_of(of: impl Into<AstNode>, prop: impl Into<Identifier>) -> PropertyOf {
         PropertyOf {
@@ -522,17 +541,18 @@ pub mod tests {
     macro_rules! arg {
         ($name:expr, $value:expr) => {{
             use crate::lang::Arg;
-            Arg {
-                name: Some($name.into()),
+            use crate::lang::NamedArg;
+            Arg::Named(NamedArg {
+                name: $name.into(),
                 value: $value.into(),
-            }
+            })
         }};
         ($value:expr) => {{
             use crate::lang::Arg;
-            Arg {
-                name: None,
+            use crate::lang::PositionalArg;
+            Arg::Positional(PositionalArg {
                 value: $value.into(),
-            }
+            })
         }};
     }
     pub(crate) use arg;

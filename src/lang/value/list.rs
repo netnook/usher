@@ -1,6 +1,6 @@
 use crate::lang::{
-    Context, EvalStop, FunctionCall, InternalProgramError, Key, Value,
-    function::{MethodResolver, MethodType},
+    Arg, Context, Eval, EvalStop, FunctionCall, InternalProgramError, Key, Value,
+    function::{MethodResolver, MethodType, args_struct},
 };
 use std::{
     cell::RefCell,
@@ -149,6 +149,7 @@ impl MethodResolver for List {
         match key.as_str() {
             "push" => Some(list_push),
             "remove" => Some(list_remove),
+            "join" => Some(list_join),
             _ => None,
         }
     }
@@ -170,26 +171,66 @@ fn list_push(call: &FunctionCall, this: List, ctxt: &mut Context) -> Result<Valu
 }
 
 fn list_remove(call: &FunctionCall, mut this: List, ctxt: &mut Context) -> Result<Value, EvalStop> {
-    // FIXME: have an arg spec as a struct and a macro which can "decode" the args into that struct ?
-    let mut iter = call.args.iter();
-    let idx_arg = call.required_positional_arg("index", iter.next())?;
-    let idx_val = call.require_integer("index", idx_arg, ctxt)?;
+    args_struct!(Args, arg(index, 0, int, required));
 
-    if let Some(arg) = iter.next() {
-        return Err(
-            InternalProgramError::FunctionCallUnexpectedArgument { span: arg.span() }.into(),
-        );
-    };
+    let args = Args::new(call, ctxt)?;
 
-    match this.remove(idx_val) {
+    match this.remove(args.index) {
         Ok(v) => Ok(v),
         Err(e) => Err(InternalProgramError::IndexOutOfRange {
-            index: idx_val,
+            index: args.index,
             len: e.len,
-            span: idx_arg.span(),
+            span: call.args.first().unwrap().span(),
         }
         .into_stop()),
     }
+}
+
+fn list_join(call: &FunctionCall, this: List, ctxt: &mut Context) -> Result<Value, EvalStop> {
+    args_struct!(
+        Args,
+        arg(sep, 0, string, optional),
+        arg(before, 1, string, optional),
+        arg(after, 2, string, optional),
+        arg(empty, 3, string, optional)
+    );
+
+    let args = Args::new(call, ctxt)?;
+
+    if let Some(empty) = args.empty
+        && this.is_empty()
+    {
+        return Ok(Value::Str(empty));
+    }
+
+    let mut result = String::new();
+    let mut iter = this.iter();
+
+    if let Some(before) = args.before {
+        result.push_str(before.as_str());
+    }
+
+    while let Some((idx, val)) = iter.next() {
+        if idx > 0
+            && let Some(sep) = &args.sep
+        {
+            result.push_str(sep.as_str());
+        }
+        match val {
+            Value::Str(s) => {
+                result.push_str(s.as_str());
+            }
+            other => {
+                write!(result, "{}", other).unwrap();
+            }
+        }
+    }
+
+    if let Some(after) = args.after {
+        result.push_str(after.as_str());
+    }
+
+    Ok(Value::Str(result.into()))
 }
 
 #[cfg(test)]

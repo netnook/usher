@@ -117,8 +117,8 @@ impl core::fmt::Debug for AstNode {
     }
 }
 
-impl AstNode {
-    pub fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
+impl Eval for AstNode {
+    fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
         match self {
             AstNode::Declaration(v) => v.eval(ctxt),
             AstNode::Literal(v) => v.eval(ctxt),
@@ -144,7 +144,9 @@ impl AstNode {
             AstNode::CatchMissingOptionalProperty(v) => v.eval(ctxt),
         }
     }
+}
 
+impl AstNode {
     pub(crate) fn as_assignable(&'_ self) -> Option<Assignable<'_>> {
         match self {
             AstNode::Var(v) => Some(Assignable::Var(v)),

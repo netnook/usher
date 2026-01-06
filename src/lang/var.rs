@@ -1,9 +1,8 @@
-use std::cell::LazyCell;
-
 use crate::lang::{
     Accept, AstNode, Context, Eval, EvalStop, Identifier, InternalProgramError, Key, Setter, Span,
     THIS, Value, Visitor, VisitorResult, accept_default,
 };
+use std::cell::LazyCell;
 
 #[derive(PartialEq, Clone)]
 pub struct This {
@@ -149,7 +148,6 @@ impl Eval for Declaration {
         Ok(Value::Nil)
     }
 }
-
 accept_default!(Declaration, var:var, value:node,);
 
 #[derive(PartialEq, Debug, Clone)]

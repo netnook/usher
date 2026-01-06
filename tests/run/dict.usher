@@ -6,8 +6,8 @@ dict("a":1,"b":3,"c":5,"d":7)
 ***********************************************
 # push onto dict
 var dct = dict(a:1, c:5)
-dct.add(b:3)
-dct.add(d:7)
+dct.add("b", 3)
+dct.add("d", 7)
 dct
 ---result---
 dict("a":1,"c":5,"b":3,"d":7)

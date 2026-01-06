@@ -1,6 +1,6 @@
 use crate::lang::{
-    AstNode, Block, Context, Eval, EvalStop, Identifier, InternalProgramError, Key, KeyValue, Span,
-    Value, Var, accept_default,
+    AstNode, Block, Context, Eval, EvalStop, Identifier, InternalProgramError, Key, Span, Value,
+    Var, accept_default,
     builtin_functions::resolve_function,
     value::{Func, StringCell, ValueType},
     visitor::{Accept, Visitor, VisitorResult},
@@ -355,17 +355,20 @@ impl FunctionCall {
                     .into());
                 };
 
-                if arg.name.is_some() {
-                    positional_mode = false;
-                } else {
-                    call_context
-                        .declare(param.key().clone(), arg.value.eval(ctxt)?)
-                        .expect("variable should not already be declared");
+                match arg {
+                    Arg::Positional(value) => {
+                        call_context
+                            .declare(param.key().clone(), value.eval(ctxt)?)
+                            .expect("variable should not already be declared");
+                    }
+                    Arg::Named(_) => {
+                        positional_mode = false;
+                    }
                 }
             }
 
             if !positional_mode {
-                let Some(arg_name) = &arg.name else {
+                let Arg::Named(arg) = &arg else {
                     return Err(
                         InternalProgramError::FunctionCallPositionalArgAfterNamedArg {
                             span: arg.span(),
@@ -374,24 +377,24 @@ impl FunctionCall {
                     );
                 };
 
-                if !params.iter().any(|p| p.key() == &arg_name.key) {
+                if !params.iter().any(|p| p.key() == &arg.name.key) {
                     return Err(InternalProgramError::FunctionCallNoSuchParameter {
-                        name: arg_name.key.as_string(),
-                        span: arg_name.span,
+                        name: arg.name.key.as_string(),
+                        span: arg.name.span,
                     }
                     .into());
                 };
 
-                if call_context.contains_key(&arg_name.key) {
+                if call_context.contains_key(&arg.name.key) {
                     return Err(InternalProgramError::FunctionCallParamAlreadySet {
-                        name: arg_name.key.as_string(),
-                        span: arg_name.span,
+                        name: arg.name.key.as_string(),
+                        span: arg.name.span,
                     }
                     .into());
                 }
 
                 call_context
-                    .declare(arg_name.key.clone(), arg.value.eval(ctxt)?)
+                    .declare(arg.name.key.clone(), arg.value.eval(ctxt)?)
                     .expect("variable should not already be declared");
             }
         }
@@ -422,78 +425,6 @@ impl FunctionCall {
 
         Ok(call_context)
     }
-
-    pub(crate) fn required_positional_arg<'a>(
-        &self,
-        name: &str,
-        arg: Option<&'a Arg>,
-    ) -> Result<&'a Arg, EvalStop> {
-        let Some(arg) = arg else {
-            return Err(InternalProgramError::FunctionCallMissingRequiredArgument {
-                name: name.to_string(),
-                span: self.span,
-            }
-            .into());
-        };
-        Ok(arg)
-    }
-
-    pub(crate) fn require_string(
-        &self,
-        name: &str,
-        arg: &Arg,
-        ctxt: &mut Context,
-    ) -> Result<StringCell, EvalStop> {
-        let val = arg.eval(ctxt)?;
-        let Value::Str(val) = val else {
-            return Err(InternalProgramError::FunctionCallBadArgType {
-                name: name.to_string(),
-                expected: ValueType::String,
-                actual: val.value_type(),
-                span: arg.span(),
-            }
-            .into());
-        };
-        Ok(val)
-    }
-
-    pub(crate) fn require_integer(
-        &self,
-        name: &str,
-        arg: &Arg,
-        ctxt: &mut Context,
-    ) -> Result<isize, EvalStop> {
-        let val = arg.eval(ctxt)?;
-        let Value::Integer(val) = val else {
-            return Err(InternalProgramError::FunctionCallBadArgType {
-                name: name.to_string(),
-                expected: ValueType::Integer,
-                actual: val.value_type(),
-                span: arg.span(),
-            }
-            .into());
-        };
-        Ok(val)
-    }
-
-    pub(crate) fn require_key_value(
-        &self,
-        name: &str,
-        arg: &Arg,
-        ctxt: &mut Context,
-    ) -> Result<Rc<KeyValue>, EvalStop> {
-        let val = arg.eval(ctxt)?;
-        let Value::KeyValue(val) = val else {
-            return Err(InternalProgramError::FunctionCallBadArgType {
-                name: name.to_string(),
-                expected: ValueType::KeyValue,
-                actual: val.value_type(),
-                span: arg.span(),
-            }
-            .into());
-        };
-        Ok(val)
-    }
 }
 
 impl<T> Accept<T> for FunctionCall {
@@ -520,52 +451,90 @@ impl<T> Accept<T> for FunctionCall {
 }
 
 #[derive(PartialEq, Clone)]
-pub struct Arg {
-    pub(crate) name: Option<Identifier>,
-    pub(crate) value: AstNode,
+pub enum Arg {
+    Positional(PositionalArg),
+    Named(NamedArg),
+}
+impl Arg {
+    pub(crate) fn span(&self) -> Span {
+        match self {
+            Arg::Positional(arg) => arg.span(),
+            Arg::Named(arg) => arg.span(),
+        }
+    }
 }
 
-accept_default!(Arg, value:node,);
+impl<T> Accept<T> for Arg {
+    fn accept(&self, visitor: &mut impl Visitor<T>) -> VisitorResult<T> {
+        match self {
+            Arg::Positional(arg) => visitor.visit_node(&arg.value),
+            Arg::Named(arg) => visitor.visit_node(&arg.value),
+        }
+    }
+}
 
 impl core::fmt::Debug for Arg {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let minimal = f.sign_minus();
         if minimal {
-            if let Some(name) = &self.name {
-                name.key.fmt(f)?;
-                f.write_str(": ")?;
-                self.value.fmt(f)
-            } else {
-                self.value.fmt(f)
+            match self {
+                Arg::Positional(arg) => arg.value.fmt(f),
+                Arg::Named(arg) => {
+                    arg.name.key.fmt(f)?;
+                    f.write_str(": ")?;
+                    arg.value.fmt(f)
+                }
             }
         } else {
-            f.debug_struct("Arg")
-                .field("name", &self.name)
-                .field("value", &self.value)
-                .finish()
+            match self {
+                Arg::Positional(arg) => f.debug_tuple("Arg").field(&arg).finish(),
+                Arg::Named(arg) => f.debug_tuple("Arg").field(&arg).finish(),
+            }
         }
     }
 }
 
-impl Arg {
-    pub fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
-        if let Some(name) = &self.name {
-            let val = self.value.eval(ctxt)?;
-            Ok(Value::KeyValue(Rc::new(KeyValue {
-                key: name.key.clone(),
-                value: val,
-            })))
-        } else {
-            self.value.eval(ctxt)
+impl Eval for Arg {
+    fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
+        match self {
+            Arg::Positional(arg) => arg.eval(ctxt),
+            Arg::Named(arg) => arg.eval(ctxt),
         }
     }
+}
 
+#[derive(PartialEq, Clone, Debug)]
+pub struct PositionalArg {
+    pub(crate) value: AstNode,
+}
+
+impl PositionalArg {
     pub(crate) fn span(&self) -> Span {
-        let span = self.value.span();
-        match &self.name {
-            Some(n) => Span::merge(span, n.span),
-            None => span,
-        }
+        self.value.span()
+    }
+}
+
+impl Eval for PositionalArg {
+    fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
+        self.value.eval(ctxt)
+    }
+}
+
+#[derive(PartialEq, Clone, Debug)]
+pub struct NamedArg {
+    pub(crate) name: Identifier,
+    pub(crate) value: AstNode,
+}
+
+impl NamedArg {
+    pub(crate) fn span(&self) -> Span {
+        Span::merge(self.name.span, self.value.span())
+    }
+}
+
+impl Eval for NamedArg {
+    fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
+        self.value.eval(ctxt)
     }
 }
 
@@ -608,12 +577,357 @@ impl Eval for ReturnStmt {
 
 accept_default!(ReturnStmt, value:opt:node,);
 
+///// Argument handling helpers
+macro_rules! value_type {
+    (string) => {
+        crate::lang::StringCell
+    };
+    (int) => {
+        isize
+    };
+    (float) => {
+        f64
+    };
+    (bool) => {
+        bool
+    };
+    (list) => {
+        crate::lang::List
+    };
+    (dict) => {
+        crate::lang::Dict
+    };
+    (any) => {
+        crate::lang::Value
+    };
+    (vec_any) => {
+        Vec<crate::lang::Value>
+    };
+}
+pub(crate) use value_type;
+
+macro_rules! args_struct {
+    // FIXME: support positional-only args
+    ($name:ident, $(arg($($arg:tt)*)),*) => {
+        use crate::lang::function::ArgTrait;
+        args_struct!(@str $name, $(arg($($arg)*)),*);
+
+        impl $name {
+            #[track_caller]
+            fn new(call: &FunctionCall, ctxt: &mut Context) -> Result<Self, EvalStop> {
+                $(
+                    args_struct!(@var_init $($arg)*);
+                )*
+
+                let mut mode_positional = true;
+                #[allow(unused_variables)]
+                for (idx, arg) in call.args.iter().enumerate() {
+                    if mode_positional {
+                        match arg {
+                            Arg::Positional(arg) => {
+                                $(
+                                    args_struct!(@pos ctxt, idx, arg, $($arg)*);
+                                )*
+                                return Err(InternalProgramError::FunctionCallUnexpectedArgument {
+                                    span: arg.span(),
+                                }.into_stop());
+                            }
+                            Arg::Named(_) => {
+                                mode_positional = false;
+                            }
+                        };
+                    }
+                    if !mode_positional {
+                        match arg {
+                            Arg::Positional(arg) => {
+                                $(
+                                    args_struct!(@star_arg ctxt, arg, $($arg)*);
+                                )*
+                                return Err(
+                                    InternalProgramError::FunctionCallPositionalArgAfterNamedArg {
+                                        span: arg.span(),
+                                    }
+                                    .into(),
+                                );
+                            }
+                            Arg::Named(arg)  => {
+                                $(
+                                    args_struct!(@named ctxt, arg, $($arg)*);
+                                )*
+                                return Err(InternalProgramError::FunctionCallNoSuchParameter {
+                                    name: arg.name.as_string(),
+                                    span: arg.name.span,
+                                }.into_stop());
+                            }
+                        }
+                    }
+                };
+
+                $(
+                    args_struct!(@require call, $($arg)*);
+                )*
+
+
+                Ok(
+                    args_struct!(@out $(arg($($arg)*)),*)
+                )
+            }
+        }
+    };
+    (@str $name:ident, $(arg($var:ident, $($rest:tt)*)),*) => {
+        #[derive(Debug)]
+        struct $name {
+            $(
+                 $var: args_struct!(@field $($rest)*),
+            )*
+        }
+    };
+    (@field $pos:tt, $type:ident, required) => {
+        crate::lang::function::value_type!($type)
+    };
+    (@field $pos:tt, $type:ident, optional) => {
+        Option<crate::lang::function::value_type!($type)>
+    };
+    (@field $pos:tt, $type:ident|nil, optional) => {
+        Option<crate::lang::function::MaybeNil<crate::lang::function::value_type!($type)>>
+    };
+    (@field *, $type:ident) => {
+        Vec<crate::lang::function::value_type!($type)>
+    };
+    (@var_init $var:ident, $pos:tt, $type:ident, $required_or_optional:ident) => {
+        let mut $var = None;
+    };
+    (@var_init $var:ident, $pos:tt, $type:ident|nil, $required_or_optional:ident) => {
+        let mut $var = None;
+    };
+    (@var_init $var:ident, *, $type:ident) => {
+        let mut $var = Vec::new();
+    };
+    (@pos $ctxt:expr, $idx:expr, $arg:expr, $var:ident, -, $type:ident, $required_or_optional:ident) => {
+    };
+    (@pos $ctxt:expr, $idx:expr, $arg:expr, $var:ident, -, $type:ident|nil, $required_or_optional:ident) => {
+    };
+    (@pos $ctxt:expr, $idx:expr, $arg:expr, $var:ident, $pos:literal, $type:ident, $required_or_optional:ident) => {
+        if $idx == $pos {
+            $var = args_struct!(@eval $ctxt, $arg, $var, $type);
+            continue;
+        }
+    };
+    (@pos $ctxt:expr, $idx:expr, $arg:expr, $var:ident, $pos:literal, $type:ident|nil, $required_or_optional:ident) => {
+        if $idx == $pos {
+            $var = args_struct!(@eval $ctxt, $arg, $var, $type|nil);
+            continue;
+        }
+    };
+    (@pos $ctxt:expr, $idx:expr, $arg:expr, $var:ident, *, $type:ident) => {
+        if true {
+            if let Some(val) = args_struct!(@eval $ctxt, $arg, $var, $type) {
+                // FIXME: need to have optional and required for star args so
+                // that can differentiate between lists containing nil and those that do not.
+                $var.push(val);
+            }
+            continue;
+        }
+    };
+    (@named $ctxt:expr, $arg:expr, $var:ident, $pos:tt, $type:ident, $required_or_optional:ident) => {
+        if $arg.name.key.as_str() == stringify!($var) {
+            if $var.is_some() {
+                return Err(InternalProgramError::FunctionCallParamAlreadySet {
+                    name: $arg.name.as_string(),
+                    span: ArgTrait::arg_span($arg),
+                }
+                .into());
+            }
+            $var = args_struct!(@eval $ctxt, $arg, $var, $type);
+            continue;
+        }
+    };
+    (@named $ctxt:expr, $arg:expr, $var:ident, $pos:tt, $type:ident|nil, $required_or_optional:ident) => {
+        if $arg.name.key.as_str() == stringify!($var) {
+            if $var.is_some() {
+                return Err(InternalProgramError::FunctionCallParamAlreadySet {
+                    name: $arg.name.as_string(),
+                    span: ArgTrait::arg_span($arg),
+                }
+                .into());
+            }
+            $var = args_struct!(@eval $ctxt, $arg, $var, $type|nil);
+            continue;
+        }
+    };
+    (@named $ctxt:expr, $arg:expr, $var:ident, *, $type:ident) => {
+    };
+    (@star_arg $ctxt:expr, $arg:expr, $var:ident, $pos:tt, $type:ident, $required_or_optional:ident) => {
+    };
+    (@star_arg $ctxt:expr, $arg:expr, $var:ident, $pos:tt, $type:ident|nil, $required_or_optional:ident) => {
+    };
+    (@star_arg $ctxt:expr, $arg:expr, $var:ident, *, $type:ident) => {
+        if true {
+            if let Some(val) = args_struct!(@eval $ctxt, $arg, $var, $type) {
+                // FIXME: need to have optional and required for star args so
+                // that can differentiate between lists containing nil and those that do not.
+                $var.push(val);
+            }
+            continue;
+        }
+    };
+    (@require $call:expr, $var:ident, $pos:tt, $type:ident, required) => {
+        let Some($var) = $var else {
+            return Err(InternalProgramError::FunctionCallMissingRequiredArgument {
+                name: stringify!($var).to_string(),
+                span: $call.span,
+            }.into());
+        };
+    };
+    (@require $call:expr, $var:ident, $pos:tt, $type:ident, optional) => {
+    };
+    (@require $call:expr, $var:ident, $pos:tt, $type:ident|nil, optional) => {
+    };
+    (@require $call:expr, $var:ident, *, $type:ident) => {
+    };
+    (@eval $ctxt:expr, $arg:expr, $var:ident, string) => {
+        $arg.arg_eval_to_string($ctxt, stringify!($var))?
+    };
+    (@eval $ctxt:expr, $arg:expr, $var:ident, string|nil) => {
+        $arg.arg_eval_to_string_or_nil($ctxt, stringify!($var))?
+    };
+    (@eval $ctxt:expr, $arg:expr, $var:ident, int) => {
+        $arg.arg_eval_to_int($ctxt, stringify!($var))?
+    };
+    (@eval $ctxt:expr, $arg:expr, $var:ident, float) => {
+        $arg.arg_eval_to_float($ctxt, stringify!($var))?
+    };
+    (@eval $ctxt:expr, $arg:expr, $var:ident, bool) => {
+        $arg.arg_eval_to_bool($ctxt, stringify!($var))?
+    };
+    (@eval $ctxt:expr, $arg:expr, $var:ident, list) => {
+        $arg.arg_eval_to_list($ctxt, stringify!($var))?
+    };
+    (@eval $ctxt:expr, $arg:expr, $var:ident, dict) => {
+        $arg.arg_eval_to_dict($ctxt, stringify!($var))?
+    };
+    (@eval $ctxt:expr, $arg:expr, $var:ident, any) => {
+        Some($arg.arg_eval($ctxt)?)
+    };
+
+    (@out $(arg($var:ident, $($rest:tt)*)),*) => {
+        Self {
+            $(
+                 $var,
+            )*
+        }
+    };
+}
+pub(crate) use args_struct;
+
+#[derive(Debug, PartialEq)]
+pub enum MaybeNil<T> {
+    Nil,
+    Some(T),
+}
+
+macro_rules! arg_trait_eval {
+    ($method:ident, $return_type:ty, $value_variant:path, $type_variant:path) => {
+        #[allow(dead_code)] // FIXME: remove [allow] once in use.
+        fn $method(
+            &self,
+            ctxt: &mut Context,
+            name: &str,
+        ) -> Result<Option<$return_type>, EvalStop> {
+            let arg = self.arg_eval(ctxt)?;
+            if let $value_variant(value) = arg {
+                return Ok(Some(value));
+            }
+            return Err(InternalProgramError::FunctionCallBadArgType {
+                name: name.to_string(),
+                expected: $type_variant,
+                actual: arg.value_type(),
+                span: self.arg_span(),
+            }
+            .into());
+        }
+    };
+
+    ($method:ident, $return_type:ty, $value_variant:path, $type_variant:path, maybe_nil) => {
+        #[allow(dead_code)] // FIXME: remove [allow] once in use.
+        fn $method(
+            &self,
+            ctxt: &mut Context,
+            name: &str,
+        ) -> Result<Option<MaybeNil<$return_type>>, EvalStop> {
+            match self.arg_eval(ctxt)? {
+                $value_variant(value) => Ok(Some(MaybeNil::Some(value))),
+                Value::Nil => Ok(Some(MaybeNil::Nil)),
+                other => Err(InternalProgramError::FunctionCallBadArgType {
+                    name: name.to_string(),
+                    expected: $type_variant,
+                    actual: other.value_type(),
+                    span: self.arg_span(),
+                }
+                .into()),
+            }
+        }
+    };
+}
+
+pub(crate) trait ArgTrait {
+    arg_trait_eval!(
+        arg_eval_to_string,
+        StringCell,
+        Value::Str,
+        ValueType::String
+    );
+    arg_trait_eval!(
+        arg_eval_to_string_or_nil,
+        StringCell,
+        Value::Str,
+        ValueType::String,
+        maybe_nil
+    );
+    arg_trait_eval!(arg_eval_to_int, isize, Value::Integer, ValueType::Integer);
+    arg_trait_eval!(arg_eval_to_float, f64, Value::Float, ValueType::Float);
+    arg_trait_eval!(arg_eval_to_bool, bool, Value::Bool, ValueType::Boolean);
+    arg_trait_eval!(
+        arg_eval_to_list,
+        crate::lang::List,
+        Value::List,
+        ValueType::List
+    );
+    arg_trait_eval!(
+        arg_eval_to_dict,
+        crate::lang::Dict,
+        Value::Dict,
+        ValueType::Dict
+    );
+    fn arg_eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop>;
+    fn arg_span(&self) -> Span;
+}
+
+impl ArgTrait for PositionalArg {
+    fn arg_eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
+        Eval::eval(self, ctxt)
+    }
+
+    fn arg_span(&self) -> Span {
+        Self::span(self)
+    }
+}
+impl ArgTrait for NamedArg {
+    fn arg_eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
+        Eval::eval(self, ctxt)
+    }
+
+    fn arg_span(&self) -> Span {
+        Self::span(self)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::{
-        lang::Span,
-        parser::tests::{arg, i, id, nil, var},
+        lang::{Dict, List, Span},
+        parser::tests::{_function_call, arg, b, dict, f, i, id, l, list, nil, s, var},
     };
 
     #[test]
@@ -902,5 +1216,384 @@ mod tests {
         let mut ctxt = Context::default();
         ctxt.declare("old".into(), "dummy".into()).unwrap();
         ctxt
+    }
+
+    #[test]
+    fn test_arg_structs_types_optional() {
+        args_struct!(
+            TestArgs,
+            arg(aaa, 0, string, optional),
+            arg(bbb, 1, int, optional),
+            arg(ccc, 2, float, optional),
+            arg(ddd, 3, bool, optional),
+            arg(eee, 4, list, optional),
+            arg(fff, 5, dict, optional),
+            arg(ggg, 6, any, optional)
+        );
+
+        let call = _function_call!(
+            "foo",
+            arg!(s("a-string")),
+            arg!(i(42)),
+            arg!(f(42.3)),
+            arg!(b(true)),
+            arg!(l(list!().into())),
+            arg!(l(dict!().into())),
+            arg!(s("foo"))
+        )
+        .spanned(10, 5);
+        let mut ctxt = Context::default();
+
+        let args = TestArgs::new(&call, &mut ctxt).unwrap();
+
+        assert_eq!(args.aaa, Some("a-string".into()));
+        assert_eq!(args.bbb, Some(42));
+        assert_eq!(args.ccc, Some(42.3));
+        assert_eq!(args.ddd, Some(true));
+        assert_eq!(args.eee, Some(List::new()));
+        assert_eq!(args.fff, Some(Dict::new()));
+        assert_eq!(args.ggg, Some(Value::Str("foo".into())));
+    }
+
+    #[test]
+    fn test_arg_structs_missing_optional() {
+        args_struct!(TestArgs, arg(aaa, 0, string, optional));
+
+        let call = _function_call!("foo",);
+        let mut ctxt = Context::default();
+
+        let args = TestArgs::new(&call, &mut ctxt).unwrap();
+
+        assert_eq!(args.aaa, None);
+    }
+
+    #[test]
+    fn test_arg_structs_nilable_none() {
+        args_struct!(TestArgs, arg(aaa, 0, string | nil, optional));
+
+        let call = _function_call!("foo",);
+        let mut ctxt = Context::default();
+
+        let args = TestArgs::new(&call, &mut ctxt).unwrap();
+
+        assert_eq!(args.aaa, None);
+    }
+
+    #[test]
+    fn test_arg_structs_nilable_nil() {
+        args_struct!(TestArgs, arg(aaa, 0, string | nil, optional));
+
+        let call = _function_call!("foo", arg!(nil()));
+        let mut ctxt = Context::default();
+
+        let args = TestArgs::new(&call, &mut ctxt).unwrap();
+
+        assert_eq!(args.aaa, Some(MaybeNil::Nil));
+    }
+
+    #[test]
+    fn test_arg_structs_nilable_val() {
+        args_struct!(TestArgs, arg(aaa, 0, string | nil, optional));
+
+        let call = _function_call!("foo", arg!(s("x")));
+        let mut ctxt = Context::default();
+
+        let args = TestArgs::new(&call, &mut ctxt).unwrap();
+
+        assert_eq!(args.aaa, Some(MaybeNil::Some("x".into())));
+    }
+
+    #[test]
+    fn test_arg_structs_types_required() {
+        args_struct!(
+            TestArgs,
+            arg(aaa, 0, string, required),
+            arg(bbb, 1, int, required),
+            arg(ccc, 2, float, required),
+            arg(ddd, 3, bool, required),
+            arg(eee, 4, list, required),
+            arg(fff, 5, dict, required)
+        );
+
+        let call = _function_call!(
+            "foo",
+            arg!(s("a-string")),
+            arg!(i(42)),
+            arg!(f(42.3)),
+            arg!(b(true)),
+            arg!(l(list!().into())),
+            arg!(l(dict!().into()))
+        )
+        .spanned(10, 5);
+        let mut ctxt = Context::default();
+
+        let args = TestArgs::new(&call, &mut ctxt).unwrap();
+
+        assert_eq!(args.aaa, "a-string".into());
+        assert_eq!(args.bbb, 42);
+        assert_eq!(args.ccc, 42.3);
+        assert!(args.ddd);
+        assert_eq!(args.eee, List::new());
+        assert_eq!(args.fff, Dict::new());
+    }
+
+    #[test]
+    fn test_arg_structs_missing_required() {
+        args_struct!(TestArgs, arg(_aaa, 0, string, required));
+
+        let call = _function_call!("foo",).spanned(10, 5);
+        let mut ctxt = Context::default();
+
+        assert_eq!(
+            TestArgs::new(&call, &mut ctxt).unwrap_err(),
+            InternalProgramError::FunctionCallMissingRequiredArgument {
+                name: "_aaa".to_string(),
+                span: Span::new(10, 5)
+            }
+            .into_stop()
+        );
+    }
+
+    #[test]
+    fn test_arg_structs_named_args() {
+        args_struct!(
+            TestArgs,
+            arg(aaa, 0, string, required),
+            arg(bbb, 1, int, required),
+            arg(ccc, 2, float, required),
+            arg(ddd, 3, bool, required),
+            arg(eee, 4, list, required),
+            arg(fff, 5, dict, required)
+        );
+
+        let call = _function_call!(
+            "foo",
+            arg!("aaa", s("a-string")),
+            arg!("bbb", i(42)),
+            arg!("ccc", f(42.3)),
+            arg!("ddd", b(true)),
+            arg!("eee", l(list!().into())),
+            arg!("fff", l(dict!().into()))
+        )
+        .spanned(10, 5);
+        let mut ctxt = Context::default();
+
+        let args = TestArgs::new(&call, &mut ctxt).unwrap();
+
+        assert_eq!(args.aaa, "a-string".into());
+        assert_eq!(args.bbb, 42);
+        assert_eq!(args.ccc, 42.3);
+        assert!(args.ddd);
+        assert_eq!(args.eee, List::new());
+        assert_eq!(args.fff, Dict::new());
+    }
+
+    #[test]
+    fn test_arg_structs_star_args() {
+        args_struct!(
+            TestArgs,
+            arg(aaa, *, string)
+        );
+
+        let call = _function_call!(
+            "foo",
+            arg!(s("a-string")),
+            arg!(s("b-string")),
+            arg!(s("c-string"))
+        )
+        .spanned(10, 5);
+        let mut ctxt = Context::default();
+
+        let args = TestArgs::new(&call, &mut ctxt).unwrap();
+
+        assert_eq!(
+            args.aaa,
+            vec!["a-string".into(), "b-string".into(), "c-string".into(),]
+        );
+    }
+
+    #[test]
+    fn test_arg_structs_mixed_positional_and_named_args() {
+        args_struct!(
+            TestArgs,
+            arg(aaa, 0, string, required),
+            arg(bbb, 1, int, required),
+            arg(ccc, 2, float, required),
+            arg(ddd, 3, bool, required),
+            arg(eee, 4, list, required),
+            arg(fff, 5, dict, required),
+            arg(ggg, *, any)
+        );
+
+        let call = _function_call!(
+            "foo",
+            arg!(s("a-string")),
+            arg!(i(42)),
+            arg!("ddd", b(true)),
+            arg!("fff", l(dict!().into())),
+            arg!("eee", l(list!().into())),
+            arg!("ccc", f(42.3)),
+            arg!(i(55)),
+            arg!(i(56))
+        )
+        .spanned(10, 5);
+        let mut ctxt = Context::default();
+
+        let args = TestArgs::new(&call, &mut ctxt).unwrap();
+
+        assert_eq!(args.aaa, "a-string".into());
+        assert_eq!(args.bbb, 42);
+        assert_eq!(args.ccc, 42.3);
+        assert!(args.ddd);
+        assert_eq!(args.eee, List::new());
+        assert_eq!(args.fff, Dict::new());
+        assert_eq!(args.ggg, vec![55.into(), 56.into()]);
+    }
+
+    #[test]
+    fn test_arg_structs_too_many_args() {
+        args_struct!(
+            TestArgs,
+            arg(_aaa, 0, string, required),
+            arg(_bbb, 1, string, required)
+        );
+
+        let call = _function_call!(
+            "foo",
+            arg!(s("a-string")),
+            arg!(s("b-string")),
+            arg!(s("c-string").spanned(42, 24))
+        )
+        .spanned(10, 5);
+        let mut ctxt = Context::default();
+
+        assert_eq!(
+            TestArgs::new(&call, &mut ctxt).unwrap_err(),
+            InternalProgramError::FunctionCallUnexpectedArgument {
+                span: Span::new(42, 24)
+            }
+            .into_stop()
+        );
+    }
+
+    #[test]
+    fn test_arg_structs_bad_named_arg() {
+        args_struct!(
+            TestArgs,
+            arg(_aaa, 0, string, required),
+            arg(_bbb, 1, string, required)
+        );
+
+        let call = _function_call!(
+            "foo",
+            arg!("_aaa", s("a-string")),
+            arg!(id("bad").spanned(42, 24), s("bad-string")),
+            arg!("_bbb", s("b-string"))
+        )
+        .spanned(10, 5);
+        let mut ctxt = Context::default();
+
+        assert_eq!(
+            TestArgs::new(&call, &mut ctxt).unwrap_err(),
+            InternalProgramError::FunctionCallNoSuchParameter {
+                name: "bad".to_string(),
+                span: Span::new(42, 24)
+            }
+            .into_stop()
+        );
+    }
+
+    #[test]
+    fn test_arg_structs_bad_type_positional() {
+        args_struct!(TestArgs, arg(_aaa, 0, string, required));
+
+        let call = _function_call!("foo", arg!(i(22).spanned(12, 13)));
+        let mut ctxt = Context::default();
+
+        assert_eq!(
+            TestArgs::new(&call, &mut ctxt).unwrap_err(),
+            InternalProgramError::FunctionCallBadArgType {
+                name: "_aaa".to_string(),
+                expected: ValueType::String,
+                actual: ValueType::Integer,
+                span: Span::new(12, 13)
+            }
+            .into_stop()
+        );
+    }
+
+    #[test]
+    fn test_arg_structs_bad_type_named() {
+        args_struct!(TestArgs, arg(_aaa, 0, int, required));
+
+        let call = _function_call!(
+            "foo",
+            arg!(id("_aaa").spanned(3, 4), s("bad").spanned(5, 6))
+        );
+        let mut ctxt = Context::default();
+
+        assert_eq!(
+            TestArgs::new(&call, &mut ctxt).unwrap_err(),
+            InternalProgramError::FunctionCallBadArgType {
+                name: "_aaa".to_string(),
+                expected: ValueType::Integer,
+                actual: ValueType::String,
+                span: Span::new(3, 8)
+            }
+            .into_stop()
+        );
+    }
+
+    #[test]
+    fn test_arg_structs_bad_type_star() {
+        args_struct!(TestArgs, arg(_aaa, *, float));
+
+        let call = _function_call!("foo", arg!(f(1.1)), arg!(b(true).spanned(5, 6)));
+        let mut ctxt = Context::default();
+
+        assert_eq!(
+            TestArgs::new(&call, &mut ctxt).unwrap_err(),
+            InternalProgramError::FunctionCallBadArgType {
+                name: "_aaa".to_string(),
+                expected: ValueType::Float,
+                actual: ValueType::Boolean,
+                span: Span::new(5, 6)
+            }
+            .into_stop()
+        );
+    }
+
+    #[test]
+    fn test_arg_structs_eval_order() {
+        args_struct!(
+            TestArgs,
+            arg(aaa, 0, int, required),
+            arg(bbb, 1, int, required),
+            arg(ccc, 2, int, required),
+            arg(ddd, 3, int, required),
+            arg(eee, 4, int, required),
+            arg(star, *, int)
+        );
+
+        let call = _function_call!(
+            "foo",
+            arg!(_function_call!(id("test_next_id"),)),
+            arg!(_function_call!(id("test_next_id"),)),
+            arg!("ddd", _function_call!(id("test_next_id"),)),
+            arg!("ccc", _function_call!(id("test_next_id"),)),
+            arg!(_function_call!(id("test_next_id"),)),
+            arg!("eee", _function_call!(id("test_next_id"),)),
+            arg!(_function_call!(id("test_next_id"),))
+        );
+        let mut ctxt = Context::default();
+
+        let args = TestArgs::new(&call, &mut ctxt).unwrap();
+
+        assert_eq!(args.aaa, 0);
+        assert_eq!(args.bbb, 1);
+        assert_eq!(args.ccc, 3);
+        assert_eq!(args.ddd, 2);
+        assert_eq!(args.eee, 5);
+        assert_eq!(args.star, vec![4, 6]);
     }
 }

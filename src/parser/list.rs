@@ -64,12 +64,12 @@ mod tests {
 
     #[test]
     fn test_list_ok() {
-        let expect = list!(i(1), i(2), i(3), i(4));
+        let expect = list_builder!(i(1), i(2), i(3), i(4));
         do_test_expr_ok(" [1,2,3,4] ", expect.clone(), -1);
         do_test_expr_ok(" [1,2,3,4,] ", expect.clone(), -1);
         do_test_expr_ok(" [ 1 , 2 , 3 , 4 ] ", expect.clone(), -1);
-        do_test_expr_ok(r#" [] "#, list!(), -1);
-        do_test_expr_ok(r#" [  ] "#, list!(), -1);
+        do_test_expr_ok(r#" [] "#, list_builder!(), -1);
+        do_test_expr_ok(r#" [  ] "#, list_builder!(), -1);
         do_test_expr_ok(
             " [ # comment \n 1 , # comment \n 2 # comment \n , # comment \n\n 3 # comment \n , # comment \n 4 ] ",
             expect.clone(),
@@ -81,14 +81,19 @@ mod tests {
             -1,
         );
 
-        let expect = list!(i(1), nil(), b(false), s("foo"));
+        let expect = list_builder!(i(1), nil(), b(false), s("foo"));
         do_test_expr_ok(r#" [1,nil,false,"foo"] "#, expect.clone(), -1);
         do_test_expr_ok(r#" [1, nil, false, "foo"] "#, expect.clone(), -1);
         do_test_expr_ok(r#" [1, nil, false, "foo", ] "#, expect.clone(), -1);
-        do_test_expr_ok(" [ # comment\n # comment \n \n ] ", list!(), -1);
+        do_test_expr_ok(" [ # comment\n # comment \n \n ] ", list_builder!(), -1);
         do_test_expr_ok(
             " [[1, 1], 2, [3, 3, 3,], 4,] ",
-            list!(list!(i(1), i(1)), i(2), list!(i(3), i(3), i(3)), i(4)),
+            list_builder!(
+                list_builder!(i(1), i(1)),
+                i(2),
+                list_builder!(i(3), i(3), i(3)),
+                i(4)
+            ),
             -1,
         );
     }

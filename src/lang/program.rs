@@ -1,4 +1,4 @@
-use crate::lang::{AstNode, Context, EvalError, EvalStop, InternalProgramError, Value};
+use crate::lang::{AstNode, Context, Eval, EvalError, EvalStop, InternalProgramError, Value};
 
 #[derive(PartialEq, Clone)]
 pub struct Program<'a> {

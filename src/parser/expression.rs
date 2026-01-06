@@ -2,8 +2,9 @@ use super::{ParseResult, Parser, SyntaxError, chars::is_digit};
 use crate::{
     lang::{
         Accept, Arg, AstNode, BinaryOp, BinaryOpCode, CatchMissingOptionalProperty, FunctionCall,
-        FunctionCallVariant, Identifier, IndexOf, KeyValueBuilder, Literal, PropertyOf, Span, This,
-        UnaryOp, UnaryOpCode, Value, Var, Visitor, VisitorResult,
+        FunctionCallVariant, Identifier, IndexOf, KeyValueBuilder, Literal, NamedArg,
+        PositionalArg, PropertyOf, Span, This, UnaryOp, UnaryOpCode, Value, Var, Visitor,
+        VisitorResult,
     },
     parser::identifier::UncheckedIdentifier,
 };
@@ -512,14 +513,11 @@ impl<'a> Parser<'a> {
             };
 
             let arg = match expr {
-                AstNode::KeyValue(KeyValueBuilder { key, value }) => Arg {
-                    name: Some(key),
+                AstNode::KeyValue(KeyValueBuilder { key, value }) => Arg::Named(NamedArg {
+                    name: key,
                     value: *value,
-                },
-                other => Arg {
-                    name: None,
-                    value: other,
-                },
+                }),
+                other => Arg::Positional(PositionalArg { value: other }),
             };
             args.push(arg);
             self.whitespace_comments();

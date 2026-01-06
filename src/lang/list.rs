@@ -56,7 +56,7 @@ mod tests {
     #[test]
     fn test_list_builder_eval() {
         use crate::parser::tests::*;
-        let d = list!(s("a"), i(1), add(i(1), i(3)));
+        let d = list_builder!(s("a"), i(1), add(i(1), i(3)));
         let actual = d.eval(&mut Context::default()).expect("a value");
         let expected: List = vec!["a".to_value(), 1.to_value(), 4.to_value()].into();
         assert_eq!(actual, expected.into());

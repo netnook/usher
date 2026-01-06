@@ -1,7 +1,7 @@
 use super::{ParseResult, Parser, SyntaxError};
 use crate::lang::{
-    AstNode, Context, EvalStop, FunctionDef, InternalProgramError, KeyValueBuilder, Param, Span,
-    Var,
+    AstNode, Context, Eval, EvalStop, FunctionDef, InternalProgramError, KeyValueBuilder, Param,
+    Span, Var,
 };
 
 impl<'a> Parser<'a> {

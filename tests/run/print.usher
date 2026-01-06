@@ -37,4 +37,4 @@ print("abc", "def", sep:42)
 Evaluation error in tests/run/print.usher at line 2, char 21:
   |
 2 | print("abc", "def", sep:42)
-  |                     ^^^^^^ Bad type. Expected 'string' but got integer.
+  |                     ^^^^^^ Wrong type for argument 'sep'.  Expected string but found integer.

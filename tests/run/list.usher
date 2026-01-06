@@ -38,3 +38,52 @@ lst
 a
 b
 d
+***********************************************
+# list join 1
+var lst = [ "a", 1, "b" ]
+lst.join()
+---result---
+"a1b"
+***********************************************
+# list join 2
+var lst = [ "a", 1, "b" ]
+lst.join(sep:"-")
+---result---
+"a-1-b"
+***********************************************
+# list join 3
+var lst = [ "a", 1, "b" ]
+lst.join("-")
+---result---
+"a-1-b"
+***********************************************
+# list join 4
+var lst = [ "a", 1, "b" ]
+lst.join("-", after:"]", before:"[", empty:"---")
+---result---
+"[a-1-b]"
+***********************************************
+# list join 5
+var lst = []
+lst.join("-", before:"[", after:"]", empty:"---")
+---result---
+"---"
+***********************************************
+# list join 6
+var lst = []
+lst.join("-", before:"[", after:"]")
+---result---
+"[]"
+***********************************************
+# FIXME: test order of arg evaluation - does not work because of context error
+#var counter = 1
+#function next() {
+#  var tmp = counter
+#  counter = counter + 1
+#  return "-{tmp}-"
+#}
+#var lst = ["a","b","c"]
+#lst.join(next(), after:next(), before:next())
+#---result---
+#"-3-a-1-b-1-c-2-"
+---stdout---

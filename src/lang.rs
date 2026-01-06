@@ -27,7 +27,9 @@ pub use context::{Context, Output};
 pub use dict::DictBuilder;
 pub(crate) use errors::bad_type_error_op;
 pub use errors::{EvalError, InternalProgramError};
-pub use function::{Arg, FunctionCall, FunctionCallVariant, FunctionDef, Param, ReturnStmt};
+pub use function::{
+    Arg, FunctionCall, FunctionCallVariant, FunctionDef, NamedArg, Param, PositionalArg, ReturnStmt,
+};
 pub use if_else::{ConditionalBlock, IfElse};
 pub use list::ListBuilder;
 pub use literal::Literal;
@@ -48,7 +50,7 @@ pub(crate) use value::{Dict, List};
 
 const THIS: &str = "this";
 
-trait Eval {
+pub(crate) trait Eval {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop>;
 }
 
@@ -185,6 +187,12 @@ impl From<&str> for Key {
 
 impl From<&StringCell> for Key {
     fn from(value: &StringCell) -> Self {
+        Self(Rc::clone(&value.content))
+    }
+}
+
+impl From<StringCell> for Key {
+    fn from(value: StringCell) -> Self {
         Self(Rc::clone(&value.content))
     }
 }

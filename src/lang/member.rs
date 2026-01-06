@@ -226,7 +226,7 @@ impl Setter for IndexOf {
 #[cfg(test)]
 mod tests {
     use crate::lang::{
-        AstNode, Context, EvalStop, InternalProgramError, Span,
+        AstNode, Context, Eval, EvalStop, InternalProgramError, Span,
         errors::PropertyList,
         value::{Dict, List},
     };

@@ -49,7 +49,7 @@ fn test_string_spans() {
 fn test_list_spans() {
     do_test_parser_exact(
         r#" [111, "xxx"] "#,
-        list!(i(111).spanned(2, 3), s("xxx").spanned(7, 5))
+        list_builder!(i(111).spanned(2, 3), s("xxx").spanned(7, 5))
             .spanned(1, 12)
             .into(),
         -1,
