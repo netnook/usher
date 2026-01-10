@@ -1,9 +1,10 @@
 use super::InternalProgramError;
 use crate::lang::{
-    Arg, Context, EvalStop, FunctionCall, Key, Output, Value,
-    function::{FunctionType, MaybeNil, args_struct},
+    Context, EvalStop, FunctionCall, Key, Nillable, Output, Value, function::FunctionType,
+    value::StringCell,
 };
 use std::io::Write;
+use usher_macros::UsherArgs;
 
 pub fn resolve_function(key: &Key) -> Option<FunctionType> {
     match key.as_str() {
@@ -44,13 +45,14 @@ fn builtin_do_print<T>(
 where
     T: Fn(std::io::Error) -> EvalStop,
 {
-    args_struct!(
-        Args,
-        arg(sep, -, string|nil, optional),
-        arg(values, *, any)
-    );
+    #[derive(UsherArgs)]
+    #[usher(internal)]
+    struct Args {
+        values: Vec<Value>,
+        sep: Option<Nillable<StringCell>>,
+    }
 
-    let args = Args::new(call, ctxt)?;
+    let args = Args::eval(call, ctxt)?;
 
     let mut first = true;
     for val in args.values {
@@ -58,8 +60,8 @@ where
             first = false;
         } else {
             let s = match &args.sep {
-                Some(MaybeNil::Some(sep)) => sep.as_str(),
-                Some(MaybeNil::Nil) => "",
+                Some(Nillable::Some(sep)) => sep.as_str(),
+                Some(Nillable::Nil) => "",
                 None => ", ",
             };
             if !s.is_empty() {

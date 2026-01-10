@@ -1,9 +1,10 @@
 use super::InternalProgramError;
 use crate::lang::{
-    Arg, Context, EvalStop, FunctionCall, Key, Value,
-    function::{MethodResolver, MethodType, args_struct},
+    Context, EvalStop, FunctionCall, Key, Value,
+    function::{MethodResolver, MethodType},
 };
 use std::{fmt::Display, ops::Deref, rc::Rc};
+use usher_macros::UsherArgs;
 
 #[derive(Debug, PartialEq, Default, Clone)]
 pub struct StringCell {
@@ -102,9 +103,13 @@ fn str_len(call: &FunctionCall, this: StringCell, _ctxt: &mut Context) -> Result
 }
 
 fn str_split(call: &FunctionCall, this: StringCell, ctxt: &mut Context) -> Result<Value, EvalStop> {
-    args_struct!(Args, arg(on, 0, string, required));
+    #[derive(UsherArgs)]
+    #[usher(internal)]
+    struct Args {
+        on: StringCell,
+    }
 
-    let args = Args::new(call, ctxt)?;
+    let args = Args::eval(call, ctxt)?;
 
     let mut result = Vec::new();
     for part in this.split(args.on.as_str()) {

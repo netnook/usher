@@ -94,15 +94,13 @@ fn run_script(path: &Path, src: String) -> datatest_stable::Result<()> {
 
                 let result = prog.eval_with_context(&mut ctxt);
 
-                let actual_result = match result {
+                match result {
                     Ok(ok) => format!("{ok}"),
                     Err(e) => {
                         printer::print_eval_error(&mut stderr, e)?;
                         "".to_string()
                     }
-                };
-
-                actual_result
+                }
             }
             Err(e) => {
                 printer::print_parse_error(&mut stderr, e)?;
@@ -141,7 +139,7 @@ fn run_script(path: &Path, src: String) -> datatest_stable::Result<()> {
     Ok(())
 }
 
-fn next_section<'a>(src: &'a str) -> (&'a str, &'a str, &'a str) {
+fn next_section(src: &str) -> (&str, &str, &str) {
     if !src.starts_with("---") {
         panic!("expected src to start with '---' but got {}", src);
     }
@@ -152,7 +150,7 @@ fn next_section<'a>(src: &'a str) -> (&'a str, &'a str, &'a str) {
         panic!("missing key");
     }
 
-    let body_start = find_after(src, key_end, |c| c == '\n').unwrap_or_else(|| src.len());
+    let body_start = find_after(src, key_end, |c| c == '\n').unwrap_or(src.len());
 
     let body_end = find_str_after(src, body_start, "\n---")
         .map(|i| i + 1)

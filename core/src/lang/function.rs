@@ -1,6 +1,6 @@
 use crate::lang::{
-    AstNode, Block, Context, Eval, EvalStop, Identifier, InternalProgramError, Key, Span, Value,
-    Var, accept_default,
+    AstNode, Block, Context, Dict, Eval, EvalStop, Identifier, InternalProgramError, Key, List,
+    Span, Value, Var, accept_default,
     builtin_functions::resolve_function,
     value::{Func, StringCell, ValueType},
     visitor::{Accept, Visitor, VisitorResult},
@@ -394,7 +394,7 @@ impl FunctionCall {
                 }
 
                 call_context
-                    .declare(arg.name.key.clone(), arg.value.eval(ctxt)?)
+                    .declare(arg.name.key.clone(), arg.eval(ctxt)?)
                     .expect("variable should not already be declared");
             }
         }
@@ -450,11 +450,83 @@ impl<T> Accept<T> for FunctionCall {
     }
 }
 
+// FIXME: rename to MacroUtils ?
+#[allow(dead_code)] // FIXME remove allow once in use
+pub struct ArgUtils {}
+
+#[allow(dead_code)] // FIXME remove allow once in use
+impl ArgUtils {
+    pub(crate) fn to_string(
+        val: Value,
+        span: Span,
+        param_name: &str,
+    ) -> Result<StringCell, EvalStop> {
+        match val {
+            Value::Str(val) => Ok(val),
+            _ => Err(Self::type_error(val, ValueType::String, span, param_name)),
+        }
+    }
+    pub(crate) fn to_int(val: Value, span: Span, param_name: &str) -> Result<isize, EvalStop> {
+        match val {
+            Value::Integer(val) => Ok(val),
+            _ => Err(Self::type_error(val, ValueType::Integer, span, param_name)),
+        }
+    }
+    pub(crate) fn to_float(val: Value, span: Span, param_name: &str) -> Result<f64, EvalStop> {
+        match val {
+            Value::Float(val) => Ok(val),
+            _ => Err(Self::type_error(val, ValueType::Float, span, param_name)),
+        }
+    }
+    pub(crate) fn to_bool(val: Value, span: Span, param_name: &str) -> Result<bool, EvalStop> {
+        match val {
+            Value::Bool(val) => Ok(val),
+            _ => Err(Self::type_error(val, ValueType::Boolean, span, param_name)),
+        }
+    }
+    pub(crate) fn to_list(val: Value, span: Span, param_name: &str) -> Result<List, EvalStop> {
+        match val {
+            Value::List(val) => Ok(val),
+            _ => Err(Self::type_error(val, ValueType::List, span, param_name)),
+        }
+    }
+    pub(crate) fn to_dict(val: Value, span: Span, param_name: &str) -> Result<Dict, EvalStop> {
+        match val {
+            Value::Dict(val) => Ok(val),
+            _ => Err(Self::type_error(val, ValueType::Dict, span, param_name)),
+        }
+    }
+    fn type_error(val: Value, expected: ValueType, span: Span, param_name: &str) -> EvalStop {
+        InternalProgramError::FunctionCallBadArgType {
+            name: param_name.to_string(),
+            expected,
+            actual: val.value_type(),
+            span,
+        }
+        .into()
+    }
+    pub(crate) fn param_already_set_error(param_name: &str, span: Span) -> EvalStop {
+        InternalProgramError::FunctionCallParamAlreadySet {
+            name: param_name.to_string(),
+            span,
+        }
+        .into()
+    }
+    pub(crate) fn missing_argument_error(param_name: &str, span: Span) -> EvalStop {
+        InternalProgramError::FunctionCallMissingRequiredArgument {
+            name: param_name.to_string(),
+            span,
+        }
+        .into()
+    }
+}
+
 #[derive(PartialEq, Clone)]
 pub enum Arg {
     Positional(PositionalArg),
     Named(NamedArg),
 }
+
 impl Arg {
     pub(crate) fn span(&self) -> Span {
         match self {
@@ -467,8 +539,8 @@ impl Arg {
 impl<T> Accept<T> for Arg {
     fn accept(&self, visitor: &mut impl Visitor<T>) -> VisitorResult<T> {
         match self {
-            Arg::Positional(arg) => visitor.visit_node(&arg.value),
-            Arg::Named(arg) => visitor.visit_node(&arg.value),
+            Arg::Positional(arg) => visitor.visit_node(&arg.expr),
+            Arg::Named(arg) => visitor.visit_node(&arg.expr),
         }
     }
 }
@@ -478,11 +550,11 @@ impl core::fmt::Debug for Arg {
         let minimal = f.sign_minus();
         if minimal {
             match self {
-                Arg::Positional(arg) => arg.value.fmt(f),
+                Arg::Positional(arg) => arg.expr.fmt(f),
                 Arg::Named(arg) => {
                     arg.name.key.fmt(f)?;
                     f.write_str(": ")?;
-                    arg.value.fmt(f)
+                    arg.expr.fmt(f)
                 }
             }
         } else {
@@ -505,36 +577,36 @@ impl Eval for Arg {
 
 #[derive(PartialEq, Clone, Debug)]
 pub struct PositionalArg {
-    pub(crate) value: AstNode,
+    pub(crate) expr: AstNode,
 }
 
 impl PositionalArg {
     pub(crate) fn span(&self) -> Span {
-        self.value.span()
+        self.expr.span()
     }
 }
 
 impl Eval for PositionalArg {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
-        self.value.eval(ctxt)
+        self.expr.eval(ctxt)
     }
 }
 
 #[derive(PartialEq, Clone, Debug)]
 pub struct NamedArg {
     pub(crate) name: Identifier,
-    pub(crate) value: AstNode,
+    pub(crate) expr: AstNode,
 }
 
 impl NamedArg {
     pub(crate) fn span(&self) -> Span {
-        Span::merge(self.name.span, self.value.span())
+        Span::merge(self.name.span, self.expr.span())
     }
 }
 
 impl Eval for NamedArg {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
-        self.value.eval(ctxt)
+        self.expr.eval(ctxt)
     }
 }
 
@@ -577,358 +649,14 @@ impl Eval for ReturnStmt {
 
 accept_default!(ReturnStmt, value:opt:node,);
 
-///// Argument handling helpers
-macro_rules! value_type {
-    (string) => {
-        crate::lang::StringCell
-    };
-    (int) => {
-        isize
-    };
-    (float) => {
-        f64
-    };
-    (bool) => {
-        bool
-    };
-    (list) => {
-        crate::lang::List
-    };
-    (dict) => {
-        crate::lang::Dict
-    };
-    (any) => {
-        crate::lang::Value
-    };
-    (vec_any) => {
-        Vec<crate::lang::Value>
-    };
-}
-pub(crate) use value_type;
-
-macro_rules! args_struct {
-    // FIXME: support positional-only args
-    ($name:ident, $(arg($($arg:tt)*)),*) => {
-        use crate::lang::function::ArgTrait;
-        args_struct!(@str $name, $(arg($($arg)*)),*);
-
-        impl $name {
-            #[track_caller]
-            fn new(call: &FunctionCall, ctxt: &mut Context) -> Result<Self, EvalStop> {
-                $(
-                    args_struct!(@var_init $($arg)*);
-                )*
-
-                let mut mode_positional = true;
-                #[allow(unused_variables)]
-                for (idx, arg) in call.args.iter().enumerate() {
-                    if mode_positional {
-                        match arg {
-                            Arg::Positional(arg) => {
-                                $(
-                                    args_struct!(@pos ctxt, idx, arg, $($arg)*);
-                                )*
-                                return Err(InternalProgramError::FunctionCallUnexpectedArgument {
-                                    span: arg.span(),
-                                }.into_stop());
-                            }
-                            Arg::Named(_) => {
-                                mode_positional = false;
-                            }
-                        };
-                    }
-                    if !mode_positional {
-                        match arg {
-                            Arg::Positional(arg) => {
-                                $(
-                                    args_struct!(@star_arg ctxt, arg, $($arg)*);
-                                )*
-                                return Err(
-                                    InternalProgramError::FunctionCallPositionalArgAfterNamedArg {
-                                        span: arg.span(),
-                                    }
-                                    .into(),
-                                );
-                            }
-                            Arg::Named(arg)  => {
-                                $(
-                                    args_struct!(@named ctxt, arg, $($arg)*);
-                                )*
-                                return Err(InternalProgramError::FunctionCallNoSuchParameter {
-                                    name: arg.name.as_string(),
-                                    span: arg.name.span,
-                                }.into_stop());
-                            }
-                        }
-                    }
-                };
-
-                $(
-                    args_struct!(@require call, $($arg)*);
-                )*
-
-
-                Ok(
-                    args_struct!(@out $(arg($($arg)*)),*)
-                )
-            }
-        }
-    };
-    (@str $name:ident, $(arg($var:ident, $($rest:tt)*)),*) => {
-        #[derive(Debug)]
-        struct $name {
-            $(
-                 $var: args_struct!(@field $($rest)*),
-            )*
-        }
-    };
-    (@field $pos:tt, $type:ident, required) => {
-        crate::lang::function::value_type!($type)
-    };
-    (@field $pos:tt, $type:ident, optional) => {
-        Option<crate::lang::function::value_type!($type)>
-    };
-    (@field $pos:tt, $type:ident|nil, optional) => {
-        Option<crate::lang::function::MaybeNil<crate::lang::function::value_type!($type)>>
-    };
-    (@field *, $type:ident) => {
-        Vec<crate::lang::function::value_type!($type)>
-    };
-    (@var_init $var:ident, $pos:tt, $type:ident, $required_or_optional:ident) => {
-        let mut $var = None;
-    };
-    (@var_init $var:ident, $pos:tt, $type:ident|nil, $required_or_optional:ident) => {
-        let mut $var = None;
-    };
-    (@var_init $var:ident, *, $type:ident) => {
-        let mut $var = Vec::new();
-    };
-    (@pos $ctxt:expr, $idx:expr, $arg:expr, $var:ident, -, $type:ident, $required_or_optional:ident) => {
-    };
-    (@pos $ctxt:expr, $idx:expr, $arg:expr, $var:ident, -, $type:ident|nil, $required_or_optional:ident) => {
-    };
-    (@pos $ctxt:expr, $idx:expr, $arg:expr, $var:ident, $pos:literal, $type:ident, $required_or_optional:ident) => {
-        if $idx == $pos {
-            $var = args_struct!(@eval $ctxt, $arg, $var, $type);
-            continue;
-        }
-    };
-    (@pos $ctxt:expr, $idx:expr, $arg:expr, $var:ident, $pos:literal, $type:ident|nil, $required_or_optional:ident) => {
-        if $idx == $pos {
-            $var = args_struct!(@eval $ctxt, $arg, $var, $type|nil);
-            continue;
-        }
-    };
-    (@pos $ctxt:expr, $idx:expr, $arg:expr, $var:ident, *, $type:ident) => {
-        if true {
-            if let Some(val) = args_struct!(@eval $ctxt, $arg, $var, $type) {
-                // FIXME: need to have optional and required for star args so
-                // that can differentiate between lists containing nil and those that do not.
-                $var.push(val);
-            }
-            continue;
-        }
-    };
-    (@named $ctxt:expr, $arg:expr, $var:ident, $pos:tt, $type:ident, $required_or_optional:ident) => {
-        if $arg.name.key.as_str() == stringify!($var) {
-            if $var.is_some() {
-                return Err(InternalProgramError::FunctionCallParamAlreadySet {
-                    name: $arg.name.as_string(),
-                    span: ArgTrait::arg_span($arg),
-                }
-                .into());
-            }
-            $var = args_struct!(@eval $ctxt, $arg, $var, $type);
-            continue;
-        }
-    };
-    (@named $ctxt:expr, $arg:expr, $var:ident, $pos:tt, $type:ident|nil, $required_or_optional:ident) => {
-        if $arg.name.key.as_str() == stringify!($var) {
-            if $var.is_some() {
-                return Err(InternalProgramError::FunctionCallParamAlreadySet {
-                    name: $arg.name.as_string(),
-                    span: ArgTrait::arg_span($arg),
-                }
-                .into());
-            }
-            $var = args_struct!(@eval $ctxt, $arg, $var, $type|nil);
-            continue;
-        }
-    };
-    (@named $ctxt:expr, $arg:expr, $var:ident, *, $type:ident) => {
-    };
-    (@star_arg $ctxt:expr, $arg:expr, $var:ident, $pos:tt, $type:ident, $required_or_optional:ident) => {
-    };
-    (@star_arg $ctxt:expr, $arg:expr, $var:ident, $pos:tt, $type:ident|nil, $required_or_optional:ident) => {
-    };
-    (@star_arg $ctxt:expr, $arg:expr, $var:ident, *, $type:ident) => {
-        if true {
-            if let Some(val) = args_struct!(@eval $ctxt, $arg, $var, $type) {
-                // FIXME: need to have optional and required for star args so
-                // that can differentiate between lists containing nil and those that do not.
-                $var.push(val);
-            }
-            continue;
-        }
-    };
-    (@require $call:expr, $var:ident, $pos:tt, $type:ident, required) => {
-        let Some($var) = $var else {
-            return Err(InternalProgramError::FunctionCallMissingRequiredArgument {
-                name: stringify!($var).to_string(),
-                span: $call.span,
-            }.into());
-        };
-    };
-    (@require $call:expr, $var:ident, $pos:tt, $type:ident, optional) => {
-    };
-    (@require $call:expr, $var:ident, $pos:tt, $type:ident|nil, optional) => {
-    };
-    (@require $call:expr, $var:ident, *, $type:ident) => {
-    };
-    (@eval $ctxt:expr, $arg:expr, $var:ident, string) => {
-        $arg.arg_eval_to_string($ctxt, stringify!($var))?
-    };
-    (@eval $ctxt:expr, $arg:expr, $var:ident, string|nil) => {
-        $arg.arg_eval_to_string_or_nil($ctxt, stringify!($var))?
-    };
-    (@eval $ctxt:expr, $arg:expr, $var:ident, int) => {
-        $arg.arg_eval_to_int($ctxt, stringify!($var))?
-    };
-    (@eval $ctxt:expr, $arg:expr, $var:ident, float) => {
-        $arg.arg_eval_to_float($ctxt, stringify!($var))?
-    };
-    (@eval $ctxt:expr, $arg:expr, $var:ident, bool) => {
-        $arg.arg_eval_to_bool($ctxt, stringify!($var))?
-    };
-    (@eval $ctxt:expr, $arg:expr, $var:ident, list) => {
-        $arg.arg_eval_to_list($ctxt, stringify!($var))?
-    };
-    (@eval $ctxt:expr, $arg:expr, $var:ident, dict) => {
-        $arg.arg_eval_to_dict($ctxt, stringify!($var))?
-    };
-    (@eval $ctxt:expr, $arg:expr, $var:ident, any) => {
-        Some($arg.arg_eval($ctxt)?)
-    };
-
-    (@out $(arg($var:ident, $($rest:tt)*)),*) => {
-        Self {
-            $(
-                 $var,
-            )*
-        }
-    };
-}
-pub(crate) use args_struct;
-
-#[derive(Debug, PartialEq)]
-pub enum MaybeNil<T> {
-    Nil,
-    Some(T),
-}
-
-macro_rules! arg_trait_eval {
-    ($method:ident, $return_type:ty, $value_variant:path, $type_variant:path) => {
-        #[allow(dead_code)] // FIXME: remove [allow] once in use.
-        fn $method(
-            &self,
-            ctxt: &mut Context,
-            name: &str,
-        ) -> Result<Option<$return_type>, EvalStop> {
-            let arg = self.arg_eval(ctxt)?;
-            if let $value_variant(value) = arg {
-                return Ok(Some(value));
-            }
-            return Err(InternalProgramError::FunctionCallBadArgType {
-                name: name.to_string(),
-                expected: $type_variant,
-                actual: arg.value_type(),
-                span: self.arg_span(),
-            }
-            .into());
-        }
-    };
-
-    ($method:ident, $return_type:ty, $value_variant:path, $type_variant:path, maybe_nil) => {
-        #[allow(dead_code)] // FIXME: remove [allow] once in use.
-        fn $method(
-            &self,
-            ctxt: &mut Context,
-            name: &str,
-        ) -> Result<Option<MaybeNil<$return_type>>, EvalStop> {
-            match self.arg_eval(ctxt)? {
-                $value_variant(value) => Ok(Some(MaybeNil::Some(value))),
-                Value::Nil => Ok(Some(MaybeNil::Nil)),
-                other => Err(InternalProgramError::FunctionCallBadArgType {
-                    name: name.to_string(),
-                    expected: $type_variant,
-                    actual: other.value_type(),
-                    span: self.arg_span(),
-                }
-                .into()),
-            }
-        }
-    };
-}
-
-pub(crate) trait ArgTrait {
-    arg_trait_eval!(
-        arg_eval_to_string,
-        StringCell,
-        Value::Str,
-        ValueType::String
-    );
-    arg_trait_eval!(
-        arg_eval_to_string_or_nil,
-        StringCell,
-        Value::Str,
-        ValueType::String,
-        maybe_nil
-    );
-    arg_trait_eval!(arg_eval_to_int, isize, Value::Integer, ValueType::Integer);
-    arg_trait_eval!(arg_eval_to_float, f64, Value::Float, ValueType::Float);
-    arg_trait_eval!(arg_eval_to_bool, bool, Value::Bool, ValueType::Boolean);
-    arg_trait_eval!(
-        arg_eval_to_list,
-        crate::lang::List,
-        Value::List,
-        ValueType::List
-    );
-    arg_trait_eval!(
-        arg_eval_to_dict,
-        crate::lang::Dict,
-        Value::Dict,
-        ValueType::Dict
-    );
-    fn arg_eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop>;
-    fn arg_span(&self) -> Span;
-}
-
-impl ArgTrait for PositionalArg {
-    fn arg_eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
-        Eval::eval(self, ctxt)
-    }
-
-    fn arg_span(&self) -> Span {
-        Self::span(self)
-    }
-}
-impl ArgTrait for NamedArg {
-    fn arg_eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
-        Eval::eval(self, ctxt)
-    }
-
-    fn arg_span(&self) -> Span {
-        Self::span(self)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::{
-        lang::{Dict, List, Span},
+        lang::{Dict, List, Nillable, Span},
         parser::tests::{_function_call, arg, b, dict, f, i, id, l, list, nil, s, var},
     };
+    use usher_macros::UsherArgs;
 
     #[test]
     fn test_build_call_context_params_none_args_none() -> Result<(), EvalStop> {
@@ -1218,18 +946,20 @@ mod tests {
         ctxt
     }
 
+    // FIXME: move this to correct place for macro testing
     #[test]
     fn test_arg_structs_types_optional() {
-        args_struct!(
-            TestArgs,
-            arg(aaa, 0, string, optional),
-            arg(bbb, 1, int, optional),
-            arg(ccc, 2, float, optional),
-            arg(ddd, 3, bool, optional),
-            arg(eee, 4, list, optional),
-            arg(fff, 5, dict, optional),
-            arg(ggg, 6, any, optional)
-        );
+        #[derive(UsherArgs)]
+        #[usher(internal)]
+        struct TestArgs {
+            aaa: Option<StringCell>,
+            bbb: Option<isize>,
+            ccc: Option<f64>,
+            ddd: Option<bool>,
+            eee: Option<List>,
+            fff: Option<Dict>,
+            ggg: Option<Value>,
+        }
 
         let call = _function_call!(
             "foo",
@@ -1244,7 +974,7 @@ mod tests {
         .spanned(10, 5);
         let mut ctxt = Context::default();
 
-        let args = TestArgs::new(&call, &mut ctxt).unwrap();
+        let args = TestArgs::eval(&call, &mut ctxt).unwrap();
 
         assert_eq!(args.aaa, Some("a-string".into()));
         assert_eq!(args.bbb, Some(42));
@@ -1257,63 +987,108 @@ mod tests {
 
     #[test]
     fn test_arg_structs_missing_optional() {
-        args_struct!(TestArgs, arg(aaa, 0, string, optional));
+        #[derive(UsherArgs)]
+        #[usher(internal)]
+        struct TestArgs {
+            aaa: Option<StringCell>,
+        }
 
         let call = _function_call!("foo",);
         let mut ctxt = Context::default();
 
-        let args = TestArgs::new(&call, &mut ctxt).unwrap();
+        let args = TestArgs::eval(&call, &mut ctxt).unwrap();
 
         assert_eq!(args.aaa, None);
     }
 
     #[test]
-    fn test_arg_structs_nilable_none() {
-        args_struct!(TestArgs, arg(aaa, 0, string | nil, optional));
+    fn test_arg_structs_nillable() {
+        #[derive(UsherArgs)]
+        #[usher(internal)]
+        struct TestArgs {
+            // aaa: Nillable<StringCell>,
+            aaa: (usize, Nillable<StringCell>),
+            bbb: Option<(usize, Nillable<StringCell>)>,
+            // bbb: Nillable<StringCell>,
+            // ccc: Option<Nillable<StringCell>>,
+            ddd: Option<Nillable<StringCell>>,
+            eee: Option<Nillable<StringCell>>,
+        }
 
-        let call = _function_call!("foo",);
+        let call = _function_call!(
+            "foo",
+            arg!("aaa", nil()),
+            arg!("bbb", s("foo")),
+            //arg!("ccc",nil()),
+            arg!("ddd", nil()),
+            arg!("eee", s("bar"))
+        );
+        // let call = _function_call!("foo", arg!(s("a")));
         let mut ctxt = Context::default();
 
-        let args = TestArgs::new(&call, &mut ctxt).unwrap();
+        let args = TestArgs::eval(&call, &mut ctxt).unwrap();
 
-        assert_eq!(args.aaa, None);
+        assert_eq!(args.aaa, (0, Nillable::Nil));
+        assert_eq!(args.bbb, Some((1, Nillable::Some("foo".into()))));
+        // assert_eq!(args.ccc, None);
+        assert_eq!(args.ddd, Some(Nillable::Nil));
+        assert_eq!(args.eee, Some(Nillable::Some("bar".into())));
     }
 
-    #[test]
-    fn test_arg_structs_nilable_nil() {
-        args_struct!(TestArgs, arg(aaa, 0, string | nil, optional));
+    // #[test]
+    // fn test_arg_structs_nilable_none() {
+    //     #[derive(UsherArgs)]
+    //     struct TestArgs {
+    //         // #[usher(no_nil)]
+    //         aaa: Option<StringCell>,
+    //     }
+    //     // args_struct!(TestArgs, arg(aaa, 0, string | nil, optional));
 
-        let call = _function_call!("foo", arg!(nil()));
-        let mut ctxt = Context::default();
+    //     let call = _function_call!("foo",);
+    //     let mut ctxt = Context::default();
 
-        let args = TestArgs::new(&call, &mut ctxt).unwrap();
+    //     let args = TestArgs::new(&call, &mut ctxt).unwrap();
 
-        assert_eq!(args.aaa, Some(MaybeNil::Nil));
-    }
+    //     assert_eq!(args.aaa, None);
+    // }
 
-    #[test]
-    fn test_arg_structs_nilable_val() {
-        args_struct!(TestArgs, arg(aaa, 0, string | nil, optional));
+    // #[test]
+    // fn test_arg_structs_nilable_nil() {
+    //     args_struct!(TestArgs, arg(aaa, 0, string | nil, optional));
 
-        let call = _function_call!("foo", arg!(s("x")));
-        let mut ctxt = Context::default();
+    //     let call = _function_call!("foo", arg!(nil()));
+    //     let mut ctxt = Context::default();
 
-        let args = TestArgs::new(&call, &mut ctxt).unwrap();
+    //     let args = TestArgs::new(&call, &mut ctxt).unwrap();
 
-        assert_eq!(args.aaa, Some(MaybeNil::Some("x".into())));
-    }
+    //     assert_eq!(args.aaa, Some(MaybeNil::Nil));
+    // }
+
+    // #[test]
+    // fn test_arg_structs_nilable_val() {
+    //     args_struct!(TestArgs, arg(aaa, 0, string | nil, optional));
+
+    //     let call = _function_call!("foo", arg!(s("x")));
+    //     let mut ctxt = Context::default();
+
+    //     let args = TestArgs::new(&call, &mut ctxt).unwrap();
+
+    //     assert_eq!(args.aaa, Some(MaybeNil::Some("x".into())));
+    // }
 
     #[test]
     fn test_arg_structs_types_required() {
-        args_struct!(
-            TestArgs,
-            arg(aaa, 0, string, required),
-            arg(bbb, 1, int, required),
-            arg(ccc, 2, float, required),
-            arg(ddd, 3, bool, required),
-            arg(eee, 4, list, required),
-            arg(fff, 5, dict, required)
-        );
+        #[derive(UsherArgs)]
+        #[usher(internal)]
+        struct TestArgs {
+            aaa: StringCell,
+            bbb: isize,
+            ccc: f64,
+            ddd: bool,
+            eee: List,
+            fff: Dict,
+            ggg: Value,
+        }
 
         let call = _function_call!(
             "foo",
@@ -1322,12 +1097,13 @@ mod tests {
             arg!(f(42.3)),
             arg!(b(true)),
             arg!(l(list!().into())),
-            arg!(l(dict!().into()))
+            arg!(l(dict!().into())),
+            arg!(s("foo"))
         )
         .spanned(10, 5);
         let mut ctxt = Context::default();
 
-        let args = TestArgs::new(&call, &mut ctxt).unwrap();
+        let args = TestArgs::eval(&call, &mut ctxt).unwrap();
 
         assert_eq!(args.aaa, "a-string".into());
         assert_eq!(args.bbb, 42);
@@ -1335,17 +1111,22 @@ mod tests {
         assert!(args.ddd);
         assert_eq!(args.eee, List::new());
         assert_eq!(args.fff, Dict::new());
+        assert_eq!(args.ggg, Value::Str("foo".into()));
     }
 
     #[test]
     fn test_arg_structs_missing_required() {
-        args_struct!(TestArgs, arg(_aaa, 0, string, required));
+        #[derive(UsherArgs, Debug)]
+        #[usher(internal)]
+        struct TestArgs {
+            _aaa: StringCell,
+        }
 
         let call = _function_call!("foo",).spanned(10, 5);
         let mut ctxt = Context::default();
 
         assert_eq!(
-            TestArgs::new(&call, &mut ctxt).unwrap_err(),
+            TestArgs::eval(&call, &mut ctxt).unwrap_err(),
             InternalProgramError::FunctionCallMissingRequiredArgument {
                 name: "_aaa".to_string(),
                 span: Span::new(10, 5)
@@ -1356,15 +1137,16 @@ mod tests {
 
     #[test]
     fn test_arg_structs_named_args() {
-        args_struct!(
-            TestArgs,
-            arg(aaa, 0, string, required),
-            arg(bbb, 1, int, required),
-            arg(ccc, 2, float, required),
-            arg(ddd, 3, bool, required),
-            arg(eee, 4, list, required),
-            arg(fff, 5, dict, required)
-        );
+        #[derive(UsherArgs)]
+        #[usher(internal)]
+        struct TestArgs {
+            aaa: StringCell,
+            bbb: isize,
+            ccc: f64,
+            ddd: bool,
+            eee: List,
+            fff: Dict,
+        }
 
         let call = _function_call!(
             "foo",
@@ -1378,7 +1160,7 @@ mod tests {
         .spanned(10, 5);
         let mut ctxt = Context::default();
 
-        let args = TestArgs::new(&call, &mut ctxt).unwrap();
+        let args = TestArgs::eval(&call, &mut ctxt).unwrap();
 
         assert_eq!(args.aaa, "a-string".into());
         assert_eq!(args.bbb, 42);
@@ -1390,10 +1172,11 @@ mod tests {
 
     #[test]
     fn test_arg_structs_star_args() {
-        args_struct!(
-            TestArgs,
-            arg(aaa, *, string)
-        );
+        #[derive(UsherArgs)]
+        #[usher(internal)]
+        struct TestArgs {
+            aaa: Vec<StringCell>,
+        }
 
         let call = _function_call!(
             "foo",
@@ -1404,7 +1187,7 @@ mod tests {
         .spanned(10, 5);
         let mut ctxt = Context::default();
 
-        let args = TestArgs::new(&call, &mut ctxt).unwrap();
+        let args = TestArgs::eval(&call, &mut ctxt).unwrap();
 
         assert_eq!(
             args.aaa,
@@ -1414,49 +1197,51 @@ mod tests {
 
     #[test]
     fn test_arg_structs_mixed_positional_and_named_args() {
-        args_struct!(
-            TestArgs,
-            arg(aaa, 0, string, required),
-            arg(bbb, 1, int, required),
-            arg(ccc, 2, float, required),
-            arg(ddd, 3, bool, required),
-            arg(eee, 4, list, required),
-            arg(fff, 5, dict, required),
-            arg(ggg, *, any)
-        );
+        #[derive(UsherArgs)]
+        #[usher(internal)]
+        struct TestArgs {
+            aaa: isize,
+            bbb: isize,
+            ccc: isize,
+            ggg: Vec<isize>,
+            ddd: isize,
+            eee: isize,
+            fff: isize,
+        }
 
         let call = _function_call!(
             "foo",
-            arg!(s("a-string")),
-            arg!(i(42)),
-            arg!("ddd", b(true)),
-            arg!("fff", l(dict!().into())),
-            arg!("eee", l(list!().into())),
-            arg!("ccc", f(42.3)),
-            arg!(i(55)),
-            arg!(i(56))
+            arg!(i(1)),
+            arg!(i(2)),
+            arg!(i(3)),
+            arg!(i(7)),
+            arg!(i(8)),
+            arg!("ddd", i(4)),
+            arg!("fff", i(5)),
+            arg!("eee", i(6))
         )
         .spanned(10, 5);
         let mut ctxt = Context::default();
 
-        let args = TestArgs::new(&call, &mut ctxt).unwrap();
+        let args = TestArgs::eval(&call, &mut ctxt).unwrap();
 
-        assert_eq!(args.aaa, "a-string".into());
-        assert_eq!(args.bbb, 42);
-        assert_eq!(args.ccc, 42.3);
-        assert!(args.ddd);
-        assert_eq!(args.eee, List::new());
-        assert_eq!(args.fff, Dict::new());
-        assert_eq!(args.ggg, vec![55.into(), 56.into()]);
+        assert_eq!(args.aaa, 1);
+        assert_eq!(args.bbb, 2);
+        assert_eq!(args.ccc, 3);
+        assert_eq!(args.ddd, 4);
+        assert_eq!(args.eee, 6);
+        assert_eq!(args.fff, 5);
+        assert_eq!(args.ggg, vec![7, 8]);
     }
 
     #[test]
     fn test_arg_structs_too_many_args() {
-        args_struct!(
-            TestArgs,
-            arg(_aaa, 0, string, required),
-            arg(_bbb, 1, string, required)
-        );
+        #[derive(UsherArgs, Debug)]
+        #[usher(internal)]
+        struct TestArgs {
+            _aaa: StringCell,
+            _bbb: StringCell,
+        }
 
         let call = _function_call!(
             "foo",
@@ -1468,7 +1253,7 @@ mod tests {
         let mut ctxt = Context::default();
 
         assert_eq!(
-            TestArgs::new(&call, &mut ctxt).unwrap_err(),
+            TestArgs::eval(&call, &mut ctxt).unwrap_err(),
             InternalProgramError::FunctionCallUnexpectedArgument {
                 span: Span::new(42, 24)
             }
@@ -1478,11 +1263,12 @@ mod tests {
 
     #[test]
     fn test_arg_structs_bad_named_arg() {
-        args_struct!(
-            TestArgs,
-            arg(_aaa, 0, string, required),
-            arg(_bbb, 1, string, required)
-        );
+        #[derive(UsherArgs, Debug)]
+        #[usher(internal)]
+        struct TestArgs {
+            _aaa: StringCell,
+            _bbb: StringCell,
+        }
 
         let call = _function_call!(
             "foo",
@@ -1494,7 +1280,7 @@ mod tests {
         let mut ctxt = Context::default();
 
         assert_eq!(
-            TestArgs::new(&call, &mut ctxt).unwrap_err(),
+            TestArgs::eval(&call, &mut ctxt).unwrap_err(),
             InternalProgramError::FunctionCallNoSuchParameter {
                 name: "bad".to_string(),
                 span: Span::new(42, 24)
@@ -1505,13 +1291,17 @@ mod tests {
 
     #[test]
     fn test_arg_structs_bad_type_positional() {
-        args_struct!(TestArgs, arg(_aaa, 0, string, required));
+        #[derive(UsherArgs, Debug)]
+        #[usher(internal)]
+        struct TestArgs {
+            _aaa: StringCell,
+        }
 
         let call = _function_call!("foo", arg!(i(22).spanned(12, 13)));
         let mut ctxt = Context::default();
 
         assert_eq!(
-            TestArgs::new(&call, &mut ctxt).unwrap_err(),
+            TestArgs::eval(&call, &mut ctxt).unwrap_err(),
             InternalProgramError::FunctionCallBadArgType {
                 name: "_aaa".to_string(),
                 expected: ValueType::String,
@@ -1524,7 +1314,11 @@ mod tests {
 
     #[test]
     fn test_arg_structs_bad_type_named() {
-        args_struct!(TestArgs, arg(_aaa, 0, int, required));
+        #[derive(UsherArgs, Debug)]
+        #[usher(internal)]
+        struct TestArgs {
+            _aaa: isize,
+        }
 
         let call = _function_call!(
             "foo",
@@ -1533,7 +1327,7 @@ mod tests {
         let mut ctxt = Context::default();
 
         assert_eq!(
-            TestArgs::new(&call, &mut ctxt).unwrap_err(),
+            TestArgs::eval(&call, &mut ctxt).unwrap_err(),
             InternalProgramError::FunctionCallBadArgType {
                 name: "_aaa".to_string(),
                 expected: ValueType::Integer,
@@ -1546,13 +1340,17 @@ mod tests {
 
     #[test]
     fn test_arg_structs_bad_type_star() {
-        args_struct!(TestArgs, arg(_aaa, *, float));
+        #[derive(UsherArgs, Debug)]
+        #[usher(internal)]
+        struct TestArgs {
+            _aaa: Vec<f64>,
+        }
 
         let call = _function_call!("foo", arg!(f(1.1)), arg!(b(true).spanned(5, 6)));
         let mut ctxt = Context::default();
 
         assert_eq!(
-            TestArgs::new(&call, &mut ctxt).unwrap_err(),
+            TestArgs::eval(&call, &mut ctxt).unwrap_err(),
             InternalProgramError::FunctionCallBadArgType {
                 name: "_aaa".to_string(),
                 expected: ValueType::Float,
@@ -1565,35 +1363,36 @@ mod tests {
 
     #[test]
     fn test_arg_structs_eval_order() {
-        args_struct!(
-            TestArgs,
-            arg(aaa, 0, int, required),
-            arg(bbb, 1, int, required),
-            arg(ccc, 2, int, required),
-            arg(ddd, 3, int, required),
-            arg(eee, 4, int, required),
-            arg(star, *, int)
-        );
+        #[derive(UsherArgs)]
+        #[usher(internal)]
+        struct TestArgs2 {
+            aaa: isize,
+            bbb: isize,
+            star: Vec<isize>,
+            ccc: isize,
+            ddd: isize,
+            eee: isize,
+        }
 
         let call = _function_call!(
             "foo",
             arg!(_function_call!(id("test_next_id"),)),
             arg!(_function_call!(id("test_next_id"),)),
+            arg!(_function_call!(id("test_next_id"),)),
+            arg!(_function_call!(id("test_next_id"),)),
             arg!("ddd", _function_call!(id("test_next_id"),)),
             arg!("ccc", _function_call!(id("test_next_id"),)),
-            arg!(_function_call!(id("test_next_id"),)),
-            arg!("eee", _function_call!(id("test_next_id"),)),
-            arg!(_function_call!(id("test_next_id"),))
+            arg!("eee", _function_call!(id("test_next_id"),))
         );
         let mut ctxt = Context::default();
 
-        let args = TestArgs::new(&call, &mut ctxt).unwrap();
+        let args = TestArgs2::eval(&call, &mut ctxt).unwrap();
 
         assert_eq!(args.aaa, 0);
         assert_eq!(args.bbb, 1);
-        assert_eq!(args.ccc, 3);
-        assert_eq!(args.ddd, 2);
-        assert_eq!(args.eee, 5);
-        assert_eq!(args.star, vec![4, 6]);
+        assert_eq!(args.star, vec![2, 3]);
+        assert_eq!(args.ccc, 5);
+        assert_eq!(args.ddd, 4);
+        assert_eq!(args.eee, 6);
     }
 }

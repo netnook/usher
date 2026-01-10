@@ -1,6 +1,7 @@
 use crate::lang::{
-    Arg, Context, Eval, EvalStop, FunctionCall, InternalProgramError, Key, Value,
-    function::{MethodResolver, MethodType, args_struct},
+    Context, Eval, EvalStop, FunctionCall, InternalProgramError, Key, Value,
+    function::{MethodResolver, MethodType},
+    value::StringCell,
 };
 use std::{
     cell::RefCell,
@@ -8,6 +9,7 @@ use std::{
     rc::Rc,
 };
 use thiserror::Error;
+use usher_macros::UsherArgs;
 
 #[derive(Error, Debug, PartialEq)]
 #[error("Index out of range.")]
@@ -171,9 +173,13 @@ fn list_push(call: &FunctionCall, this: List, ctxt: &mut Context) -> Result<Valu
 }
 
 fn list_remove(call: &FunctionCall, mut this: List, ctxt: &mut Context) -> Result<Value, EvalStop> {
-    args_struct!(Args, arg(index, 0, int, required));
+    #[derive(UsherArgs)]
+    #[usher(internal)]
+    struct Args {
+        index: isize,
+    }
 
-    let args = Args::new(call, ctxt)?;
+    let args = Args::eval(call, ctxt)?;
 
     match this.remove(args.index) {
         Ok(v) => Ok(v),
@@ -187,15 +193,16 @@ fn list_remove(call: &FunctionCall, mut this: List, ctxt: &mut Context) -> Resul
 }
 
 fn list_join(call: &FunctionCall, this: List, ctxt: &mut Context) -> Result<Value, EvalStop> {
-    args_struct!(
-        Args,
-        arg(sep, 0, string, optional),
-        arg(before, 1, string, optional),
-        arg(after, 2, string, optional),
-        arg(empty, 3, string, optional)
-    );
+    #[derive(UsherArgs)]
+    #[usher(internal)]
+    struct Args {
+        sep: Option<StringCell>,
+        before: Option<StringCell>,
+        after: Option<StringCell>,
+        empty: Option<StringCell>,
+    }
 
-    let args = Args::new(call, ctxt)?;
+    let args = Args::eval(call, ctxt)?;
 
     if let Some(empty) = args.empty
         && this.is_empty()

@@ -515,9 +515,9 @@ impl<'a> Parser<'a> {
             let arg = match expr {
                 AstNode::KeyValue(KeyValueBuilder { key, value }) => Arg::Named(NamedArg {
                     name: key,
-                    value: *value,
+                    expr: *value,
                 }),
-                other => Arg::Positional(PositionalArg { value: other }),
+                other => Arg::Positional(PositionalArg { expr: other }),
             };
             args.push(arg);
             self.whitespace_comments();

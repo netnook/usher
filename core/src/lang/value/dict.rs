@@ -1,6 +1,7 @@
 use crate::lang::{
-    Arg, Context, EvalStop, FunctionCall, InternalProgramError, Key, Value,
-    function::{MethodResolver, MethodType, args_struct},
+    Context, EvalStop, FunctionCall, Key, Value,
+    function::{MethodResolver, MethodType},
+    value::StringCell,
 };
 use ordermap::OrderMap;
 use std::{
@@ -8,6 +9,7 @@ use std::{
     fmt::{Display, Write},
     rc::Rc,
 };
+use usher_macros::UsherArgs;
 
 #[derive(Debug, PartialEq, Default, Clone)]
 pub struct Dict {
@@ -96,25 +98,27 @@ impl MethodResolver for Dict {
 // FIXME: a function called "add" should only add (refuse to change) a key.
 // Instead, a replace (replace one returning old value) or set (set any number of value) should exist
 fn dict_add(call: &FunctionCall, mut this: Dict, ctxt: &mut Context) -> Result<Value, EvalStop> {
-    args_struct!(
-        Args,
-        arg(key, 0, string, required), // FIXME: should accept int keys
-        arg(value, 1, any, required)
-    );
+    #[derive(UsherArgs)]
+    #[usher(internal)]
+    struct Args {
+        key: StringCell, // FIXME: should accept int keys
+        value: Value,
+    }
 
-    let args = Args::new(call, ctxt)?;
+    let args = Args::eval(call, ctxt)?;
 
     let old_value = this.set(args.key.into(), args.value);
     Ok(old_value.unwrap_or(Value::Nil))
 }
 
 fn dict_remove(call: &FunctionCall, mut this: Dict, ctxt: &mut Context) -> Result<Value, EvalStop> {
-    args_struct!(
-        Args,
-        arg(key, 0, string, required) // FIXME: should accept int keys
-    );
+    #[derive(UsherArgs)]
+    #[usher(internal)]
+    struct Args {
+        key: StringCell, // FIXME: should accept int keys
+    }
 
-    let args = Args::new(call, ctxt)?;
+    let args = Args::eval(call, ctxt)?;
 
     let old_value = this.remove(&(&args.key).into());
 

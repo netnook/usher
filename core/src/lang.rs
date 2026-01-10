@@ -28,7 +28,8 @@ pub use dict::DictBuilder;
 pub(crate) use errors::bad_type_error_op;
 pub use errors::{EvalError, InternalProgramError};
 pub use function::{
-    Arg, FunctionCall, FunctionCallVariant, FunctionDef, NamedArg, Param, PositionalArg, ReturnStmt,
+    Arg, ArgUtils, FunctionCall, FunctionCallVariant, FunctionDef, NamedArg, Param, PositionalArg,
+    ReturnStmt,
 };
 pub use if_else::{ConditionalBlock, IfElse};
 pub use list::ListBuilder;
@@ -41,7 +42,7 @@ use std::rc::Rc;
 pub use string::InterpolatedStr;
 use thiserror::Error;
 pub use unary_op::{UnaryOp, UnaryOpCode};
-pub use value::{KeyValue, Value};
+pub use value::{KeyValue, Nillable, Value};
 pub use var::{Assignment, Declaration, This, Var};
 pub(crate) use visitor::{Accept, Visitor, VisitorResult, accept_default};
 

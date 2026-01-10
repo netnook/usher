@@ -213,6 +213,12 @@ impl From<isize> for Value {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum Nillable<T> {
+    Nil,
+    Some(T),
+}
+
 #[derive(Debug, Clone)]
 pub enum Func {
     FuncDef(Rc<FunctionDef>),

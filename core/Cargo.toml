@@ -1,0 +1,29 @@
+[package]
+name = "usher"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "usher"
+path = "src/main.rs"
+test = false
+
+[lib]
+name = "usher"
+path = "src/lib.rs"
+
+[dependencies]
+enumset = { workspace = true }
+ordermap = { workspace = true }
+pretty_assertions = { workspace = true }
+thiserror = { workspace = true }
+usher-macros = { workspace = true }
+
+[dev-dependencies]
+criterion = { workspace = true }
+datatest-stable = { workspace = true }
+
+[[test]]
+name = "test_scripts"
+harness = false
+

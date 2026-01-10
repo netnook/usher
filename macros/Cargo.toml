@@ -1,0 +1,13 @@
+[package]
+name = "usher-macros"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+proc-macro = true
+
+[dependencies]
+deluxe = "0.5.0"
+proc-macro2 = "1.0.105"
+quote = "1.0.43"
+syn = { version = "2", features = ["full", "parsing"] }

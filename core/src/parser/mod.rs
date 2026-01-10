@@ -539,20 +539,18 @@ pub mod tests {
     pub(crate) use _anon_call;
 
     macro_rules! arg {
-        ($name:expr, $value:expr) => {{
+        ($name:expr, $expr:expr) => {{
             use crate::lang::Arg;
             use crate::lang::NamedArg;
             Arg::Named(NamedArg {
                 name: $name.into(),
-                value: $value.into(),
+                expr: $expr.into(),
             })
         }};
-        ($value:expr) => {{
+        ($expr:expr) => {{
             use crate::lang::Arg;
             use crate::lang::PositionalArg;
-            Arg::Positional(PositionalArg {
-                value: $value.into(),
-            })
+            Arg::Positional(PositionalArg { expr: $expr.into() })
         }};
     }
     pub(crate) use arg;

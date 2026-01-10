@@ -1,28 +1,19 @@
-[package]
-name = "usher"
+[workspace]
+resolver = "3"
+members = [
+  "core",
+  "macros",
+]
+
+[workspace.package]
 version = "0.1.0"
 edition = "2024"
 
-[[bin]]
-name = "usher"
-path = "src/main.rs"
-test = false
-
-[lib]
-name = "usher"
-path = "src/lib.rs"
-
-[dependencies]
+[workspace.dependencies]
+usher-macros = { path="./macros" }
 enumset = "1.1.7"
 ordermap = "1.0.0"
 pretty_assertions = "1.4.1"
 thiserror = "2.0.16"
-
-[dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
 datatest-stable = "0.3.2"
-
-[[test]]
-name = "test_scripts"
-harness = false
-
