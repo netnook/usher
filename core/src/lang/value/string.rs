@@ -20,6 +20,10 @@ impl StringCell {
         self.content.len()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.content.is_empty()
+    }
+
     pub(crate) fn as_str(&self) -> &str {
         self.content.as_str()
     }

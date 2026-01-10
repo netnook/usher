@@ -78,22 +78,22 @@ fn do_derive_usher_args(
 
         let convert_type = match arg.item_type {
             ArgType::String => {
-                quote! { let val = __private_usher::lang::ArgUtils::to_string(val, arg.span(), #name_str)?; }
+                quote! { let val = __private_usher::MacroUtils::to_string(val, arg.span(), #name_str)?; }
             }
             ArgType::Integer => {
-                quote! { let val = __private_usher::lang::ArgUtils::to_int(val, arg.span(), #name_str)?; }
+                quote! { let val = __private_usher::MacroUtils::to_int(val, arg.span(), #name_str)?; }
             }
             ArgType::Float => {
-                quote! { let val = __private_usher::lang::ArgUtils::to_float(val, arg.span(), #name_str)?; }
+                quote! { let val = __private_usher::MacroUtils::to_float(val, arg.span(), #name_str)?; }
             }
             ArgType::Bool => {
-                quote! { let val = __private_usher::lang::ArgUtils::to_bool(val, arg.span(), #name_str)?; }
+                quote! { let val = __private_usher::MacroUtils::to_bool(val, arg.span(), #name_str)?; }
             }
             ArgType::List => {
-                quote! { let val = __private_usher::lang::ArgUtils::to_list(val, arg.span(), #name_str)?; }
+                quote! { let val = __private_usher::MacroUtils::to_list(val, arg.span(), #name_str)?; }
             }
             ArgType::Dict => {
-                quote! { let val = __private_usher::lang::ArgUtils::to_dict(val, arg.span(), #name_str)?; }
+                quote! { let val = __private_usher::MacroUtils::to_dict(val, arg.span(), #name_str)?; }
             }
             ArgType::Value => {
                 quote! {}
@@ -165,9 +165,9 @@ fn do_derive_usher_args(
         let convert = converter(arg);
         let assign = assigner(arg);
         quote! {
-            if arg.name.key.as_str() == #name_str {
+            if arg.name.as_str() == #name_str {
                 if #name.is_some() {
-                    return Err(__private_usher::lang::ArgUtils::param_already_set_error(#name_str, arg.span()));
+                    return Err(__private_usher::MacroUtils::param_already_set_error(#name_str, arg.span()));
                 }
                 let val = __private_usher::lang::Eval::eval(arg, ctxt)?;
                 #convert
@@ -183,7 +183,7 @@ fn do_derive_usher_args(
         if !arg.option && !arg.vec {
             Some(quote! {
                 let ::std::option::Option::Some(#name) = #name else {
-                    return Err(__private_usher::lang::ArgUtils::missing_argument_error(#name_str, call.span));
+                    return Err(__private_usher::MacroUtils::missing_argument_error(#name_str, call.span));
                 };
             })
         } else {
@@ -407,5 +407,14 @@ fn ident_type(ident: &Ident) -> Option<ArgType> {
         Some(ArgType::Value)
     } else {
         None
+    }
+}
+
+#[cfg(test)]
+mod test {
+    #[test]
+    fn ui() {
+        let t = trybuild::TestCases::new();
+        t.compile_fail("tests/args-macro/*.rs");
     }
 }
