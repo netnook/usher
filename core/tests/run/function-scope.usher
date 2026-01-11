@@ -1,0 +1,127 @@
+# function using var in parent scope
+var a = "x"
+function f1() {
+  print(a)
+  function f2() {
+    print(a)
+  }
+  f2()
+}
+f1()
+a = "y"
+f1()
+---stdout---
+x
+x
+y
+y
+********************************
+# override var in child scope
+var a = 1
+function f1() {
+  print(a)
+  var a = 10
+  function f2() {
+    a = a+1
+    print(a)
+
+  }
+  f2()
+  a = a+1
+  f2()
+  print(a)
+}
+f1()
+a=2
+f1()
+---stdout---
+1
+11
+13
+13
+2
+11
+13
+13
+********************************
+# function in loop
+var lst = [1,2,3]
+var fns = []
+for a in lst {
+  fns.push(function() {
+    print(a*2)
+  })
+}
+for f in fns {
+  f()
+}
+---stdout---
+2
+4
+6
+********************************
+# level 1
+var x = 42
+function outer(a) {
+  if a {
+    return x
+  }
+  var x = 99
+  return x
+}
+print(outer(false))
+print(outer(true))
+---stdout---
+99
+42
+********************************
+# level 2
+var x = "global x"
+function outer() {
+  var y = "outer y"
+
+  function inner(z) {
+    return [x, y, z]
+  }
+
+  return inner("z arg")
+}
+print(outer())
+---stdout---
+["global x","outer y","z arg"]
+********************************
+# level 3
+var x = "global x"
+function outer() {
+  var y = "outer y 1"
+
+  function inner(z) {
+    return [x, y, z]
+  }
+
+  y = "outer y 2"
+
+  return inner("z arg")
+}
+print(outer())
+---stdout---
+["global x","outer y 2","z arg"]
+********************************
+# level 4
+var x = "global x"
+function outer(n) {
+  var y = "outer y {n}"
+
+  function inner(z) {
+    return [x, y, z]
+  }
+
+  return inner
+}
+var a = outer(1)
+var b = outer(2)
+print(a("aaa"))
+print(b("bbb"))
+---stdout---
+["global x","outer y 1","aaa"]
+["global x","outer y 2","bbb"]

@@ -2,8 +2,11 @@ mod dict;
 mod list;
 mod string;
 
-use super::{FunctionDef, InternalProgramError};
-use crate::lang::{Key, function::FunctionType};
+use super::InternalProgramError;
+use crate::lang::{
+    Key,
+    function::{FunctionInst, FunctionType},
+};
 pub use dict::Dict;
 pub use list::List;
 use std::{
@@ -221,23 +224,20 @@ pub enum Nillable<T> {
 
 #[derive(Debug, Clone)]
 pub enum Func {
-    FuncDef(Rc<FunctionDef>),
+    FuncInst(FunctionInst),
     BuiltIn(FunctionType),
 }
 
 impl PartialEq for Func {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Self::FuncDef(left), Self::FuncDef(right)) => left == right,
-            _ => false,
-        }
+    fn eq(&self, _other: &Self) -> bool {
+        false
     }
 }
 
 impl Display for Func {
     fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            Func::FuncDef(_) => fmt.write_str("<function-def>"),
+            Func::FuncInst(_) => fmt.write_str("<function>"),
             Func::BuiltIn(_) => fmt.write_str("<builtin-function>"),
         }
     }
@@ -286,15 +286,10 @@ impl Display for KeyValue {
 pub mod tests {
     use super::*;
     use crate::lang::Value;
-    use crate::parser::tests::{_block, _func, ToValue};
+    use crate::parser::tests::ToValue;
 
     #[test]
     fn test_ref_clone() {
-        assert_eq!(
-            Value::Func(Func::FuncDef(Rc::new(_func!(_block![])))).ref_clone(),
-            Value::Func(Func::FuncDef(Rc::new(_func!(_block![]))))
-        );
-
         {
             let a = Value::Str("string".into());
             let b = a.ref_clone();
@@ -347,11 +342,6 @@ pub mod tests {
 
     #[test]
     fn test_shallow_clone() {
-        assert_eq!(
-            Value::Func(Func::FuncDef(Rc::new(_func!(_block![])))).shallow_clone(),
-            Value::Func(Func::FuncDef(Rc::new(_func!(_block![]))))
-        );
-
         {
             let a = Value::Str("string".into());
             let b = a.shallow_clone();
@@ -404,11 +394,6 @@ pub mod tests {
 
     #[test]
     fn test_deep_clone() {
-        assert_eq!(
-            Value::Func(Func::FuncDef(Rc::new(_func!(_block![])))).deep_clone(),
-            Value::Func(Func::FuncDef(Rc::new(_func!(_block![]))))
-        );
-
         {
             let a = Value::Str("string".into());
             let b = a.deep_clone();

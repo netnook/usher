@@ -10,7 +10,7 @@ pub struct AlreadyDeclared {}
 #[error("Name not declared.")]
 pub struct NotDeclared {}
 
-#[derive()]
+#[derive(Debug, Clone)]
 pub struct Context {
     inner: Rc<RefCell<ContextInner>>,
 }
@@ -92,17 +92,9 @@ impl Context {
             })),
         }
     }
-
-    pub(crate) fn new_function_call_ctxt(&self) -> Context {
-        let b = self.inner.borrow();
-        let mut ctxt = Context::default();
-        ctxt.set_stdout(b.stdout.clone());
-        ctxt.set_stderr(b.stderr.clone());
-        ctxt
-    }
 }
 
-#[derive()]
+#[derive(Debug)]
 pub struct ContextInner {
     pub parent: Option<Rc<RefCell<ContextInner>>>,
     pub vars: HashMap<Key, Value>,
@@ -166,7 +158,7 @@ impl ContextInner {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Output {
     StdOut,
     StdErr,

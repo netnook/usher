@@ -42,14 +42,12 @@ impl Eval for For {
         let iterable = self.iterable.eval(ctxt)?;
         let mut result = Value::Nil;
 
-        let mut child_ctxt = ctxt.new_scope();
-
         match iterable {
             Value::List(list) => {
                 let mut iter = list.iter();
 
                 while let Some((idx, val)) = iter.next() {
-                    child_ctxt.reset();
+                    let mut child_ctxt = ctxt.new_scope();
                     self.loop_item.declare(&mut child_ctxt, val.ref_clone())?;
                     // FIXME: this loop_info should not be the index, but a custom object with .index, .first, .last properties
                     if let Some(loop_info) = &self.loop_info {
@@ -73,8 +71,8 @@ impl Eval for For {
                 let mut iter = dict.iter();
 
                 while let Some((key, val)) = iter.next() {
+                    let mut child_ctxt = ctxt.new_scope();
                     // FIXME: dict should always have vars for key and value, and an optional third as loop_info (with .index, .first, .last properties)
-                    child_ctxt.reset();
                     self.loop_item.declare(&mut child_ctxt, key.into())?;
                     loop_info.declare(&mut child_ctxt, val.clone())?;
                     result = match self.block.eval_with_context(&mut child_ctxt) {

@@ -116,7 +116,11 @@ impl<T> Accept<T> for Param {
 
 impl Eval for Rc<FunctionDef> {
     fn eval(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
-        let f = Value::Func(Func::FuncDef(Rc::clone(self)));
+        let instance = FunctionInst {
+            def: Rc::clone(self),
+            ctxt: ctxt.clone(),
+        };
+        let f = Value::Func(Func::FuncInst(instance));
         if let Some(name) = &self.name {
             ctxt.declare(name.ident.key.clone(), f.ref_clone())
                 .map_err(|_| InternalProgramError::NameAlreadyDeclared {
@@ -132,10 +136,6 @@ impl FunctionDef {
     pub(crate) fn params(&self) -> &[Param] {
         &self.params[..]
     }
-
-    pub fn call(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
-        self.body.eval_with_context(ctxt)
-    }
 }
 
 pub(crate) type FunctionType =
@@ -146,6 +146,18 @@ pub(crate) type MethodType<T> =
 
 pub(crate) trait MethodResolver: Sized {
     fn resolve_method(&self, key: &Key) -> Option<MethodType<Self>>;
+}
+
+#[derive(Debug, Clone)]
+pub struct FunctionInst {
+    pub(crate) def: Rc<FunctionDef>,
+    pub(crate) ctxt: Context,
+}
+
+impl FunctionInst {
+    pub fn call(&self, ctxt: &mut Context) -> Result<Value, EvalStop> {
+        self.def.body.eval_with_context(ctxt)
+    }
 }
 
 #[derive(PartialEq, Clone)]
@@ -297,12 +309,11 @@ impl FunctionCall {
         this: Option<Value>,
     ) -> Result<Value, EvalStop> {
         match func {
-            Func::FuncDef(func) => {
-                // FIXME: normal function call should have a new context, but what about closures ?
-                let mut call_context =
-                    self.build_call_context(ctxt, func.params(), this, &self.span)?;
+            Func::FuncInst(inst) => {
+                let mut call_ctxt = inst.ctxt.new_scope();
+                self.build_call_context(ctxt, &mut call_ctxt, inst.def.params(), this, &self.span)?;
 
-                let result = func.call(&mut call_context);
+                let result = inst.call(&mut call_ctxt);
                 Self::map_function_call_result(result)
             }
             Func::BuiltIn(func) => {
@@ -332,15 +343,14 @@ impl FunctionCall {
 
     fn build_call_context(
         &self,
-        ctxt: &mut Context,
+        eval_ctxt: &mut Context,
+        call_ctxt: &mut Context,
         params: &[Param],
         this: Option<Value>,
         call_span: &Span,
-    ) -> Result<Context, EvalStop> {
-        let mut call_context = ctxt.new_function_call_ctxt();
-
+    ) -> Result<(), EvalStop> {
         if let Some(this) = this {
-            call_context
+            call_ctxt
                 .declare_this(this)
                 .expect("'this' should not already be declared");
         }
@@ -357,8 +367,8 @@ impl FunctionCall {
 
                 match arg {
                     Arg::Positional(value) => {
-                        call_context
-                            .declare(param.key().clone(), value.eval(ctxt)?)
+                        call_ctxt
+                            .declare(param.key().clone(), value.eval(eval_ctxt)?)
                             .expect("variable should not already be declared");
                     }
                     Arg::Named(_) => {
@@ -385,7 +395,7 @@ impl FunctionCall {
                     .into());
                 };
 
-                if call_context.contains_key(&arg.name.key) {
+                if call_ctxt.contains_key(&arg.name.key) {
                     return Err(InternalProgramError::FunctionCallParamAlreadySet {
                         name: arg.name.key.as_string(),
                         span: arg.name.span,
@@ -393,8 +403,8 @@ impl FunctionCall {
                     .into());
                 }
 
-                call_context
-                    .declare(arg.name.key.clone(), arg.eval(ctxt)?)
+                call_ctxt
+                    .declare(arg.name.key.clone(), arg.eval(eval_ctxt)?)
                     .expect("variable should not already be declared");
             }
         }
@@ -403,7 +413,7 @@ impl FunctionCall {
         for param in params {
             match param {
                 Param::Required(var) => {
-                    if !call_context.contains_key(&var.ident.key) {
+                    if !call_ctxt.contains_key(&var.ident.key) {
                         return Err(InternalProgramError::FunctionCallMissingRequiredArgument {
                             name: var.ident.key.as_string(),
                             span: *call_span,
@@ -412,8 +422,8 @@ impl FunctionCall {
                     }
                 }
                 Param::Optional(var, val) => {
-                    if !call_context.contains_key(&var.ident.key) {
-                        call_context
+                    if !call_ctxt.contains_key(&var.ident.key) {
+                        call_ctxt
                             .declare(var.ident.key.clone(), val.deep_clone())
                             .expect("variable should not already be declared");
                     }
@@ -423,7 +433,7 @@ impl FunctionCall {
             }
         }
 
-        Ok(call_context)
+        Ok(())
     }
 }
 
@@ -590,12 +600,19 @@ mod tests {
     fn test_build_call_context_params_none_args_none() -> Result<(), EvalStop> {
         let params = Vec::new();
         let call = function_call(Vec::new());
-        let mut ctxt = prepare_ctxt();
+        let mut eval_ctxt = Context::default();
+        let mut call_ctxt = Context::default();
 
-        let ctxt = call.build_call_context(&mut ctxt, &params[..], None, &Span::new(88, 888))?;
+        call.build_call_context(
+            &mut eval_ctxt,
+            &mut call_ctxt,
+            &params[..],
+            None,
+            &Span::new(88, 888),
+        )?;
 
-        assert_eq!(ctxt.get_this(), None);
-        assert_eq!(ctxt.size(), 0);
+        assert_eq!(call_ctxt.get_this(), None);
+        assert_eq!(call_ctxt.size(), 0);
 
         Ok(())
     }
@@ -604,14 +621,21 @@ mod tests {
     fn test_build_call_context_params_required_args_positional() -> Result<(), EvalStop> {
         let params = [Param::Required(var("aa")), Param::Required(var("bb"))];
         let call = function_call(vec![arg!(i(1)), arg!(i(2))]);
-        let mut ctxt = prepare_ctxt();
+        let mut eval_ctxt = Context::default();
+        let mut call_ctxt = Context::default();
 
-        let ctxt = call.build_call_context(&mut ctxt, &params[..], None, &Span::new(88, 888))?;
+        call.build_call_context(
+            &mut eval_ctxt,
+            &mut call_ctxt,
+            &params[..],
+            None,
+            &Span::new(88, 888),
+        )?;
 
-        assert_eq!(ctxt.get_this(), None);
-        assert_eq!(ctxt.size(), 2);
-        assert_eq!(ctxt.get(&"aa".into()), Some(1.into()));
-        assert_eq!(ctxt.get(&"bb".into()), Some(2.into()));
+        assert_eq!(call_ctxt.get_this(), None);
+        assert_eq!(call_ctxt.size(), 2);
+        assert_eq!(call_ctxt.get(&"aa".into()), Some(1.into()));
+        assert_eq!(call_ctxt.get(&"bb".into()), Some(2.into()));
 
         Ok(())
     }
@@ -620,14 +644,21 @@ mod tests {
     fn test_build_call_context_params_required_args_named() -> Result<(), EvalStop> {
         let params = [Param::Required(var("aa")), Param::Required(var("bb"))];
         let call = function_call(vec![arg!("bb", i(1)), arg!("aa", i(2))]);
-        let mut ctxt = prepare_ctxt();
+        let mut eval_ctxt = Context::default();
+        let mut call_ctxt = Context::default();
 
-        let ctxt = call.build_call_context(&mut ctxt, &params[..], None, &Span::new(88, 888))?;
+        call.build_call_context(
+            &mut eval_ctxt,
+            &mut call_ctxt,
+            &params[..],
+            None,
+            &Span::new(88, 888),
+        )?;
 
-        assert_eq!(ctxt.get_this(), None);
-        assert_eq!(ctxt.size(), 2);
-        assert_eq!(ctxt.get(&"aa".into()), Some(2.into()));
-        assert_eq!(ctxt.get(&"bb".into()), Some(1.into()));
+        assert_eq!(call_ctxt.get_this(), None);
+        assert_eq!(call_ctxt.size(), 2);
+        assert_eq!(call_ctxt.get(&"aa".into()), Some(2.into()));
+        assert_eq!(call_ctxt.get(&"bb".into()), Some(1.into()));
 
         Ok(())
     }
@@ -639,14 +670,21 @@ mod tests {
             Param::Optional(var("bb"), "y".into()),
         ];
         let call = function_call(vec![]);
-        let mut ctxt = prepare_ctxt();
+        let mut eval_ctxt = Context::default();
+        let mut call_ctxt = Context::default();
 
-        let ctxt = call.build_call_context(&mut ctxt, &params[..], None, &Span::new(88, 888))?;
+        call.build_call_context(
+            &mut eval_ctxt,
+            &mut call_ctxt,
+            &params[..],
+            None,
+            &Span::new(88, 888),
+        )?;
 
-        assert_eq!(ctxt.get_this(), None);
-        assert_eq!(ctxt.size(), 2);
-        assert_eq!(ctxt.get(&"aa".into()), Some("x".into()));
-        assert_eq!(ctxt.get(&"bb".into()), Some("y".into()));
+        assert_eq!(call_ctxt.get_this(), None);
+        assert_eq!(call_ctxt.size(), 2);
+        assert_eq!(call_ctxt.get(&"aa".into()), Some("x".into()));
+        assert_eq!(call_ctxt.get(&"bb".into()), Some("y".into()));
 
         Ok(())
     }
@@ -658,14 +696,21 @@ mod tests {
             Param::Optional(var("bb"), "y".into()),
         ];
         let call = function_call(vec![arg!(i(1)), arg!(i(2))]);
-        let mut ctxt = prepare_ctxt();
+        let mut eval_ctxt = Context::default();
+        let mut call_ctxt = Context::default();
 
-        let ctxt = call.build_call_context(&mut ctxt, &params[..], None, &Span::new(88, 888))?;
+        call.build_call_context(
+            &mut eval_ctxt,
+            &mut call_ctxt,
+            &params[..],
+            None,
+            &Span::new(88, 888),
+        )?;
 
-        assert_eq!(ctxt.get_this(), None);
-        assert_eq!(ctxt.size(), 2);
-        assert_eq!(ctxt.get(&"aa".into()), Some(1.into()));
-        assert_eq!(ctxt.get(&"bb".into()), Some(2.into()));
+        assert_eq!(call_ctxt.get_this(), None);
+        assert_eq!(call_ctxt.size(), 2);
+        assert_eq!(call_ctxt.get(&"aa".into()), Some(1.into()));
+        assert_eq!(call_ctxt.get(&"bb".into()), Some(2.into()));
 
         Ok(())
     }
@@ -677,14 +722,21 @@ mod tests {
             Param::Optional(var("bb"), "y".into()),
         ];
         let call = function_call(vec![arg!(nil())]);
-        let mut ctxt = prepare_ctxt();
+        let mut eval_ctxt = Context::default();
+        let mut call_ctxt = Context::default();
 
-        let ctxt = call.build_call_context(&mut ctxt, &params[..], None, &Span::new(88, 888))?;
+        call.build_call_context(
+            &mut eval_ctxt,
+            &mut call_ctxt,
+            &params[..],
+            None,
+            &Span::new(88, 888),
+        )?;
 
-        assert_eq!(ctxt.get_this(), None);
-        assert_eq!(ctxt.size(), 2);
-        assert_eq!(ctxt.get(&"aa".into()), Some(nil().val));
-        assert_eq!(ctxt.get(&"bb".into()), Some("y".into()));
+        assert_eq!(call_ctxt.get_this(), None);
+        assert_eq!(call_ctxt.size(), 2);
+        assert_eq!(call_ctxt.get(&"aa".into()), Some(nil().val));
+        assert_eq!(call_ctxt.get(&"bb".into()), Some("y".into()));
 
         Ok(())
     }
@@ -706,18 +758,25 @@ mod tests {
             arg!("ff", i(4)),
             arg!("cc", i(5)),
         ]);
-        let mut ctxt = prepare_ctxt();
+        let mut eval_ctxt = Context::default();
+        let mut call_ctxt = Context::default();
 
-        let ctxt = call.build_call_context(&mut ctxt, &params[..], None, &Span::new(88, 888))?;
+        call.build_call_context(
+            &mut eval_ctxt,
+            &mut call_ctxt,
+            &params[..],
+            None,
+            &Span::new(88, 888),
+        )?;
 
-        assert_eq!(ctxt.get_this(), None);
-        assert_eq!(ctxt.size(), 6);
-        assert_eq!(ctxt.get(&"aa".into()), Some(1.into()));
-        assert_eq!(ctxt.get(&"bb".into()), Some(2.into()));
-        assert_eq!(ctxt.get(&"cc".into()), Some(5.into()));
-        assert_eq!(ctxt.get(&"dd".into()), Some("x".into()));
-        assert_eq!(ctxt.get(&"ee".into()), Some(3.into()));
-        assert_eq!(ctxt.get(&"ff".into()), Some(4.into()));
+        assert_eq!(call_ctxt.get_this(), None);
+        assert_eq!(call_ctxt.size(), 6);
+        assert_eq!(call_ctxt.get(&"aa".into()), Some(1.into()));
+        assert_eq!(call_ctxt.get(&"bb".into()), Some(2.into()));
+        assert_eq!(call_ctxt.get(&"cc".into()), Some(5.into()));
+        assert_eq!(call_ctxt.get(&"dd".into()), Some("x".into()));
+        assert_eq!(call_ctxt.get(&"ee".into()), Some(3.into()));
+        assert_eq!(call_ctxt.get(&"ff".into()), Some(4.into()));
 
         Ok(())
     }
@@ -734,12 +793,18 @@ mod tests {
             arg!(i(3).spanned(7, 7)),
             arg!(i(4).spanned(8, 8)),
         ]);
-        let mut ctxt = prepare_ctxt();
+        let mut eval_ctxt = Context::default();
+        let mut call_ctxt = Context::default();
 
         let err = call
-            .build_call_context(&mut ctxt, &params[..], None, &Span::new(88, 888))
-            .err()
-            .expect("expect error");
+            .build_call_context(
+                &mut eval_ctxt,
+                &mut call_ctxt,
+                &params[..],
+                None,
+                &Span::new(88, 888),
+            )
+            .expect_err("expect error");
 
         let EvalStop::Error(InternalProgramError::FunctionCallUnexpectedArgument { span }) = err
         else {
@@ -760,12 +825,18 @@ mod tests {
             arg!("bb", i(1).spanned(5, 5)),
             arg!(i(2).spanned(6, 6)),
         ]);
-        let mut ctxt = prepare_ctxt();
+        let mut eval_ctxt = Context::default();
+        let mut call_ctxt = Context::default();
 
         let err = call
-            .build_call_context(&mut ctxt, &params[..], None, &Span::new(88, 888))
-            .err()
-            .expect("expect error");
+            .build_call_context(
+                &mut eval_ctxt,
+                &mut call_ctxt,
+                &params[..],
+                None,
+                &Span::new(88, 888),
+            )
+            .expect_err("expect error");
 
         let EvalStop::Error(InternalProgramError::FunctionCallPositionalArgAfterNamedArg { span }) =
             err
@@ -787,12 +858,18 @@ mod tests {
             arg!("bb", i(1).spanned(5, 5)),
             arg!(id("xx").spanned(7, 7), i(1).spanned(6, 6)),
         ]);
-        let mut ctxt = prepare_ctxt();
+        let mut eval_ctxt = Context::default();
+        let mut call_ctxt = Context::default();
 
         let err = call
-            .build_call_context(&mut ctxt, &params[..], None, &Span::new(88, 888))
-            .err()
-            .expect("expect error");
+            .build_call_context(
+                &mut eval_ctxt,
+                &mut call_ctxt,
+                &params[..],
+                None,
+                &Span::new(88, 888),
+            )
+            .expect_err("expect error");
 
         let EvalStop::Error(InternalProgramError::FunctionCallNoSuchParameter { span, name }) = err
         else {
@@ -815,12 +892,18 @@ mod tests {
             arg!(i(2)),
             arg!(id("aa").spanned(7, 7), i(7)),
         ]);
-        let mut ctxt = prepare_ctxt();
+        let mut eval_ctxt = Context::default();
+        let mut call_ctxt = Context::default();
 
         let err = call
-            .build_call_context(&mut ctxt, &params[..], None, &Span::new(88, 888))
-            .err()
-            .expect("expect error");
+            .build_call_context(
+                &mut eval_ctxt,
+                &mut call_ctxt,
+                &params[..],
+                None,
+                &Span::new(88, 888),
+            )
+            .expect_err("expect error");
 
         let EvalStop::Error(InternalProgramError::FunctionCallParamAlreadySet { span, name }) = err
         else {
@@ -839,12 +922,18 @@ mod tests {
             Param::Optional(var("cc"), "z".into()),
         ];
         let call = function_call(vec![arg!(i(1)), arg!(id("cc").spanned(7, 7), i(7))]);
-        let mut ctxt = prepare_ctxt();
+        let mut eval_ctxt = Context::default();
+        let mut call_ctxt = Context::default();
 
         let err = call
-            .build_call_context(&mut ctxt, &params[..], None, &Span::new(88, 888))
-            .err()
-            .expect("expect error");
+            .build_call_context(
+                &mut eval_ctxt,
+                &mut call_ctxt,
+                &params[..],
+                None,
+                &Span::new(88, 888),
+            )
+            .expect_err("expect error");
 
         let EvalStop::Error(InternalProgramError::FunctionCallMissingRequiredArgument {
             span,
@@ -866,11 +955,5 @@ mod tests {
             args,
             span: Span::new(999, 1),
         }
-    }
-
-    fn prepare_ctxt() -> Context {
-        let mut ctxt = Context::default();
-        ctxt.declare("old".into(), "dummy".into()).unwrap();
-        ctxt
     }
 }

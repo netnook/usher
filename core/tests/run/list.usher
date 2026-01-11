@@ -75,15 +75,14 @@ lst.join("-", before:"[", after:"]")
 ---result---
 "[]"
 ***********************************************
-# FIXME: test order of arg evaluation - does not work because of context error
-#var counter = 1
-#function next() {
-#  var tmp = counter
-#  counter = counter + 1
-#  return "-{tmp}-"
-#}
-#var lst = ["a","b","c"]
-#lst.join(next(), after:next(), before:next())
-#---result---
-#"-3-a-1-b-1-c-2-"
----stdout---
+# test order of arg evaluation
+var counter = 1
+function next() {
+  var tmp = counter
+  counter = counter + 1
+  return "-{tmp}-"
+}
+var lst = ["a","b","c"]
+lst.join(next(), after:next(), before:next())
+---result---
+"-3-a-1-b-1-c-2-"
