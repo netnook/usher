@@ -4,7 +4,7 @@ use crate::{
 };
 use thiserror::Error;
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub struct ParseError<'a> {
     pub file: &'a str,
     pub source: &'a str,
@@ -18,24 +18,6 @@ impl<'a> ParseError<'a> {
 
     pub fn find_source_position(&self) -> SourceRef<'a> {
         position::find_source_position(self.file, self.source, self.span())
-    }
-}
-
-impl<'a> core::fmt::Debug for ParseError<'a> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let minimal = f.sign_minus();
-        if minimal {
-            f.debug_struct("ParseError")
-                .field("file", &self.file)
-                .field("cause", &self.cause)
-                .finish_non_exhaustive()
-        } else {
-            f.debug_struct("ParseError")
-                .field("file", &self.file)
-                .field("source", &self.source)
-                .field("cause", &self.cause)
-                .finish()
-        }
     }
 }
 

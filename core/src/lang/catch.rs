@@ -3,23 +3,15 @@ use crate::lang::{
     accept_default,
 };
 
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Debug)]
 pub struct CatchMissingOptionalProperty {
     pub(crate) inner: Box<AstNode>,
 }
 
-impl core::fmt::Debug for CatchMissingOptionalProperty {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let minimal = f.sign_minus();
-        if minimal {
-            f.write_str("CatchMissingOptionalProperty { ")?;
-            self.inner.fmt(f)?;
-            f.write_str(" }")
-        } else {
-            f.debug_struct("CatchMissingOptionalProperty")
-                .field("inner", &self.inner)
-                .finish()
-        }
+impl CatchMissingOptionalProperty {
+    #[cfg(test)]
+    pub(crate) fn reset_spans(&mut self) {
+        self.inner.reset_spans();
     }
 }
 

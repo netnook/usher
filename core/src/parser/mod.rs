@@ -567,10 +567,15 @@ pub mod tests {
         let mut parser = Parser::new("dummy", input);
         parser.pos = 1;
 
-        let actual = func(&mut parser)
-            .expect("parser should succeed")
-            .map(|a| format!("{a:-#?}"));
-        let expected = expected.map(|e| format!("{e:-#?}"));
+        let mut actual = func(&mut parser).expect("parser should succeed");
+        let mut expected = expected;
+
+        if let Some(n) = actual.as_mut() {
+            n.reset_spans()
+        }
+        if let Some(n) = expected.as_mut() {
+            n.reset_spans()
+        }
 
         match (actual, expected) {
             (Some(actual), Some(expected)) => {

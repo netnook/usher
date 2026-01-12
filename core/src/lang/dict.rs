@@ -3,7 +3,7 @@ use crate::lang::{
     accept_default, value::Dict,
 };
 
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Debug)]
 pub struct DictBuilder {
     pub(crate) entries: Vec<KeyValueBuilder>,
     pub(crate) span: Span,
@@ -12,23 +12,12 @@ impl DictBuilder {
     pub(crate) fn span(&self) -> Span {
         self.span
     }
-}
 
-impl core::fmt::Debug for DictBuilder {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let minimal = f.sign_minus();
-        if minimal {
-            f.write_str("DictBuilder ")?;
-            let mut m = f.debug_map();
-            for e in &self.entries {
-                m.entry(&e.key.key, &e.value);
-            }
-            m.finish()
-        } else {
-            f.debug_struct("DictBuilder")
-                .field("entries", &self.entries)
-                .field("span", &self.span)
-                .finish()
+    #[cfg(test)]
+    pub(crate) fn reset_spans(&mut self) {
+        self.span = Span::zero();
+        for e in &mut self.entries {
+            e.reset_spans();
         }
     }
 }

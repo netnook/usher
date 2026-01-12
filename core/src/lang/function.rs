@@ -7,7 +7,7 @@ use crate::lang::{
 };
 use std::rc::Rc;
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub struct FunctionDef {
     pub(crate) name: Option<Var>,
     pub(crate) params: Vec<Param>,
@@ -15,33 +15,9 @@ pub struct FunctionDef {
     pub(crate) span: Span,
 }
 
-impl core::fmt::Debug for FunctionDef {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let minimal = f.sign_minus();
-        if minimal {
-            let mut w = f.debug_struct("FunctionDef");
-            if let Some(name) = &self.name {
-                w.field("name", &name.ident.key);
-            }
-            if !self.params.is_empty() {
-                w.field("params", &self.params);
-            }
-            w.field("body", &self.body);
-            w.finish()
-        } else {
-            f.debug_struct("FunctionDef")
-                .field("name", &self.name)
-                .field("params", &self.params)
-                .field("body", &self.body)
-                .field("span", &self.span)
-                .finish()
-        }
-    }
-}
-
 accept_default!(FunctionDef, name:opt:var, params:vec:param, body:block,);
 
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Debug)]
 pub enum Param {
     Required(Var),
     Optional(Var, Value),
@@ -58,41 +34,14 @@ impl Param {
             Param::OtherNamed(var) => &var.ident.key,
         }
     }
-}
 
-impl core::fmt::Debug for Param {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let minimal = f.sign_minus();
-        if minimal {
-            match self {
-                Param::Required(var) => var.ident.key.fmt(f),
-                Param::Optional(var, default_value) => {
-                    var.ident.key.fmt(f)?;
-                    f.write_str(": ")?;
-                    write!(f, "{default_value}")
-                }
-                Param::OtherPositional(var) => {
-                    f.write_str("*")?;
-                    var.ident.key.fmt(f)
-                }
-                Param::OtherNamed(var) => {
-                    f.write_str("**")?;
-                    var.ident.key.fmt(f)
-                }
-            }
-        } else {
-            match self {
-                Param::Required(var) => f.debug_tuple("Param::Required").field(var).finish(),
-                Param::Optional(var, default_value) => f
-                    .debug_tuple("Param::Optional")
-                    .field(var)
-                    .field(default_value)
-                    .finish(),
-                Param::OtherPositional(var) => {
-                    f.debug_tuple("Param::OtherPositional").field(var).finish()
-                }
-                Param::OtherNamed(var) => f.debug_tuple("Param::OtherNamed").field(var).finish(),
-            }
+    #[cfg(test)]
+    pub(crate) fn reset_spans(&mut self) {
+        match self {
+            Param::Required(var) => var.reset_spans(),
+            Param::Optional(var, _) => var.reset_spans(),
+            Param::OtherPositional(var) => var.reset_spans(),
+            Param::OtherNamed(var) => var.reset_spans(),
         }
     }
 }
@@ -136,6 +85,17 @@ impl FunctionDef {
     pub(crate) fn params(&self) -> &[Param] {
         &self.params[..]
     }
+    #[cfg(test)]
+    pub(crate) fn reset_spans(&mut self) {
+        self.span = Span::zero();
+        if let Some(b) = self.name.as_mut() {
+            b.reset_spans()
+        }
+        for p in &mut self.params {
+            p.reset_spans();
+        }
+        self.body.reset_spans();
+    }
 }
 
 pub(crate) type FunctionType =
@@ -160,7 +120,7 @@ impl FunctionInst {
     }
 }
 
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Debug)]
 pub struct FunctionCall {
     pub(crate) variant: FunctionCallVariant,
     pub(crate) args: Vec<Arg>,
@@ -180,34 +140,20 @@ pub enum FunctionCallVariant {
         on: Box<AstNode>,
     },
 }
-
-impl core::fmt::Debug for FunctionCall {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let minimal = f.sign_minus();
-        if minimal {
-            let mut w = f.debug_struct("FunctionCall");
-            match &self.variant {
-                FunctionCallVariant::MethodCall { on, function } => {
-                    w.field("on", on);
-                    w.field("function", &function.key);
-                }
-                FunctionCallVariant::FunctionCall { function } => {
-                    w.field("function", &function.key);
-                }
-                FunctionCallVariant::AnonymousCall { on } => {
-                    w.field("on", on);
-                }
+impl FunctionCallVariant {
+    #[cfg(test)]
+    pub(crate) fn reset_spans(&mut self) {
+        match self {
+            FunctionCallVariant::MethodCall { on, function } => {
+                on.reset_spans();
+                function.reset_spans();
             }
-            if !self.args.is_empty() {
-                w.field("args", &self.args);
+            FunctionCallVariant::FunctionCall { function } => {
+                function.reset_spans();
             }
-            w.finish()
-        } else {
-            f.debug_struct("FunctionCall")
-                .field("variant", &self.variant)
-                .field("args", &self.args)
-                .field("span", &self.span)
-                .finish()
+            FunctionCallVariant::AnonymousCall { on } => {
+                on.reset_spans();
+            }
         }
     }
 }
@@ -302,6 +248,15 @@ impl Eval for FunctionCall {
 }
 
 impl FunctionCall {
+    #[cfg(test)]
+    pub(crate) fn reset_spans(&mut self) {
+        self.span = Span::zero();
+        self.variant.reset_spans();
+        for a in &mut self.args {
+            a.reset_spans();
+        }
+    }
+
     fn call_func(
         &self,
         func: Func,
@@ -460,7 +415,7 @@ impl<T> Accept<T> for FunctionCall {
     }
 }
 
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Debug)]
 pub enum Arg {
     Positional(PositionalArg),
     Named(NamedArg),
@@ -473,6 +428,14 @@ impl Arg {
             Arg::Named(arg) => arg.span(),
         }
     }
+
+    #[cfg(test)]
+    pub(crate) fn reset_spans(&mut self) {
+        match self {
+            Arg::Positional(arg) => arg.reset_spans(),
+            Arg::Named(arg) => arg.reset_spans(),
+        }
+    }
 }
 
 impl<T> Accept<T> for Arg {
@@ -480,27 +443,6 @@ impl<T> Accept<T> for Arg {
         match self {
             Arg::Positional(arg) => visitor.visit_node(&arg.expr),
             Arg::Named(arg) => visitor.visit_node(&arg.expr),
-        }
-    }
-}
-
-impl core::fmt::Debug for Arg {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let minimal = f.sign_minus();
-        if minimal {
-            match self {
-                Arg::Positional(arg) => arg.expr.fmt(f),
-                Arg::Named(arg) => {
-                    arg.name.key.fmt(f)?;
-                    f.write_str(": ")?;
-                    arg.expr.fmt(f)
-                }
-            }
-        } else {
-            match self {
-                Arg::Positional(arg) => f.debug_tuple("Arg").field(&arg).finish(),
-                Arg::Named(arg) => f.debug_tuple("Arg").field(&arg).finish(),
-            }
         }
     }
 }
@@ -523,6 +465,11 @@ impl PositionalArg {
     pub(crate) fn span(&self) -> Span {
         self.expr.span()
     }
+
+    #[cfg(test)]
+    pub(crate) fn reset_spans(&mut self) {
+        self.expr.reset_spans();
+    }
 }
 
 impl Eval for PositionalArg {
@@ -541,6 +488,11 @@ impl NamedArg {
     pub(crate) fn span(&self) -> Span {
         Span::merge(self.name.span, self.expr.span())
     }
+    #[cfg(test)]
+    pub(crate) fn reset_spans(&mut self) {
+        self.name.reset_spans();
+        self.expr.reset_spans();
+    }
 }
 
 impl Eval for NamedArg {
@@ -549,28 +501,17 @@ impl Eval for NamedArg {
     }
 }
 
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Debug)]
 pub struct ReturnStmt {
     pub(crate) value: Option<Box<AstNode>>,
     pub(crate) span: Span,
 }
-
-impl core::fmt::Debug for ReturnStmt {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let minimal = f.sign_minus();
-        if minimal {
-            match &self.value {
-                Some(v) => {
-                    f.write_str("Return { ")?;
-                    v.fmt(f)?;
-                    f.write_str(" }")
-                }
-                None => write!(f, "Return"),
-            }
-        } else {
-            f.debug_struct("ReturnStmt")
-                .field("value", &self.value)
-                .finish()
+impl ReturnStmt {
+    #[cfg(test)]
+    pub(crate) fn reset_spans(&mut self) {
+        self.span = Span::zero();
+        if let Some(b) = self.value.as_mut() {
+            b.reset_spans()
         }
     }
 }

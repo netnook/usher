@@ -4,7 +4,7 @@ use crate::lang::{
     VisitorResult, accept_default,
 };
 
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Debug)]
 pub struct For {
     pub(crate) iterable: Box<AstNode>,
     pub(crate) loop_item: Var,
@@ -12,28 +12,16 @@ pub struct For {
     pub(crate) block: Block,
     pub(crate) span: Span,
 }
-
-impl core::fmt::Debug for For {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let minimal = f.sign_minus();
-        if minimal {
-            let mut w = f.debug_struct("For");
-            w.field("iterable", &self.iterable);
-            w.field("loop_item", &self.loop_item);
-            if let Some(loop_info) = &self.loop_info {
-                w.field("loop_info", &loop_info.ident.key);
-            }
-            w.field("block", &self.block);
-            w.finish()
-        } else {
-            f.debug_struct("For")
-                .field("iterable", &self.iterable)
-                .field("loop_item", &self.loop_item)
-                .field("loop_info", &self.loop_info)
-                .field("block", &self.block)
-                .field("span", &self.span)
-                .finish()
+impl For {
+    #[cfg(test)]
+    pub(crate) fn reset_spans(&mut self) {
+        self.span = Span::zero();
+        self.iterable.reset_spans();
+        self.loop_item.reset_spans();
+        if let Some(b) = self.loop_info.as_mut() {
+            b.reset_spans()
         }
+        self.block.reset_spans();
     }
 }
 
@@ -98,36 +86,23 @@ impl Eval for For {
 
 accept_default!(For, iterable:node, loop_item:var, loop_info:opt:var, block:block,);
 
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Debug)]
 pub struct Break {
     pub(crate) value: Option<Box<AstNode>>,
     pub(crate) span: Span,
 }
 
-impl core::fmt::Debug for Break {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let minimal = f.sign_minus();
-        if minimal {
-            match &self.value {
-                Some(v) => {
-                    f.write_str("Break { ")?;
-                    v.fmt(f)?;
-                    f.write_str(" }")
-                }
-                None => write!(f, "Break"),
-            }
-        } else {
-            f.debug_struct("Break")
-                .field("value", &self.value)
-                .field("span", &self.span)
-                .finish()
-        }
-    }
-}
-
 impl Break {
     pub(crate) fn span(&self) -> Span {
         self.span
+    }
+
+    #[cfg(test)]
+    pub(crate) fn reset_spans(&mut self) {
+        self.span = Span::zero();
+        if let Some(v) = self.value.as_mut() {
+            v.reset_spans()
+        }
     }
 }
 
@@ -144,22 +119,9 @@ impl Eval for Break {
 
 accept_default!(Break, value:opt:node,);
 
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Debug)]
 pub struct Continue {
     pub(crate) span: Span,
-}
-
-impl core::fmt::Debug for Continue {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let minimal = f.sign_minus();
-        if minimal {
-            write!(f, "Continue")
-        } else {
-            f.debug_struct("Continue")
-                .field("span", &self.span)
-                .finish()
-        }
-    }
 }
 
 impl Continue {
@@ -169,6 +131,11 @@ impl Continue {
 
     pub(crate) fn span(&self) -> Span {
         self.span
+    }
+
+    #[cfg(test)]
+    pub(crate) fn reset_spans(&mut self) {
+        self.span = Span::zero();
     }
 }
 

@@ -2,24 +2,10 @@ use crate::lang::{
     Accept, Context, Eval, EvalStop, Span, Value, Visitor, VisitorResult, accept_default,
 };
 
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Debug)]
 pub struct Literal {
     pub(crate) val: Value,
     pub(crate) span: Span,
-}
-
-impl core::fmt::Debug for Literal {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let minimal = f.sign_minus();
-        if minimal {
-            write!(f, "Literal({})", self.val)
-        } else {
-            f.debug_struct("Literal")
-                .field("val", &self.val)
-                .field("span", &self.span)
-                .finish()
-        }
-    }
 }
 
 impl Literal {
@@ -29,6 +15,11 @@ impl Literal {
 
     pub(crate) fn span(&self) -> Span {
         self.span
+    }
+
+    #[cfg(test)]
+    pub(crate) fn reset_spans(&mut self) {
+        self.span = Span::zero();
     }
 }
 

@@ -66,34 +66,23 @@ impl BinaryOpCode {
     }
 }
 
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Debug)]
 pub struct BinaryOp {
     pub(crate) op: BinaryOpCode,
     pub(crate) lhs: Box<AstNode>,
     pub(crate) rhs: Box<AstNode>,
 }
 
-impl core::fmt::Debug for BinaryOp {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let minimal = f.sign_minus();
-        if minimal {
-            f.debug_struct(self.op.op_name())
-                .field("lhs", &self.lhs)
-                .field("rhs", &self.rhs)
-                .finish()
-        } else {
-            f.debug_struct("BinaryOp")
-                .field("op", &self.op)
-                .field("lhs", &self.lhs)
-                .field("rhs", &self.rhs)
-                .finish()
-        }
-    }
-}
-
 impl BinaryOp {
     pub fn span(&self) -> Span {
         Span::merge(self.lhs.span(), self.rhs.span())
+    }
+
+    #[cfg(test)]
+    pub(crate) fn reset_spans(&mut self) {
+        // self.span = Span::zero();
+        self.lhs.reset_spans();
+        self.rhs.reset_spans();
     }
 }
 

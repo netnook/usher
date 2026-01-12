@@ -2,7 +2,7 @@ use crate::lang::{
     Accept, AstNode, Context, Eval, EvalStop, Span, Value, Visitor, VisitorResult, accept_default,
 };
 
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Debug)]
 pub struct InterpolatedStr {
     pub(crate) parts: Vec<AstNode>,
     pub(crate) span: Span,
@@ -12,21 +12,12 @@ impl InterpolatedStr {
     pub(crate) fn span(&self) -> Span {
         self.span
     }
-}
 
-// FIXME: revert back to separate derived Debug and self built testing/struture debug method, or ...
-impl core::fmt::Debug for InterpolatedStr {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let minimal = f.sign_minus();
-        if minimal {
-            f.write_str("InterpolatedStr {")?;
-            f.debug_list().entries(&self.parts).finish()?;
-            f.write_str("}")
-        } else {
-            f.debug_struct("InterpolatedStr")
-                .field("parts", &self.parts)
-                .field("span", &self.span)
-                .finish()
+    #[cfg(test)]
+    pub(crate) fn reset_spans(&mut self) {
+        self.span = Span::zero();
+        for p in &mut self.parts {
+            p.reset_spans();
         }
     }
 }

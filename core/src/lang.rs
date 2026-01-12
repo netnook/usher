@@ -111,26 +111,17 @@ impl Span {
         self.len = end - start;
         self
     }
+
+    #[cfg(test)]
+    fn zero() -> Self {
+        Self::new(0, 0)
+    }
 }
 
-#[derive(PartialEq, Eq, Clone)]
+#[derive(PartialEq, Eq, Clone, Debug)]
 pub struct Identifier {
     pub(crate) key: Key,
     pub(crate) span: Span,
-}
-
-impl core::fmt::Debug for Identifier {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let minimal = f.sign_minus();
-        if minimal {
-            write!(f, r#"Ident("{}")"#, self.key.0)
-        } else {
-            f.debug_struct("Identifier")
-                .field("key", &self.key)
-                .field("span", &self.span)
-                .finish()
-        }
-    }
 }
 
 impl Identifier {
@@ -148,16 +139,16 @@ impl Identifier {
     pub(crate) fn as_str(&self) -> &str {
         self.key.as_str()
     }
-}
 
-#[derive(PartialEq, Eq, Clone, Hash, PartialOrd, Ord)]
-pub struct Key(Rc<String>);
-
-impl core::fmt::Debug for Key {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
+    #[cfg(test)]
+    pub(crate) fn reset_spans(&mut self) {
+        self.span = Span::zero();
     }
 }
+
+#[derive(PartialEq, Eq, Clone, Hash, PartialOrd, Ord, Debug)]
+pub struct Key(Rc<String>);
+
 impl core::fmt::Display for Key {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
@@ -209,6 +200,12 @@ pub struct KeyValueBuilder {
 impl KeyValueBuilder {
     pub(crate) fn span(&self) -> Span {
         Span::merge(self.key.span, self.value.span())
+    }
+
+    #[cfg(test)]
+    pub(crate) fn reset_spans(&mut self) {
+        self.key.reset_spans();
+        self.value.reset_spans();
     }
 }
 

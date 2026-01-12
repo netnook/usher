@@ -6,7 +6,7 @@ use crate::lang::{
 };
 use std::rc::Rc;
 
-#[derive(PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum AstNode {
     This(This),
     Literal(Literal),
@@ -30,91 +30,6 @@ pub enum AstNode {
     KeyValue(KeyValueBuilder),
     Break(Break),
     Continue(Continue),
-}
-
-macro_rules! node_debug_1 {
-    ($m:expr, $f:expr, $($name:ident),+) => {
-        match $m {
-            $(
-              AstNode::$name(v) => v.fmt($f),
-            )+
-        }
-    };
-}
-
-macro_rules! node_debug_2 {
-    ($m:expr, $f:expr, $($name:ident),+) => {
-        match $m {
-            $(
-              AstNode::$name(v) => {
-                  $f.write_str(concat!(stringify!($name), "("))?;
-                  v.fmt($f)?;
-                  $f.write_str(" )")
-              }
-            )+
-        }
-    };
-}
-
-impl core::fmt::Debug for AstNode {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let minimal = f.sign_minus();
-        if minimal {
-            node_debug_1!(
-                self,
-                f,
-                Literal,
-                InterpolatedStr,
-                ListBuilder,
-                DictBuilder,
-                PropertyOf,
-                IndexOf,
-                UnaryOp,
-                BinaryOp,
-                CatchMissingOptionalProperty,
-                Block,
-                IfElse,
-                For,
-                Var,
-                Declaration,
-                FunctionDef,
-                FunctionCall,
-                ReturnStmt,
-                Assignment,
-                KeyValue,
-                This,
-                Break,
-                Continue
-            )
-        } else {
-            node_debug_2!(
-                self,
-                f,
-                Literal,
-                InterpolatedStr,
-                ListBuilder,
-                DictBuilder,
-                PropertyOf,
-                IndexOf,
-                UnaryOp,
-                BinaryOp,
-                CatchMissingOptionalProperty,
-                Block,
-                IfElse,
-                For,
-                Var,
-                Declaration,
-                FunctionDef,
-                FunctionCall,
-                ReturnStmt,
-                Assignment,
-                KeyValue,
-                This,
-                Break,
-                Continue
-            )
-        }
-    }
 }
 
 impl Eval for AstNode {
@@ -181,6 +96,37 @@ impl AstNode {
             AstNode::ReturnStmt(v) => v.span,
             AstNode::Assignment(v) => v.span(),
             AstNode::KeyValue(v) => v.span(),
+        }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn reset_spans(&mut self) {
+        match self {
+            AstNode::This(v) => v.reset_spans(),
+            AstNode::Literal(v) => v.reset_spans(),
+            AstNode::InterpolatedStr(v) => v.reset_spans(),
+            AstNode::ListBuilder(v) => v.reset_spans(),
+            AstNode::DictBuilder(v) => v.reset_spans(),
+            AstNode::PropertyOf(v) => v.reset_spans(),
+            AstNode::IndexOf(v) => v.reset_spans(),
+            AstNode::UnaryOp(v) => v.reset_spans(),
+            AstNode::BinaryOp(v) => v.reset_spans(),
+            AstNode::CatchMissingOptionalProperty(v) => v.reset_spans(),
+            AstNode::Block(v) => v.reset_spans(),
+            AstNode::IfElse(v) => v.reset_spans(),
+            AstNode::For(v) => v.reset_spans(),
+            AstNode::Var(v) => v.reset_spans(),
+            AstNode::Declaration(v) => v.reset_spans(),
+            AstNode::FunctionDef(v) => {
+                let m = Rc::get_mut(v).unwrap();
+                m.reset_spans();
+            }
+            AstNode::FunctionCall(v) => v.reset_spans(),
+            AstNode::ReturnStmt(v) => v.reset_spans(),
+            AstNode::Assignment(v) => v.reset_spans(),
+            AstNode::KeyValue(v) => v.reset_spans(),
+            AstNode::Break(v) => v.reset_spans(),
+            AstNode::Continue(v) => v.reset_spans(),
         }
     }
 }

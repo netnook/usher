@@ -31,33 +31,22 @@ impl UnaryOpCode {
     }
 }
 
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Debug)]
 pub struct UnaryOp {
     pub(crate) op: UnaryOpCode,
     pub(crate) on: Box<AstNode>,
     pub(crate) span: Span,
 }
 
-impl core::fmt::Debug for UnaryOp {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let minimal = f.sign_minus();
-        if minimal {
-            f.debug_struct(self.op.op_name())
-                .field("on", &self.on)
-                .finish()
-        } else {
-            f.debug_struct("UnaryOp")
-                .field("op", &self.op)
-                .field("on", &self.on)
-                .field("span", &self.span)
-                .finish()
-        }
-    }
-}
-
 impl UnaryOp {
     pub fn span(&self) -> Span {
         Span::merge(self.span, self.on.span())
+    }
+
+    #[cfg(test)]
+    pub(crate) fn reset_spans(&mut self) {
+        self.span = Span::zero();
+        self.on.reset_spans();
     }
 }
 

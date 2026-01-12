@@ -4,20 +4,9 @@ use crate::lang::{
 };
 use std::cell::LazyCell;
 
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Debug)]
 pub struct This {
     pub(crate) span: Span,
-}
-
-impl core::fmt::Debug for This {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let minimal = f.sign_minus();
-        if minimal {
-            write!(f, "This")
-        } else {
-            f.debug_struct("This").field("span", &self.span).finish()
-        }
-    }
 }
 
 impl This {
@@ -35,6 +24,11 @@ impl This {
     pub(crate) fn span(&self) -> Span {
         self.span
     }
+
+    #[cfg(test)]
+    pub(crate) fn reset_spans(&mut self) {
+        self.span = Span::zero();
+    }
 }
 
 impl Eval for This {
@@ -50,20 +44,9 @@ impl Eval for This {
 
 accept_default!(This);
 
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Debug)]
 pub struct Var {
     pub(crate) ident: Identifier,
-}
-
-impl core::fmt::Debug for Var {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let minimal = f.sign_minus();
-        if minimal {
-            write!(f, r#"Var("{}")"#, self.ident.key)
-        } else {
-            f.debug_struct("Var").field("ident", &self.ident).finish()
-        }
-    }
 }
 
 impl Var {
@@ -83,6 +66,11 @@ impl Var {
             }
         })?;
         Ok(())
+    }
+
+    #[cfg(test)]
+    pub(crate) fn reset_spans(&mut self) {
+        self.ident.reset_spans();
     }
 }
 
@@ -116,28 +104,18 @@ impl Setter for Var {
     }
 }
 
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Debug)]
 pub struct Declaration {
     pub(crate) var: Var,
-    pub(crate) value: Box<AstNode>,
+    pub(crate) value: Box<AstNode>, // FIXME: this should be called `expr` rather than `value`
     pub(crate) span: Span,
 }
-
-impl core::fmt::Debug for Declaration {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let minimal = f.sign_minus();
-        if minimal {
-            f.debug_struct("Declaration")
-                .field("var", &self.var.ident.key)
-                .field("value", &self.value)
-                .finish()
-        } else {
-            f.debug_struct("Declaration")
-                .field("var", &self.var)
-                .field("value", &self.value)
-                .field("span", &self.span)
-                .finish()
-        }
+impl Declaration {
+    #[cfg(test)]
+    pub(crate) fn reset_spans(&mut self) {
+        self.span = Span::zero();
+        self.var.reset_spans();
+        self.value.reset_spans();
     }
 }
 
@@ -159,6 +137,13 @@ pub struct Assignment {
 impl Assignment {
     pub(crate) fn span(&self) -> Span {
         Span::merge(self.lhs.span(), self.rhs.span())
+    }
+
+    #[cfg(test)]
+    pub(crate) fn reset_spans(&mut self) {
+        // self.span = Span::zero();
+        self.lhs.reset_spans();
+        self.rhs.reset_spans();
     }
 }
 

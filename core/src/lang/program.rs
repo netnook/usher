@@ -1,26 +1,10 @@
 use crate::lang::{AstNode, Context, Eval, EvalError, EvalStop, InternalProgramError, Value};
 
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Debug)]
 pub struct Program<'a> {
     pub file: &'a str,
     pub source: &'a str,
     pub stmts: Vec<AstNode>,
-}
-
-impl<'a> core::fmt::Debug for Program<'a> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let minimal = f.sign_minus();
-        if minimal {
-            f.write_str("Program { ")?;
-            f.debug_list().entries(&self.stmts).finish()?;
-            f.write_str(" }")
-        } else {
-            f.debug_struct("Program")
-                .field("stmts", &self.stmts)
-                .field("source", &self.source)
-                .finish()
-        }
-    }
 }
 
 impl<'a> Program<'a> {
@@ -60,5 +44,12 @@ impl<'a> Program<'a> {
             })?;
         }
         Ok(res)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn reset_spans(&mut self) {
+        for s in &mut self.stmts {
+            s.reset_spans();
+        }
     }
 }

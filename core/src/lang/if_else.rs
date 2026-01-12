@@ -4,31 +4,21 @@ use crate::lang::{
     visitor::{Accept, Visitor, VisitorResult},
 };
 
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Debug)]
 pub struct IfElse {
     pub(crate) conditional_blocks: Vec<ConditionalBlock>,
     pub(crate) else_block: Option<Block>,
     pub(crate) span: Span,
 }
-
-impl core::fmt::Debug for IfElse {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let minimal = f.sign_minus();
-        if minimal {
-            let mut w = f.debug_struct("IfElse");
-            for cb in &self.conditional_blocks {
-                w.field("conditional", cb);
-            }
-            if let Some(else_block) = &self.else_block {
-                w.field("else", else_block);
-            }
-            w.finish()
-        } else {
-            f.debug_struct("IfElse")
-                .field("conditional_blocks", &self.conditional_blocks)
-                .field("else_block", &self.else_block)
-                .field("span", &self.span)
-                .finish()
+impl IfElse {
+    #[cfg(test)]
+    pub(crate) fn reset_spans(&mut self) {
+        self.span = Span::zero();
+        for cb in &mut self.conditional_blocks {
+            cb.reset_spans();
+        }
+        if let Some(b) = self.else_block.as_mut() {
+            b.reset_spans()
         }
     }
 }
@@ -68,6 +58,13 @@ impl Eval for IfElse {
 pub struct ConditionalBlock {
     pub(crate) condition: AstNode,
     pub(crate) block: Block,
+}
+impl ConditionalBlock {
+    #[cfg(test)]
+    pub(crate) fn reset_spans(&mut self) {
+        self.condition.reset_spans();
+        self.block.reset_spans();
+    }
 }
 
 accept_default!(ConditionalBlock, condition:node, block:block,);
