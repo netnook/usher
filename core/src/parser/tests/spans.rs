@@ -249,11 +249,10 @@ fn test_ifelse_spans() {
 fn test_for_spans() {
     do_test_parser_exact(
         r#" for a in b { 1 } "#,
-        _for(
-            var(id("a").spanned(5, 1)),
-            None,
-            var(id("b").spanned(10, 1)),
-            _block![i(1).spanned(14, 1)].spanned(12, 5),
+        _for!(
+            var(id("a").spanned(5, 1));
+            var(id("b").spanned(10, 1));
+            _block![i(1).spanned(14, 1)].spanned(12, 5)
         )
         .spanned(1, 16)
         .into(),

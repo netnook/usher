@@ -9,19 +9,31 @@ impl<'a> Parser<'a> {
 
         self.req_whitespace_comments()?;
 
-        let Some(loop_item) = self.declaration_identifier()? else {
+        let Some(loop_item_a) = self.declaration_identifier()? else {
             return Err(SyntaxError::ExpectedVariableIdentifier { pos: self.pos });
         };
 
-        let mut loop_info = None;
+        let mut loop_item_b = None;
+        let mut loop_item_c = None;
 
         self.whitespace_comments();
 
         if self.char(b',') {
             self.whitespace_comments();
-            loop_info = self.declaration_identifier()?;
+            loop_item_b = self.declaration_identifier()?;
 
-            if loop_info.is_none() {
+            if loop_item_b.is_none() {
+                return Err(SyntaxError::ExpectedVariableIdentifier { pos: self.pos });
+            };
+
+            self.whitespace_comments();
+        }
+
+        if self.char(b',') {
+            self.whitespace_comments();
+            loop_item_c = self.declaration_identifier()?;
+
+            if loop_item_c.is_none() {
                 return Err(SyntaxError::ExpectedVariableIdentifier { pos: self.pos });
             };
 
@@ -46,8 +58,9 @@ impl<'a> Parser<'a> {
 
         Ok(AstNode::For(For {
             iterable: iterable.into(),
-            loop_item,
-            loop_info,
+            loop_item_a,
+            loop_item_b,
+            loop_item_c,
             block,
             span: span.extended(self.pos),
         }))
@@ -101,22 +114,27 @@ mod tests {
     fn test_for() {
         do_test_stmt_ok(
             " for a in x { 1 } ",
-            _for(var("a"), None, var("x"), _block![i(1)]),
+            _for!(var("a"); var("x"); _block![i(1)]),
             -1,
         );
         do_test_stmt_ok(
             " for a, b in x { 1 } ",
-            _for(var("a"), Some(var("b")), var("x"), _block![i(1)]),
+            _for!(var("a"), var("b"); var("x"); _block![i(1)]),
+            -1,
+        );
+        do_test_stmt_ok(
+            " for a, b, c in x { 1 } ",
+            _for!(var("a"), var("b"), var("c"); var("x"); _block![i(1)]),
             -1,
         );
         do_test_stmt_ok(
             " for a,b in x{1} ",
-            _for(var("a"), Some(var("b")), var("x"), _block![i(1)]),
+            _for!(var("a"), var("b"); var("x"); _block![i(1)]),
             -1,
         );
         do_test_stmt_ok(
             " for #comment\n a #comment\n , #comment\n b #comment\n in #comment\n x #comment\n {1} ",
-            _for(var("a"), Some(var("b")), var("x"), _block![i(1)]),
+            _for!(var("a"), var("b"); var("x"); _block![i(1)]),
             -1,
         );
 

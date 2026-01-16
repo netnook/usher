@@ -8,6 +8,7 @@ print(dict(a:"aaa", b:42, c:"ccc"))
 print(dict(a:"aaa", b:42, c:["sub", dict(x:"list", y:[])]))
 print([dict(a:"aaa", b:42), ["sub", dict(x:"list", y:[])]])
 print(42, 42.42, true, false, "a", "string", [], dict())
+# FIXME: test printing of strings with quotes or escapes.
 ---stdout---
 42
 42.42

@@ -144,6 +144,14 @@ impl ListIter {
             Err(_e) => None,
         }
     }
+
+    pub(crate) fn is_first(&self) -> bool {
+        self.next == 1
+    }
+
+    pub(crate) fn is_last(&self) -> bool {
+        self.next as usize >= self.list.len()
+    }
 }
 
 impl MethodResolver for List {

@@ -195,7 +195,7 @@ pub(super) mod tests {
         do_test_stmt_ok(" if true { 2 } ", _if!(cond(b(true) => _block![i(2)])), -1);
         do_test_stmt_ok(
             " for a in b { 2 } ",
-            _for(var("a"), None, var("b"), _block![i(2)]),
+            _for!(var("a"); var("b"); _block![i(2)]),
             -1,
         );
         do_test_stmt_ok(" var a = 1 ", decl(var("a"), i(1)), -1);

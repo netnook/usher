@@ -215,6 +215,11 @@ impl From<isize> for Value {
         Value::Integer(value)
     }
 }
+impl From<bool> for Value {
+    fn from(value: bool) -> Self {
+        Value::Bool(value)
+    }
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Nillable<T> {

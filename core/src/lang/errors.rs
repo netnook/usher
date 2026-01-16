@@ -118,7 +118,7 @@ pub enum InternalProgramError {
     StdoutWriteError { cause: String, span: Span },
     #[error("Error writing to stderr: {cause}")]
     StderrWriteError { cause: String, span: Span },
-    #[error("Loop on dict requires at least a key and a value varible.")]
+    #[error("Loop on dict requires at least a key and a value variable.")]
     LoopOnDictMissingValueDeclartion { span: Span },
 }
 

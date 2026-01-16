@@ -365,7 +365,7 @@ mod tests {
                     "c"
                 }
 
-                for a, b in c {
+                for a, b, c in d {
                     continue
                     break 45
                 }
@@ -428,9 +428,10 @@ mod tests {
                 "Block",
                 "Literal \"c\"",
                 "For",
-                "Var c",
+                "Var d",
                 "Var a",
                 "Var b",
+                "Var c",
                 "Block",
                 "Continue",
                 "Break",

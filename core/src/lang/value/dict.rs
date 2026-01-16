@@ -83,6 +83,15 @@ impl DictIter {
             None => None,
         }
     }
+
+    pub(crate) fn is_first(&self) -> bool {
+        self.next == 1
+    }
+
+    pub(crate) fn is_last(&self) -> bool {
+        let len = self.dict.content.borrow().len();
+        self.next >= len
+    }
 }
 
 impl MethodResolver for Dict {

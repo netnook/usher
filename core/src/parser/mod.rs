@@ -333,20 +333,47 @@ pub mod tests {
             rhs: rhs.into().into(),
         }
     }
-    pub(crate) fn _for(
-        loop_item: Var,
-        loop_info: Option<Var>,
-        iterable: impl Into<AstNode>,
-        block: Block,
-    ) -> For {
-        For {
-            loop_item,
-            loop_info,
-            iterable: iterable.into().into(),
-            block,
-            span: Span::new(999, 9999),
-        }
+
+    macro_rules! _for {
+        ($a:expr ; $it:expr ; $blk:expr) => {{
+            use crate::lang::For;
+            use crate::lang::Span;
+            For {
+                loop_item_a: $a,
+                loop_item_b: None,
+                loop_item_c: None,
+                iterable: Box::new($it.into()),
+                block: $blk,
+                span: Span::new(999, 9999),
+            }
+        }};
+        ($a:expr, $b:expr ; $it:expr ; $blk:expr) => {{
+            use crate::lang::For;
+            use crate::lang::Span;
+            For {
+                loop_item_a: $a,
+                loop_item_b: Some($b),
+                loop_item_c: None,
+                iterable: Box::new($it.into()),
+                block: $blk,
+                span: Span::new(999, 9999),
+            }
+        }};
+        ($a:expr, $b:expr, $c:expr ; $it:expr ; $blk:expr) => {{
+            use crate::lang::For;
+            use crate::lang::Span;
+            For {
+                loop_item_a: $a,
+                loop_item_b: Some($b),
+                loop_item_c: Some($c),
+                iterable: Box::new($it.into()),
+                block: $blk,
+                span: Span::new(999, 9999),
+            }
+        }};
     }
+    pub(crate) use _for;
+
     pub(crate) fn _continue() -> Continue {
         Continue::new(Span::new(999, 9999))
     }

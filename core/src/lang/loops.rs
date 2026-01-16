@@ -1,14 +1,15 @@
 use super::{Context, Value};
 use crate::lang::{
-    Accept, AstNode, Block, Eval, EvalStop, InternalProgramError, Span, Var, Visitor,
+    Accept, AstNode, Block, Dict, Eval, EvalStop, InternalProgramError, Span, Var, Visitor,
     VisitorResult, accept_default,
 };
 
 #[derive(PartialEq, Clone, Debug)]
 pub struct For {
     pub(crate) iterable: Box<AstNode>,
-    pub(crate) loop_item: Var,
-    pub(crate) loop_info: Option<Var>,
+    pub(crate) loop_item_a: Var,
+    pub(crate) loop_item_b: Option<Var>,
+    pub(crate) loop_item_c: Option<Var>,
     pub(crate) block: Block,
     pub(crate) span: Span,
 }
@@ -17,10 +18,9 @@ impl For {
     pub(crate) fn reset_spans(&mut self) {
         self.span = Span::zero();
         self.iterable.reset_spans();
-        self.loop_item.reset_spans();
-        if let Some(b) = self.loop_info.as_mut() {
-            b.reset_spans()
-        }
+        self.loop_item_a.reset_spans();
+        self.loop_item_b.as_mut().map(|v| v.reset_spans());
+        self.loop_item_c.as_mut().map(|v| v.reset_spans());
         self.block.reset_spans();
     }
 }
@@ -36,10 +36,15 @@ impl Eval for For {
 
                 while let Some((idx, val)) = iter.next() {
                     let mut child_ctxt = ctxt.new_scope();
-                    self.loop_item.declare(&mut child_ctxt, val.ref_clone())?;
-                    // FIXME: this loop_info should not be the index, but a custom object with .index, .first, .last properties
-                    if let Some(loop_info) = &self.loop_info {
-                        loop_info.declare(&mut child_ctxt, Value::Integer(idx))?;
+                    self.loop_item_a.declare(&mut child_ctxt, val.ref_clone())?;
+                    if let Some(loop_index) = &self.loop_item_b {
+                        loop_index.declare(&mut child_ctxt, Value::Integer(idx))?;
+                    }
+                    if let Some(loop_info) = &self.loop_item_c {
+                        let mut dict = Dict::new();
+                        dict.set("first".into(), iter.is_first().into());
+                        dict.set("last".into(), iter.is_last().into());
+                        loop_info.declare(&mut child_ctxt, dict.into())?;
                     }
                     result = match self.block.eval_with_context(&mut child_ctxt) {
                         Ok(v) => v,
@@ -50,7 +55,7 @@ impl Eval for For {
                 }
             }
             Value::Dict(dict) => {
-                let Some(loop_info) = &self.loop_info else {
+                let Some(loop_index) = &self.loop_item_b else {
                     return Err(InternalProgramError::LoopOnDictMissingValueDeclartion {
                         span: self.span,
                     }
@@ -60,9 +65,14 @@ impl Eval for For {
 
                 while let Some((key, val)) = iter.next() {
                     let mut child_ctxt = ctxt.new_scope();
-                    // FIXME: dict should always have vars for key and value, and an optional third as loop_info (with .index, .first, .last properties)
-                    self.loop_item.declare(&mut child_ctxt, key.into())?;
-                    loop_info.declare(&mut child_ctxt, val.clone())?;
+                    self.loop_item_a.declare(&mut child_ctxt, key.into())?;
+                    loop_index.declare(&mut child_ctxt, val.clone())?;
+                    if let Some(loop_info) = &self.loop_item_c {
+                        let mut dict = Dict::new();
+                        dict.set("first".into(), iter.is_first().into());
+                        dict.set("last".into(), iter.is_last().into());
+                        loop_info.declare(&mut child_ctxt, dict.into())?;
+                    }
                     result = match self.block.eval_with_context(&mut child_ctxt) {
                         Ok(v) => v,
                         Err(EvalStop::Break(value, _)) => return Ok(value),
@@ -84,7 +94,7 @@ impl Eval for For {
     }
 }
 
-accept_default!(For, iterable:node, loop_item:var, loop_info:opt:var, block:block,);
+accept_default!(For, iterable:node, loop_item_a:var, loop_item_b:opt:var, loop_item_c:opt:var, block:block,);
 
 #[derive(PartialEq, Clone, Debug)]
 pub struct Break {
@@ -163,21 +173,19 @@ mod tests {
         ctxt.declare("l".into(), list.into()).unwrap();
         ctxt.declare("r".into(), Value::Integer(0)).unwrap();
 
-        let stmt = _for(
-            var("i"),
-            None,
-            var("l"),
-            _block![assign(var("r"), add(var("r"), var("i")))],
+        let stmt = _for!(
+            var("i");
+            var("l");
+            _block![assign(var("r"), add(var("r"), var("i")))]
         );
         let actual = stmt.eval(&mut ctxt).expect("a value");
         assert_eq!(ctxt.get(&"r".into()), Some(Value::Integer(7)));
         assert_eq!(actual, Value::Nil); // assignment (last stmt in loop) returns Nil
 
-        let stmt = _for(
-            var("i"),
-            None,
-            var("l"),
-            _block![assign(var("r"), add(var("r"), var("i"))), var("r")],
+        let stmt = _for!(
+            var("i");
+            var("l");
+            _block![assign(var("r"), add(var("r"), var("i"))), var("r")]
         );
         let actual = stmt.eval(&mut ctxt).expect("a value");
         assert_eq!(ctxt.get(&"r".into()), Some(Value::Integer(14)));
