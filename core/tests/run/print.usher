@@ -8,7 +8,6 @@ print(dict(a:"aaa", b:42, c:"ccc"))
 print(dict(a:"aaa", b:42, c:["sub", dict(x:"list", y:[])]))
 print([dict(a:"aaa", b:42), ["sub", dict(x:"list", y:[])]])
 print(42, 42.42, true, false, "a", "string", [], dict())
-# FIXME: test printing of strings with quotes or escapes.
 ---stdout---
 42
 42.42
@@ -39,3 +38,20 @@ Evaluation error in tests/run/print.usher at line 2, char 21:
   |
 2 | print("abc", "def", sep:42)
   |                     ^^^^^^ Wrong type for argument 'sep'.  Expected string but found integer.
+
+*************************************************
+# print special strings
+print("a\"b\\c\nd") # top level printed strings do not receive any escaping.
+
+var d = dict()
+d.add("a\"b", "c\\d\ne") # nested strings do receive escaping
+print(d)
+
+var l = []
+l.push("a\"b", "c\\d\ne") # nested strings do receive escaping
+print(l)
+---stdout---
+a"b\c
+d
+dict("a\"b":"c\\d\ne")
+["a\"b","c\\d\ne"]

@@ -146,9 +146,8 @@ impl Display for Dict {
                 true => first = false,
                 false => fmt.write_char(',')?,
             }
-            fmt.write_char('"')?;
-            fmt.write_str(k.as_str())?;
-            fmt.write_str("\":")?;
+            write!(fmt, "{:?}", k.as_str())?;
+            fmt.write_char(':')?;
 
             Display::fmt(&v, fmt)?;
         }

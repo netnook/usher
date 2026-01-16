@@ -90,9 +90,7 @@ impl Display for Value {
         match self {
             Value::Func(v) => Display::fmt(v, fmt),
             Value::Str(v) => {
-                fmt.write_char('"')?;
-                fmt.write_str(v)?;
-                fmt.write_char('"')?;
+                write!(fmt, "{:?}", v.as_str())?;
                 Ok(())
             }
             Value::Integer(v) => Display::fmt(v, fmt),

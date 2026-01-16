@@ -165,7 +165,14 @@ pub mod tests {
         {
             let val: Value = "the-s\"tring".into();
             let expected1 = "the-s\"tring";
-            let expected2 = "\"the-s\"tring\"";
+            let expected2 = "\"the-s\\\"tring\"";
+            assert_eq!(val.as_string().unwrap(), expected1);
+            assert_eq!(format!("{val}"), expected2);
+        }
+        {
+            let val: Value = "a\u{301}'".into();
+            let expected1 = "a\u{301}'";
+            let expected2 = "\"a\\u{301}'\"";
             assert_eq!(val.as_string().unwrap(), expected1);
             assert_eq!(format!("{val}"), expected2);
         }
