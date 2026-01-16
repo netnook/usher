@@ -125,3 +125,7 @@ print(b("bbb"))
 ---stdout---
 ["global x","outer y 1","aaa"]
 ["global x","outer y 2","bbb"]
+********************************
+# FIXME: try scope handling when creating func in method -> `this` should also be captured in scope
+---stdout---
+
