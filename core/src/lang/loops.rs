@@ -19,8 +19,12 @@ impl For {
         self.span = Span::zero();
         self.iterable.reset_spans();
         self.loop_item_a.reset_spans();
-        self.loop_item_b.as_mut().map(|v| v.reset_spans());
-        self.loop_item_c.as_mut().map(|v| v.reset_spans());
+        if let Some(v) = self.loop_item_b.as_mut() {
+            v.reset_spans()
+        }
+        if let Some(v) = self.loop_item_c.as_mut() {
+            v.reset_spans()
+        }
         self.block.reset_spans();
     }
 }
